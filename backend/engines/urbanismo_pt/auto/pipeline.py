@@ -104,8 +104,16 @@ async def _geo_da_parcela(parcela: List[List[float]]) -> Dict[str, Any]:
     lat = sum(q[0] for q in pts) / len(pts)
     lon = sum(q[1] for q in pts) / len(pts)
     d = 0.00002
-    mun, fr = await asyncio.gather(G.municipio(lat, lon),
-                                   G._dgt_items("freguesias", f"{lon - d},{lat - d},{lon + d},{lat + d}", 3, {}))
+
+    async def _ate(coro, s, vazio):
+        try:
+            return await asyncio.wait_for(coro, timeout=s)
+        except Exception:  # noqa: BLE001 — a posição do terreno é conhecida; concelho/freguesia ficam por confirmar
+            return vazio
+
+    # a localização vem do próprio terreno: nunca falha por a CAOP estar lenta
+    mun, fr = await asyncio.gather(_ate(G.municipio(lat, lon), 30, {"ok": False}),
+                                   _ate(G._dgt_items("freguesias", f"{lon - d},{lat - d},{lon + d},{lat + d}", 3, {}), 30, None))
     concelho = (mun.get("data") or {}).get("concelho") if mun.get("ok") else None
     freguesia = None
     for f in fr or []:
@@ -158,7 +166,7 @@ async def executar(pedido: Dict[str, Any], emit: Emit = None) -> Dict[str, Any]:
     if morada:
         g = await _prazo(G.geocode(morada), 40, "os serviços de moradas não responderam a tempo (inacessíveis)")
     else:
-        g = await _prazo(_geo_da_parcela(p["parcela_latlon"]), 45, "a CAOP da DGT não respondeu a tempo")
+        g = await _geo_da_parcela(p["parcela_latlon"])
     if not g["ok"]:
         inacessivel = "inacess" in (g.get("nota") or "")
         await passo("localizar", "falhou", g.get("nota") or "morada não encontrada")

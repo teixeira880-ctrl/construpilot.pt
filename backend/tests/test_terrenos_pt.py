@@ -519,3 +519,25 @@ def test_assistente_terrenos_e_licenciamento(monkeypatch):
     finally:
         loop.close()
         G.set_transport(None)
+
+
+def test_licenciamento_terreno_sem_morada_com_caop_lenta():
+    """A CAOP/DGT lenta não pode fazer falhar a localização: a posição vem do próprio terreno."""
+    import test_urbanismo_auto as TU
+    from engines.urbanismo_pt.auto import pipeline as P
+    parcela = _parcela_padim()
+
+    async def morto(*a, **k):
+        await asyncio.sleep(0)
+        return 0, None
+
+    G.set_transport(morto)
+    loop = asyncio.new_event_loop()
+    try:
+        g = loop.run_until_complete(P._geo_da_parcela(parcela))
+    finally:
+        loop.close()
+        G.set_transport(None)
+    assert g["ok"] and g["data"]["precisao"] == "terreno"
+    assert abs(g["data"]["lat"] - TU.LAT) < 1e-4 and abs(g["data"]["lon"] - TU.LON) < 1e-4
+    assert g["data"]["concelho"] is None
