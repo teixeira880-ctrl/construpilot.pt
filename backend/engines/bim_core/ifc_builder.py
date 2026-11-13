@@ -28,7 +28,7 @@ MATERIALS = {
 
 
 def stable_guid(*parts) -> str:
-    import ifcopenshell.guid  # noqa: PLC0415
+    import ifcopenshell.guid
     return ifcopenshell.guid.compress(uuid.uuid5(_NS, ":".join(str(p) for p in parts)).hex)
 
 
@@ -43,8 +43,8 @@ def _matrix(x: float, y: float, z: float, angle: float = 0.0) -> np.ndarray:
 def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot",
               author: str = "ConstruPilot"):
     """Devolve um `ifcopenshell.file` IFC4X3 com o piso descrito por `model`."""
-    import ifcopenshell  # noqa: PLC0415
-    import ifcopenshell.api  # noqa: PLC0415
+    import ifcopenshell
+    import ifcopenshell.api
 
     api = ifcopenshell.api.run
     f = api("project.create_file", version=SCHEMA)
@@ -252,7 +252,7 @@ def _header(f, project_name: str, author: str) -> None:
 
 def summarize(f) -> dict:
     """Lista dos elementos e totais de quantidades lidos DO PRÓPRIO IFC (não do modelo de origem)."""
-    import ifcopenshell.util.element as E  # noqa: PLC0415
+    import ifcopenshell.util.element as E
 
     classes = ("IfcWall", "IfcSlab", "IfcColumn", "IfcBeam", "IfcFooting", "IfcDoor", "IfcWindow", "IfcSpace")
     elements, totals = [], {}
@@ -281,15 +281,15 @@ def summarize(f) -> dict:
 
 
 def _is_load_bearing(f, guid: str) -> bool:
-    import ifcopenshell.util.element as E  # noqa: PLC0415
+    import ifcopenshell.util.element as E
     return bool(E.get_psets(f.by_guid(guid)).get("Pset_WallCommon", {}).get("LoadBearing"))
 
 
 def validate(f) -> list[str]:
     """Erros de conformidade ao esquema IFC (lista vazia = ficheiro válido)."""
-    import logging  # noqa: PLC0415
+    import logging
 
-    import ifcopenshell.validate  # noqa: PLC0415
+    import ifcopenshell.validate
 
     class _Collect(logging.Handler):
         def __init__(self):

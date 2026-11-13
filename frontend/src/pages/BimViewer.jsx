@@ -121,11 +121,19 @@ export default function BimViewer() {
   };
 
   // Pré-dimensionamento do pórtico (vigas e pilares) e cores por taxa de utilização.
-  const runAnalysis = async () => {
-    if (!planId) return;
+  // Planta lida → modelo gerado no servidor ; IFC aberto (Revit, Archicad…) → ficheiro enviado e calculado no servidor.
+  const runAnalysis = async (storey = null) => {
+    if (!planId && !ifcBytes) return;
     setCalcBusy(true);
     try {
-      const { data } = await api.get(`/bim/takeoffs/${encodeURIComponent(planId)}/${page}/analysis${query ? `?${query}` : ""}`);
+      let data;
+      if (planId) {
+        ({ data } = await api.get(`/bim/takeoffs/${encodeURIComponent(planId)}/${page}/analysis${query ? `?${query}` : ""}`));
+      } else {
+        const form = new FormData();
+        form.append("file", new Blob([ifcBytes], { type: "application/x-step" }), `${modelName || "modelo"}.ifc`);
+        ({ data } = await api.post(`/bim/ifc/analysis${storey !== null ? `?storey=${storey}` : ""}`, form));
+      }
       setAnalysis(data);
       const colors = {};
       [...data.beams, ...data.columns].forEach((e) => { colors[e.guid] = STATUS[e.status]?.color || "#64748b"; });
@@ -192,9 +200,9 @@ export default function BimViewer() {
         <Button size="sm" variant={ortho ? "default" : "outline"} className="h-8 gap-1" disabled={!ifcBytes} onClick={toggleOrtho} data-testid="bim-ortho">
           <Layers className="h-4 w-4" /> {ortho ? "Ortogonal" : "Perspetiva"}
         </Button>
-        {planId && (
+        {(planId || ifcBytes) && (
           <Button size="sm" variant={analysis ? "default" : "outline"} className="h-8 gap-1" disabled={!ifcBytes || busy || calcBusy}
-                  onClick={analysis ? clearAnalysis : runAnalysis} data-testid="bim-analysis">
+                  onClick={analysis ? clearAnalysis : () => runAnalysis()} data-testid="bim-analysis">
             {calcBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
             {analysis ? "Ocultar cálculo" : "Calcular estrutura"}
           </Button>
@@ -268,6 +276,19 @@ export default function BimViewer() {
           {analysis && (
             <section data-testid="bim-analysis-panel">
               <h2 className="font-semibold mb-1">Pré-dimensionamento</h2>
+              {analysis.storeys?.length > 0 && (
+                <label className="flex items-center gap-2 text-[11px] mb-1">
+                  Piso
+                  <select className="h-7 rounded border bg-background px-1 text-[11px]" value={analysis.storey?.index ?? 0}
+                          disabled={calcBusy} onChange={(e) => runAnalysis(Number(e.target.value))} data-testid="bim-analysis-storey">
+                    {analysis.storeys.map((s) => (
+                      <option key={s.index} value={s.index}>
+                        {s.name} · {num(s.elevation, 2)} m · {s.beams} vigas, {s.columns} pilares
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <p className={`text-xs font-medium ${STATUS[analysis.status]?.cls || ""}`}>
                 Taxa máxima {pct(analysis.max_utilization)} · {STATUS[analysis.status]?.label}
               </p>
@@ -305,9 +326,9 @@ export default function BimViewer() {
                 Laje: G {num(analysis.slab_loads.g_kn_m2, 1)} + Q {num(analysis.slab_loads.q_kn_m2, 1)} kN/m² · ELU {analysis.combinations.ELU}.
                 {" "}{analysis.scope} A validar por um engenheiro.
               </p>
-              {analysis.warnings.length > 0 && (
+              {(analysis.model_warnings?.length || 0) + analysis.warnings.length > 0 && (
                 <ul className="text-[11px] text-amber-700 dark:text-amber-300 mt-1 space-y-0.5">
-                  {analysis.warnings.slice(0, 10).map((w, i) => <li key={i}>{w.detail}{w.source_id ? ` · ${w.source_id}` : ""}</li>)}
+                  {[...(analysis.model_warnings || []), ...analysis.warnings].slice(0, 10).map((w, i) => <li key={i}>{w.detail}{w.source_id ? ` · ${w.source_id}` : ""}</li>)}
                 </ul>
               )}
             </section>
