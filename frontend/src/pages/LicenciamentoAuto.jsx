@@ -254,6 +254,10 @@ function Processo({ pid }) {
             <Download className="h-4 w-4 mr-1" />Peças desenhadas (PDF)</Button>
           <Button disabled={!c.ok} onClick={() => descarregar(`/urbanismo-auto/processos/${pid}/export.zip`, "processo-licenciamento.zip").catch(() => setErro("Não foi possível exportar."))} data-testid="lic-auto-zip">
             <Download className="h-4 w-4 mr-1" />Processo completo (ZIP)</Button>
+          {(a.terreno?.poligono_latlon || []).length >= 3 && (
+            <Button asChild variant="outline"><Link to="/mdt" state={{ poligono: a.terreno.poligono_latlon, local: p.terreno?.morada || "" }} data-testid="lic-auto-mdt">
+              Carta de declives e linhas de água (MDT)</Link></Button>
+          )}
           <Button asChild variant="outline"><Link to="/particulares/autorizacao-obras">Pedir assinatura de arquiteto / engenheiro</Link></Button>
         </div>
         <p className="text-xs text-muted-foreground">O levantamento topográfico por topógrafo, os projetos de especialidades e os termos de responsabilidade

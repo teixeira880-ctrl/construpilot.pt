@@ -118,3 +118,6 @@ frontend/node_modules/.cache/default-development/4.pack_
 frontend/node_modules/.cache/default-development/1.pack_
 backup_lote93_pt.bundle
 frontend/node_modules/.cache/default-development/16.pack
+
+# MDT Portugal — folhas LiDAR da DGT em cache
+backend/data/mdt_cache/

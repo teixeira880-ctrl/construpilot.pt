@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera,
+  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain,
 } from "lucide-react";
 import { useState } from "react";
 import CameraCapture from "@/components/CameraCapture";
@@ -41,6 +41,13 @@ const APPS = [
     title: "Autorização de Obras",
     desc: "Diagnóstico e dossier RJUE para a Câmara Municipal.",
     testId: "apps-autorizacao",
+  },
+  {
+    to: "/mdt",
+    icon: Mountain,
+    title: "MDT Portugal",
+    desc: "Terreno LiDAR DGT: declives, curvas de nível, linhas de água e 3D.",
+    testId: "apps-mdt",
   },
   {
     to: "/estudo-moradia",

@@ -492,6 +492,15 @@ async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
     """Cota (m) de cada ponto (lat, lon)."""
     if not pontos:
         return _res(False, nota="sem pontos")
+    # 1.º MDT LiDAR oficial da DGT (50 cm / 2 m), quando o acesso ao CDD estiver configurado e o transporte for o real
+    if _fetch is _http:
+        try:
+            from engines.mdt_pt.grelha import cotas as _cotas_dgt
+            d = await _cotas_dgt(pontos)
+        except Exception:  # noqa: BLE001
+            d = None
+        if d:
+            return _res(True, {"z": d["z"], "resolucao_m": d["resolucao_m"]}, d["fonte"], d.get("url"), d.get("nota"))
     key = _gkey()
     if key:
         out: List[Optional[float]] = []

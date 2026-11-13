@@ -297,6 +297,8 @@ api_router.include_router(urbanismo_routes.router)
 api_router.include_router(urbanismo_routes.public_router)
 from routes import urbanismo_auto as urbanismo_auto_routes  # noqa: E402  — piloto automático de licenciamento (morada → processo)
 api_router.include_router(urbanismo_auto_routes.router)
+from routes import mdt as mdt_routes  # noqa: E402  — MDT Portugal (DGT LiDAR 50 cm / 2 m): declives, curvas, escorrência, 3D
+api_router.include_router(mdt_routes.router)
 from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
 api_router.include_router(bet_visto_routes.bet_visto_router)
 api_router.include_router(bet_visto_routes.bet_visto_public)
