@@ -1588,6 +1588,10 @@ except Exception:  # noqa: BLE001
     class _ArgsError(Exception):
         message = ""
 
+class _UnitsError(Exception):
+    """Linha com unidade incoerente (ex.: pilar em m²): o modelo recalcula e volta a chamar — nunca um ERR ao utilizador."""
+
+
 _ENUM_SYNONYMS = {"kind": {"facto": "fait", "fato": "fait", "fact": "fait", "facts": "fait", "factos": "fait", "faits": "fait",
                            "hipotese": "hypothese", "hipótese": "hypothese", "hypothèse": "hypothese", "hypothesis": "hypothese",
                            "acao": "action", "ação": "action", "acção": "action", "accao": "action",
@@ -1632,6 +1636,11 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         conv["_file_call_id"] = call_id
         _normalize_enum_args(name, args)
         validate_args(name, args, available)
+        if name in ("create_quote_draft", "update_quote_draft", "add_quote_lines"):
+            from engines import quote_units as _qu      # estrutura metálica em ml, nunca m² (13/11)
+            _bad = _qu.bad_linear_lines(args)
+            if _bad:
+                raise _UnitsError(_qu.message(_bad, "pt"))
         key = (name, json.dumps(args, sort_keys=True, allow_nan=False))
         read_tool = name in ('read_construction_study', 'get_supervision_result', 'list_platform_resources', 'read_work_draft', 'read_quote_draft', 'find_quote_drafts', 'get_plan_results', 'read_document', 'inspect_document_region', 'search_own_history') or name in assistant_clt_agent.NAMES  # o estudo muda entre chamadas
         if not read_tool and key in cache:
@@ -1660,6 +1669,8 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         raise
+    except _UnitsError as exc:
+        result = {"ok": False, "error": str(exc)}
     except _ArgsError as exc:
         # argumento fora do esquema (ex. kind="facto"): o modelo corrige e volta a chamar — nunca um ERR para o utilizador
         result = {"ok": False, "error": f"Argumento inválido: {exc.message}. Corrige o valor (usa exatamente um dos valores permitidos) "
