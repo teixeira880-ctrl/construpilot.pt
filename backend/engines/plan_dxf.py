@@ -310,6 +310,28 @@ def _extract_dimensions(msp, to_px, unit_to_m, diagnostics=None):
     return out
 
 
+def _plausible_units(units, bounds, diagnostics=None):
+    """13/11 (Valpaços): ficheiro declarado em mm mas desenhado em metros (coordenadas PT-TM06) → todas as quantidades
+    1000× erradas. Se a zona desenhada, na unidade declarada, for impossível para uma planta (< 3 m ou > 20 km), escolhe-se a
+    unidade que dá uma dimensão plausível (3 m – 5 km). Só quando a unidade vem do ficheiro, nunca contra a escolha do
+    utilizador; registado nos diagnósticos e na unidade («source»: «extents»)."""
+    if units.get("source") != "INSUNITS":
+        return units
+    span = max(bounds[2] - bounds[0], bounds[3] - bounds[1])
+    if not span or span <= 0:
+        return units
+    span_m = span * units["unit_to_m"]
+    if 3.0 <= span_m <= 20000.0:
+        return units
+    for name, f in (("m", 1.0), ("cm", 0.01), ("mm", 0.001)):
+        if 3.0 <= span * f <= 5000.0 and f != units["unit_to_m"]:
+            if diagnostics is not None:
+                diagnostics.append({"code": "UNITS_CORRECTED_BY_EXTENTS", "declared": units.get("name"), "used": name,
+                                    "drawn_span_declared_m": round(span_m, 4), "drawn_span_used_m": round(span * f, 2)})
+            return {**units, "name": name, "unit_to_m": f, "source": "extents", "declared_name": units.get("name")}
+    return units
+
+
 def _focus_by_density(doc, bounds, diagnostics=None):
     """Sem cotas: um bloco perdido a quilómetros (ex.: seta/vista inserida longe, 13/11 implantação de Valpaços) espremia a
     planta num ponto. Foco na zona onde está a maioria dos objetos (centros entre os percentis 5 e 95), se a extensão total
@@ -367,6 +389,13 @@ def _focus_bounds(doc, bounds, diagnostics=None):
     return (min_x - 0.15 * span_x, min_y - 0.15 * span_y, max_x + 0.15 * span_x, max_y + 0.15 * span_y)
 
 
+_NOISE_LAYER = re.compile(r"(arvor|árvor|tree|paisag|landsc|vegeta|topo|levant|curva|courbe|contour|terreno|ortof|"
+                         r"trama|hatch|hachur|mobil|furnit|carro|car\b|pessoa|people|vista|xref|rosto|cartouche|title)", re.I)
+_WALL_LAYER = re.compile(r"(parede|wall|mur|alvenar|maçon|macon|arq|arch|a-|estrut|struct|beton|betão|pilar|poteau|vao|vão|"
+                         r"porta|janel|door|wind|fen[eê]tre|0$)", re.I)
+MSG_DENSE = "planta demasiado densa ({n} linhas de arquitetura): isole os calques das paredes"
+
+
 def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | None = None) -> dict:
     import tempfile
     import os
@@ -387,32 +416,44 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
     unit_to_m=units["unit_to_m"]
     entities=list(walk_entities(doc,diagnostics=diagnostics))
     bounds=_focus_bounds(doc,_compute_bounds(entities),diagnostics)
+    units=_plausible_units(units,bounds,diagnostics)
+    unit_to_m=units["unit_to_m"]
     # Un échec du rendu fidèle est explicite : pas de recalage approximatif silencieux.
     png,mapping=_render_preview_hq(doc,bounds)
     ratio=mapping["scale_px_per_dxf_unit"]
     def to_px(x,y):
         return ((x-mapping["offset_x"])*ratio, mapping["height"]-(y-mapping["offset_y"])*ratio)
-    vectors=[]; text_blocks=[]; capped=False
+    # 13/11 «tem que ler tudo»: numa planta densa (implantação com paisagismo/topografia) as paredes são lidas na mesma —
+    # os calques de ruído (árvores, paisagismo, topografia, tramas, mobiliário) ficam na prancha e no inventário, mas não
+    # entram na análise das paredes; se ainda for denso, a análise usa as linhas dos calques de arquitetura/estrutura.
+    vectors=[]; text_blocks=[]; noise_total=0
+    tol=max(.0005/unit_to_m,1e-8)
     for entity in entities:
-        if len(vectors)<300000:
-            vectors.extend(entity_vectors(entity,to_px,max(.0005/unit_to_m,1e-8)))
-        elif not capped:
-            # 13/11: implantação com topografia (milhões de primitivas) — antes recusada; a prancha e o texto são conservados,
-            # só a análise automática das paredes não é tentada (como em qualquer planta densa).
-            capped=True; diagnostics.append({"code":"DXF_DENSE_CAPPED","kept_vectors":len(vectors)})
         kind=entity.dxftype()
         if kind in ("TEXT","MTEXT","ATTRIB","ATTDEF"):
             pos=entity.dxf.insert
             text=entity.plain_text() if kind=="MTEXT" else str(entity.dxf.get("text", ""))
             x,y=to_px(pos.x,pos.y)
             text_blocks.append({"text":text,"x":x,"y":y,"w":0,"h":0,"layer":entity.dxf.layer})
+            continue
+        if _NOISE_LAYER.search(entity.dxf.get("layer","0") or "") or kind=="HATCH" and len(vectors)>50000:
+            noise_total+=1
+            continue
+        if len(vectors)<1500000:
+            vectors.extend(entity_vectors(entity,to_px,tol))
+    if noise_total:
+        diagnostics.append({"code":"DXF_NOISE_LAYERS_SKIPPED_FOR_WALLS","entities":noise_total})
     dims=_extract_dimensions(doc.modelspace(),to_px,unit_to_m,diagnostics)
-    if len(vectors)>150000:
-        # Plan dense (BET) : cotes natives et inventaire conservés, analyse automatique des murs non tentée (pas de classification hasardeuse).
+    wall_vectors=vectors
+    if len(wall_vectors)>150000:
+        wall_vectors=[v for v in vectors if v.get("type") in ("line","quad") and not v.get("curve_approximation")
+                      and _WALL_LAYER.search(v.get("layer") or "")] or [v for v in vectors if v.get("type")=="line" and not v.get("curve_approximation")]
+        diagnostics.append({"code":"DXF_DENSE_WALLS_ON_ARCH_LAYERS","vectors":len(vectors),"analysed":len(wall_vectors)})
+    if len(wall_vectors)>400000:
         from engines.plan_walls import INCOMPLETE_MSG
-        walls={"walls":[],"validation":{"complete":False,"failed_checks":[f'planta densa ({len(vectors)} primitivas): análise das paredes não tentada'],"message":INCOMPLETE_MSG}}
+        walls={"walls":[],"validation":{"complete":False,"failed_checks":[MSG_DENSE.format(n=len(wall_vectors))],"message":INCOMPLETE_MSG}}
     else:
-        walls=analyze_walls(vectors,[{**d,"index":i+1} for i,d in enumerate(dims)],text_blocks,ratio/unit_to_m,1,
+        walls=analyze_walls(wall_vectors,[{**d,"index":i+1} for i,d in enumerate(dims)],text_blocks,ratio/unit_to_m,1,
                             page_size_px=(mapping["width"],mapping["height"]))
     cad=inventory(doc,entities,diagnostics)
     cad["units"]=units
