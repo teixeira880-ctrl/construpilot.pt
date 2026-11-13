@@ -25,9 +25,19 @@ MAX_FICHEIRO = 120 * 1024 * 1024
 _RAM: "OrderedDict[str, Any]" = OrderedDict()
 
 
+_TMP: Dict[str, str] = {}
+
+
 def _pasta() -> str:
-    p = os.path.join(os.environ.get("MDT_CACHE_DIR") or os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data", "mdt_cache")), "copernicus")
+    base = os.environ.get("MDT_CACHE_DIR")
+    if not base and G._fetch is not G._http:
+        # transporte simulado (testes): nunca ler nem escrever a cache real do servidor
+        if "d" not in _TMP:
+            import tempfile
+            _TMP["d"] = tempfile.mkdtemp(prefix="cp_cop_")
+        base = _TMP["d"]
+    p = os.path.join(base or os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "mdt_cache")),
+                     "copernicus")
     os.makedirs(p, exist_ok=True)
     return p
 

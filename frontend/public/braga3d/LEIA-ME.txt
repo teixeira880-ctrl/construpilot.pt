@@ -3,10 +3,10 @@ Maquete 3D do distrito de Braga com PDM, em PT-TM06/ETRS89 (EPSG:3763)
 
 CONTEUDO
   braga3d.html              a aplicacao inteira (HTML + CSS + JavaScript num so ficheiro)
-  dist/index.js             indice das zonas (mosaicos de 4 km)
-  dist/dem.js               altimetria do distrito (SRTM, 100 m)
-  dist/t_<x>_<y>.js         edificios por zona (386 ficheiros, 787 023 edificios)
-  dist/c_<x>_<y>.js         ruas, caminhos, linha ferrea, rios e jardins por zona
+  zonas/index.js            indice das zonas (mosaicos de 4 km)
+  zonas/dem.js              altimetria do distrito (SRTM, 100 m)
+  zonas/t_<x>_<y>.js         edificios por zona (386 ficheiros, 787 023 edificios)
+  zonas/c_<x>_<y>.js         ruas, caminhos, linha ferrea, rios e jardins por zona
   dados-pdm.js              PDM de Braga: categorias de solo e condicionantes (vetor, do DWG)
   dados-pdm-raster.js       PDM de Braga: salvaguardas lidas das folhas em imagem
   dados-pdm-guimaraes.js    PDM de Guimaraes: 16 categorias de solo
@@ -18,7 +18,7 @@ INSTALACAO
      backend, base de dados nem compilacao; sao ficheiros estaticos.
      Exemplo local:  python -m http.server 8080   e abrir http://localhost:8080/braga3d.html
   3) Integrar na ConstruPilot: embeber braga3d.html num iframe, ou copiar o bloco <script>
-     para a aplicacao, mantendo a pasta dist e os ficheiros dados-*.js no mesmo nivel.
+     para a aplicacao, mantendo a pasta zonas e os ficheiros dados-*.js no mesmo nivel.
 
 REQUISITOS
   - Navegador com WebGL.
