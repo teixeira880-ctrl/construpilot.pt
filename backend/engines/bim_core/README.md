@@ -16,3 +16,11 @@ Visualizador: página `/bim` (That Open Engine + web-ifc, `frontend/src/componen
 ```bash
 cd backend && python -m pytest -q tests/test_bim_core.py
 ```
+
+## Pré-dimensionamento estrutural (`analysis.py`)
+
+Pórtico 3D gerado do modelo (pilares encastrados, vigas ligadas a pilares/vigas/paredes resistentes), cargas
+EN 1991-1-1 por faixas de influência, combinações EN 1990 (ELU, ELS quase-permanente), solver **PyNite (MIT)**,
+dimensionamento das vigas com `engines.structuro_ec2.design_section` (EN 1992-1-1) e flecha a longo prazo (L/250).
+Resultados por GlobalId → cores no visualizador. Só cargas verticais; `execution_ready` sempre False.
+Rota: `GET /api/bim/takeoffs/{plan_id}/{page}/analysis`.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Box, Download, FolderOpen, Layers, Loader2, Maximize, Scissors } from "lucide-react";
+import { ArrowLeft, Box, Calculator, Download, FolderOpen, Layers, Loader2, Maximize, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api, num } from "@/lib/api";
@@ -21,6 +21,12 @@ const WARNING_LABELS = {
 };
 const PARAM_KEYS = ["wall_height", "voile_ep", "cloison_ep", "dalle_ep", "poutre_l", "poutre_h"];
 const SECTION_Z = 1.2; // corte de planta de arquitetura (m acima do pavimento)
+const STATUS = {
+  ok: { label: "OK", color: "#16a34a", cls: "text-emerald-700 dark:text-emerald-400" },
+  atencao: { label: "Atenção", color: "#f59e0b", cls: "text-amber-700 dark:text-amber-400" },
+  insuficiente: { label: "Insuficiente", color: "#dc2626", cls: "text-red-700 dark:text-red-400" },
+};
+const pct = (u) => `${Math.round((u || 0) * 100)} %`;
 
 async function blobToText(blob) {
   try { return JSON.parse(await blob.text()).detail; } catch { return null; }
@@ -41,6 +47,8 @@ export default function BimViewer() {
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [calcBusy, setCalcBusy] = useState(false);
   const [section, setSection] = useState(false);
   const [ortho, setOrtho] = useState(false);
   const [ifcBytes, setIfcBytes] = useState(null);
@@ -108,7 +116,28 @@ export default function BimViewer() {
     if (!file) return;
     if (!/\.ifc$/i.test(file.name)) { toast.error("Escolha um ficheiro .ifc"); return; }
     setSummary(null);
+    setAnalysis(null);
     await showBytes(await file.arrayBuffer(), file.name.replace(/\.ifc$/i, ""));
+  };
+
+  // Pré-dimensionamento do pórtico (vigas e pilares) e cores por taxa de utilização.
+  const runAnalysis = async () => {
+    if (!planId) return;
+    setCalcBusy(true);
+    try {
+      const { data } = await api.get(`/bim/takeoffs/${encodeURIComponent(planId)}/${page}/analysis${query ? `?${query}` : ""}`);
+      setAnalysis(data);
+      const colors = {};
+      [...data.beams, ...data.columns].forEach((e) => { colors[e.guid] = STATUS[e.status]?.color || "#64748b"; });
+      await viewerRef.current?.colorByGuid(colors);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Cálculo impossível para este modelo.");
+    } finally { setCalcBusy(false); }
+  };
+
+  const clearAnalysis = async () => {
+    setAnalysis(null);
+    await viewerRef.current?.colorByGuid({});
   };
 
   const download = () => {
@@ -163,6 +192,13 @@ export default function BimViewer() {
         <Button size="sm" variant={ortho ? "default" : "outline"} className="h-8 gap-1" disabled={!ifcBytes} onClick={toggleOrtho} data-testid="bim-ortho">
           <Layers className="h-4 w-4" /> {ortho ? "Ortogonal" : "Perspetiva"}
         </Button>
+        {planId && (
+          <Button size="sm" variant={analysis ? "default" : "outline"} className="h-8 gap-1" disabled={!ifcBytes || busy || calcBusy}
+                  onClick={analysis ? clearAnalysis : runAnalysis} data-testid="bim-analysis">
+            {calcBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+            {analysis ? "Ocultar cálculo" : "Calcular estrutura"}
+          </Button>
+        )}
         <Button size="sm" className="h-8 gap-1" disabled={!ifcBytes} onClick={download} data-testid="bim-download">
           <Download className="h-4 w-4" /> IFC
         </Button>
@@ -226,6 +262,54 @@ export default function BimViewer() {
                 ))}
               </ul>
               <p className="text-[11px] text-muted-foreground mt-1">Corrija estes elementos na planta e volte a gerar o modelo.</p>
+            </section>
+          )}
+
+          {analysis && (
+            <section data-testid="bim-analysis-panel">
+              <h2 className="font-semibold mb-1">Pré-dimensionamento</h2>
+              <p className={`text-xs font-medium ${STATUS[analysis.status]?.cls || ""}`}>
+                Taxa máxima {pct(analysis.max_utilization)} · {STATUS[analysis.status]?.label}
+              </p>
+              <div className="flex gap-3 text-[11px] my-1">
+                {Object.entries(STATUS).map(([k, v]) => (
+                  <span key={k} className="flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full" style={{ background: v.color }} />{v.label}
+                  </span>
+                ))}
+              </div>
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-muted-foreground"><th className="text-left font-normal">Elem.</th><th className="text-right font-normal">Esforço</th><th className="text-right font-normal">As</th><th className="text-right font-normal">Taxa</th></tr>
+                </thead>
+                <tbody>
+                  {analysis.beams.map((b, i) => (
+                    <tr key={b.guid} className="border-b last:border-0" title={`Flexão ${pct(b.utilization_parts.flexao)} · Corte ${pct(b.utilization_parts.esforco_transverso)} · Flecha ${pct(b.utilization_parts.flecha)} (${num(b.deflection_mm, 1)} / ${num(b.deflection_limit_mm, 1)} mm)`}>
+                      <td className="py-0.5">Viga {i + 1} <span className="text-muted-foreground">{num(b.b_m * 100)}×{num(b.h_m * 100)}</span></td>
+                      <td className="text-right tabular-nums">M {num(Math.max(b.m_span_knm, b.m_support_knm), 0)} kN·m</td>
+                      <td className="text-right tabular-nums">{num(Math.max(b.as_span_cm2, b.as_support_cm2), 1)} cm²</td>
+                      <td className={`text-right tabular-nums font-medium ${STATUS[b.status]?.cls}`}>{pct(b.utilization)}</td>
+                    </tr>
+                  ))}
+                  {analysis.columns.map((c, i) => (
+                    <tr key={c.guid} className="border-b last:border-0" title={c.warnings.join(" ")}>
+                      <td className="py-0.5">Pilar {i + 1} <span className="text-muted-foreground">{num(c.b_m * 100)}×{num(c.h_m * 100)}</span></td>
+                      <td className="text-right tabular-nums">N {num(c.n_ed_kn, 0)} kN</td>
+                      <td className="text-right tabular-nums">{num(c.as_min_cm2, 1)} cm²</td>
+                      <td className={`text-right tabular-nums font-medium ${STATUS[c.status]?.cls}`}>{pct(c.utilization)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Laje: G {num(analysis.slab_loads.g_kn_m2, 1)} + Q {num(analysis.slab_loads.q_kn_m2, 1)} kN/m² · ELU {analysis.combinations.ELU}.
+                {" "}{analysis.scope} A validar por um engenheiro.
+              </p>
+              {analysis.warnings.length > 0 && (
+                <ul className="text-[11px] text-amber-700 dark:text-amber-300 mt-1 space-y-0.5">
+                  {analysis.warnings.slice(0, 10).map((w, i) => <li key={i}>{w.detail}{w.source_id ? ` · ${w.source_id}` : ""}</li>)}
+                </ul>
+              )}
             </section>
           )}
 

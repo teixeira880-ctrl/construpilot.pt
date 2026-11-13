@@ -109,3 +109,29 @@ async def bim_ifc(plan_id: str, page_index: int,
     return Response(content=data, media_type=IFC_MEDIA_TYPE, headers={
         "Content-Disposition": content_disposition(name, inline=inline),
         "Cache-Control": "no-store"})
+
+
+@router.get("/takeoffs/{plan_id}/{page_index}/analysis")
+async def bim_analysis(plan_id: str, page_index: int,
+                       wall_height: float | None = _Q["wall_height"], voile_ep: float | None = _Q["voile_ep"],
+                       cloison_ep: float | None = _Q["cloison_ep"], dalle_ep: float | None = _Q["dalle_ep"],
+                       poutre_l: float | None = _Q["poutre_l"], poutre_h: float | None = _Q["poutre_h"],
+                       imposed_kn_m2: float | None = Query(None, ge=0, le=20, description="Sobrecarga (kN/m²)"),
+                       finishes_kn_m2: float | None = Query(None, ge=0, le=10, description="Revestimentos (kN/m²)"),
+                       partitions_kn_m2: float | None = Query(None, ge=0, le=5, description="Divisórias (kN/m²)"),
+                       fck: float | None = Query(None, ge=20, le=50, description="fck do betão (MPa)"),
+                       user=Depends(current_user)) -> dict:
+    """Pré-dimensionamento do pórtico (vigas e pilares) para cargas verticais, por elemento IFC (GUID)."""
+    from engines.bim_core import analysis as A  # noqa: PLC0415
+
+    params = _params(wall_height, voile_ep, cloison_ep, dalle_ep, poutre_l, poutre_h)
+    bim, model, _ = await _load_model(plan_id, page_index, user, params)
+    loads = {"imposed_kn_m2": imposed_kn_m2, "finishes_kn_m2": finishes_kn_m2,
+             "partitions_kn_m2": partitions_kn_m2, "fck": fck}
+    try:
+        result = await run_in_threadpool(A.analyze, model, loads)
+    except A.AnalysisError as e:
+        raise HTTPException(422, str(e)) from e
+    except ImportError as e:
+        raise HTTPException(503, "Solver estrutural indisponível neste servidor (PyNiteFEA não instalado).") from e
+    return {"plan_id": plan_id, "page_index": page_index, **result}
