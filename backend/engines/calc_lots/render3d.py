@@ -203,7 +203,8 @@ def construir(m: dict, opcoes: dict | None = None):
     primeiro = niv_ext[0] if niv_ext else cp
     # paredes exteriores por nível (polígonos fechados) com fachada e vãos
     vaos = []
-    for mu in m.get("muros") or []:
+    # paredes só visuais (empenas laterais do terraço coberto / do alpendre, medidas nos planos): op["paredes_extra"]
+    for mu in (m.get("muros") or []) + list(op.get("paredes_extra") or []):
         if mu["cota_topo_m"] <= cp + 0.5:
             continue
         e = float(mu.get("espessura_m") or 0.2)
@@ -233,21 +234,34 @@ def construir(m: dict, opcoes: dict | None = None):
                 x1 = xa + nx * t_out if nx > 0 else xa + t_in
                 cena.caixa(min(x0, x1), ya_, z0, max(x0, x1), yb_, z1, mat)
             vaos.append(((xa, ya), (xb, yb), (nx, ny), z0, z1, t_out, superior, L))
-    # vãos (indicativos ou do modelo)
+    # vãos: do modelo (posições medidas nos planos, m["vaos"]) ou, sem eles, indicativos
     lado_terraco = op.get("fachada_envidracada")              # "y+" | "y-" | "x+" | "x-"
+    medidos = m.get("vaos") or []
     for (a, b, (nx, ny), z0, z1, t_out, sup, L) in vaos:
-        if L < 2.0:
-            continue
         lado = ("y+" if ny > 0.5 else "y-" if ny < -0.5 else "x+" if nx > 0.5 else "x-")
-        grande = (lado == lado_terraco and not sup)
-        if grande:
-            larg, alt, peit, passo = L * 0.72, min(2.5, z1 - z0 - 0.35), 0.0, None
-            cents = [0.5]
+        if medidos:
+            horiz = abs(b[1] - a[1]) < 1e-6
+            linha, u0, u1 = (a[1], min(a[0], b[0]), max(a[0], b[0])) if horiz else (a[0], min(a[1], b[1]), max(a[1], b[1]))
+            itens = []
+            for v in medidos:
+                if abs(v["cota_base"] - z0) > 0.3 or (v["eixo"] == "x") != horiz or abs(v["linha"] - linha) > 0.2:
+                    continue
+                if v["de"] < u0 - 0.05 or v["ate"] > u1 + 0.05:
+                    continue
+                c_abs = (v["de"] + v["ate"]) / 2
+                frac = (c_abs - a[0]) / (b[0] - a[0]) if horiz else (c_abs - a[1]) / (b[1] - a[1])
+                itens.append((frac, v["ate"] - v["de"], v["altura"], v["peitoril"], v["peitoril"] == 0 and v["ate"] - v["de"] >= 2.0))
         else:
-            larg, alt, peit = (1.4, 1.5, 0.9) if not sup else (1.2, 1.6, 0.8)
-            n = max(1, int((L - 1.2) // 3.6))
-            cents = [(k + 0.5) / n for k in range(n)]
-        for c in cents:
+            if L < 2.0:
+                continue
+            grande = (lado == lado_terraco and not sup)
+            if grande:
+                itens = [(0.5, L * 0.72, min(2.5, z1 - z0 - 0.35), 0.0, True)]
+            else:
+                larg_, alt_, peit_ = (1.4, 1.5, 0.9) if not sup else (1.2, 1.6, 0.8)
+                n = max(1, int((L - 1.2) // 3.6))
+                itens = [((k + 0.5) / n, larg_, alt_, peit_, False) for k in range(n)]
+        for (c, larg, alt, peit, grande) in itens:
             px, py = a[0] + (b[0] - a[0]) * c, a[1] + (b[1] - a[1]) * c
             ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
             off = t_out + 0.012
@@ -429,15 +443,17 @@ def _tonemap(img):
     return np.clip(x, 0, 1)
 
 
-def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96, orcamento_s: float | None = None) -> list[tuple[str, bytes]]:
-    """→ [(nome da vista, PNG)] — vista principal, vista do terraço, vista aérea."""
+def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96, orcamento_s: float | None = None,
+           cena_pronta=None) -> list[tuple[str, bytes]]:
+    """→ [(nome da vista, PNG)] — vista principal, vista do terraço, vista aérea.
+    cena_pronta: (cena, (x0, x1, y0, y1, z0, z1)) já construída por outro motor (p. ex. só os painéis CLT montados)."""
     import os
     import tempfile
     mi = _mi()
     op = opcoes or {}
     with tempfile.TemporaryDirectory() as tmp:
         mats = _materiais(tmp)
-        cena, (x0, x1, y0, y1, z0, z1) = construir(m, op)
+        cena, (x0, x1, y0, y1, z0, z1) = cena_pronta or construir(m, op)
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         diag = math.hypot(x1 - x0, y1 - y0)
         alvo_z = z0 + (z1 - z0) * 0.42

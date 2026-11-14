@@ -225,7 +225,8 @@ async def _company(db, user):
     tenant = tenant_of(user)
     params = await db.clt_parameters.find_one({"_id": tenant}) or {}
     library = await db.clt_library.find_one({"_id": tenant}) or {}
-    return merged(params.get("values")), library_merged(library.get("items", {}))
+    from bim_studio.clt_market import country_of
+    return merged(params.get("values")), library_merged(library.get("items", {}), country_of(user))
 
 
 def _standard_height(params, ordem):

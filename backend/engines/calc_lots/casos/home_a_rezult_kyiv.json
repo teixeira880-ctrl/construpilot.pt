@@ -82,6 +82,20 @@
    "tipo": "laje_ba",
    "x0_m": 0.1,
    "y0_m": 0.1,
+   "x1_m": 7.008,
+   "y1_m": 3.9010000000000002,
+   "espessura_m": 0.25,
+   "cota_topo_m": -0.15,
+   "g2_kn_m2": 2.2,
+   "q_kn_m2": 2.0,
+   "descricao": "з/б плита 250 над підвалом"
+  },
+  {
+   "ref": "Пл-1",
+   "piso": "fundacao",
+   "tipo": "laje_ba",
+   "x0_m": 7.208,
+   "y0_m": 1.931,
    "x1_m": 10.818,
    "y1_m": 3.9010000000000002,
    "espessura_m": 0.25,
@@ -124,7 +138,33 @@
    "tipo": "clt",
    "x0_m": 0.0,
    "y0_m": 0.0,
-   "x1_m": 10.918,
+   "x1_m": 7.108,
+   "y1_m": 1.831,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 1.831,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 7.108,
+   "y0_m": 0.0,
+   "x1_m": 9.04,
    "y1_m": 1.831,
    "espessura_m": 0.24,
    "camadas_mm": [
@@ -148,7 +188,7 @@
    "ref": "CLT240-П",
    "piso": "pavimento",
    "tipo": "clt",
-   "x0_m": 3.83,
+   "x0_m": 3.757,
    "y0_m": 1.831,
    "x1_m": 10.918,
    "y1_m": 4.001,
@@ -176,7 +216,7 @@
    "tipo": "clt",
    "x0_m": 0.0,
    "y0_m": 1.831,
-   "x1_m": 3.83,
+   "x1_m": 3.757,
    "y1_m": 4.001,
    "espessura_m": 0.24,
    "camadas_mm": [
@@ -200,8 +240,34 @@
    "ref": "CLT240-П",
    "piso": "pavimento",
    "tipo": "clt",
-   "x0_m": 3.83,
+   "x0_m": 3.757,
    "y0_m": 4.001,
+   "x1_m": 10.918,
+   "y1_m": 7.072,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 3.24,
+   "q_kn_m2": 2.0,
+   "g2_kn_m2": 2.75,
+   "psi2": 0.3,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s + легкий бетон 100"
+  },
+  {
+   "ref": "CLT240-П",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 5.221,
+   "y0_m": 7.072,
    "x1_m": 10.918,
    "y1_m": 8.503,
    "espessura_m": 0.24,
@@ -228,7 +294,33 @@
    "tipo": "clt",
    "x0_m": 0.0,
    "y0_m": 4.001,
-   "x1_m": 3.83,
+   "x1_m": 3.757,
+   "y1_m": 7.072,
+   "espessura_m": 0.24,
+   "camadas_mm": [
+    34,
+    34,
+    34,
+    36,
+    34,
+    34,
+    34
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 3.24,
+   "g2_kn_m2": 2.5,
+   "cobertura_terraco": true,
+   "acessivel": true,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 240-7s — покрівля (гравій, легкий бетон, XPS)"
+  },
+  {
+   "ref": "CLT240-К",
+   "piso": "pavimento",
+   "tipo": "clt",
+   "x0_m": 0.0,
+   "y0_m": 7.072,
+   "x1_m": 5.221,
    "y1_m": 8.503,
    "espessura_m": 0.24,
    "camadas_mm": [
@@ -252,7 +344,7 @@
    "ref": "CLT240-П",
    "piso": "pavimento",
    "tipo": "clt",
-   "x0_m": 5.32,
+   "x0_m": 5.221,
    "y0_m": 8.503,
    "x1_m": 10.918,
    "y1_m": 13.527,
@@ -280,7 +372,7 @@
    "tipo": "clt",
    "x0_m": 0.0,
    "y0_m": 8.503,
-   "x1_m": 5.32,
+   "x1_m": 5.221,
    "y1_m": 13.527,
    "espessura_m": 0.24,
    "camadas_mm": [
@@ -304,7 +396,7 @@
    "ref": "CLT140",
    "piso": "cobertura",
    "tipo": "clt",
-   "x0_m": 3.83,
+   "x0_m": 3.757,
    "y0_m": 1.831,
    "x1_m": 10.918,
    "y1_m": 4.001,
@@ -328,8 +420,32 @@
    "ref": "CLT140",
    "piso": "cobertura",
    "tipo": "clt",
-   "x0_m": 3.83,
+   "x0_m": 3.757,
    "y0_m": 4.001,
+   "x1_m": 10.918,
+   "y1_m": 7.072,
+   "espessura_m": 0.14,
+   "camadas_mm": [
+    28,
+    28,
+    28,
+    28,
+    28
+   ],
+   "vao_m": 4.502,
+   "cota_topo_m": 6.2,
+   "g2_kn_m2": 2.5,
+   "psi2": 0.0,
+   "isolamento_m": 0.1,
+   "direcao_vao": "y",
+   "descricao": "Rezult CLT 140-5s + XPS 100 + легкий бетон + гравій"
+  },
+  {
+   "ref": "CLT140",
+   "piso": "cobertura",
+   "tipo": "clt",
+   "x0_m": 5.221,
+   "y0_m": 7.072,
    "x1_m": 10.918,
    "y1_m": 8.503,
    "espessura_m": 0.14,
@@ -352,7 +468,7 @@
    "ref": "CLT140",
    "piso": "cobertura",
    "tipo": "clt",
-   "x0_m": 5.32,
+   "x0_m": 5.221,
    "y0_m": 8.503,
    "x1_m": 10.918,
    "y1_m": 13.527,
@@ -382,8 +498,16 @@
      0
     ],
     [
-     10.918,
+     7.108,
      0
+    ],
+    [
+     7.108,
+     1.831
+    ],
+    [
+     10.918,
+     1.831
     ],
     [
      10.918,
@@ -452,120 +576,11 @@
      0
     ],
     [
-     10.918,
+     7.108,
      0
     ],
     [
-     10.918,
-     13.527
-    ],
-    [
-     0,
-     13.527
-    ],
-    [
-     0,
-     0
-    ]
-   ],
-   "espessura_m": 0.25,
-   "cota_base_m": -2.95,
-   "cota_topo_m": -0.4
-  },
-  {
-   "pontos": [
-    [
-     0,
-     4.001
-    ],
-    [
-     10.918,
-     4.001
-    ]
-   ],
-   "espessura_m": 0.25,
-   "cota_base_m": -2.95,
-   "cota_topo_m": -0.4
-  },
-  {
-   "pontos": [
-    [
-     0,
-     8.503
-    ],
-    [
-     10.918,
-     8.503
-    ]
-   ],
-   "espessura_m": 0.25,
-   "cota_base_m": -2.95,
-   "cota_topo_m": -0.4
-  },
-  {
-   "pontos": [
-    [
-     0,
-     0
-    ],
-    [
-     10.918,
-     0
-    ],
-    [
-     10.918,
-     13.527
-    ],
-    [
-     0,
-     13.527
-    ],
-    [
-     0,
-     0
-    ]
-   ],
-   "espessura_m": 0.1,
-   "cota_base_m": 0.0,
-   "cota_topo_m": 3.0,
-   "material": "clt"
-  },
-  {
-   "pontos": [
-    [
-     0,
-     4.001
-    ],
-    [
-     10.918,
-     4.001
-    ]
-   ],
-   "espessura_m": 0.1,
-   "cota_base_m": 0.0,
-   "cota_topo_m": 3.0,
-   "material": "clt"
-  },
-  {
-   "pontos": [
-    [
-     0,
-     8.503
-    ],
-    [
-     10.918,
-     8.503
-    ]
-   ],
-   "espessura_m": 0.1,
-   "cota_base_m": 0.0,
-   "cota_topo_m": 3.0,
-   "material": "clt"
-  },
-  {
-   "pontos": [
-    [
-     3.83,
+     7.108,
      1.831
     ],
     [
@@ -577,19 +592,144 @@
      13.527
     ],
     [
-     5.32,
+     0,
      13.527
     ],
     [
-     5.32,
+     0,
+     0
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
+     4.001
+    ],
+    [
+     10.918,
+     4.001
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
      8.503
     ],
     [
-     3.83,
+     10.918,
+     8.503
+    ]
+   ],
+   "espessura_m": 0.25,
+   "cota_base_m": -2.95,
+   "cota_topo_m": -0.4
+  },
+  {
+   "pontos": [
+    [
+     0,
+     0
+    ],
+    [
+     7.108,
+     0
+    ],
+    [
+     7.108,
+     1.831
+    ],
+    [
+     10.918,
+     1.831
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     0,
+     13.527
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     0,
+     4.001
+    ],
+    [
+     10.918,
+     4.001
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     0,
      8.503
     ],
     [
-     3.83,
+     10.918,
+     8.503
+    ]
+   ],
+   "espessura_m": 0.1,
+   "cota_base_m": 0.0,
+   "cota_topo_m": 3.0,
+   "material": "clt"
+  },
+  {
+   "pontos": [
+    [
+     3.757,
+     1.831
+    ],
+    [
+     10.918,
+     1.831
+    ],
+    [
+     10.918,
+     13.527
+    ],
+    [
+     5.221,
+     13.527
+    ],
+    [
+     5.221,
+     7.072
+    ],
+    [
+     3.757,
+     7.072
+    ],
+    [
+     3.757,
      1.831
     ]
    ],
@@ -695,7 +835,7 @@
    "tipo": "corredor",
    "cota": -2.75,
    "x0": 7.05,
-   "y0": 1.0,
+   "y0": 1.95,
    "x1": 9.25,
    "y1": 8.4,
    "pe_direito": 2.35,
@@ -1195,8 +1335,16 @@
       0
      ],
      [
-      10.918,
+      7.108,
       0
+     ],
+     [
+      7.108,
+      1.831
+     ],
+     [
+      10.918,
+      1.831
      ],
      [
       10.918,
@@ -1223,8 +1371,16 @@
       0
      ],
      [
-      10.918,
+      7.108,
       0
+     ],
+     [
+      7.108,
+      1.831
+     ],
+     [
+      10.918,
+      1.831
      ],
      [
       10.918,
@@ -1462,13 +1618,250 @@
   "terracos": [
    {
     "x0": 0.0,
-    "y0": 13.726999999999999,
+    "y0": 13.527,
     "x1": 10.918,
-    "y1": 16.027,
+    "y1": 16.036,
     "coberto": true,
     "cota_cobertura": 3.0
    }
+  ],
+  "paredes_extra": [
+   {
+    "pontos": [
+     [
+      0,
+      13.527
+     ],
+     [
+      0,
+      16.036
+     ]
+    ],
+    "espessura_m": 0.1,
+    "cota_base_m": 0.0,
+    "cota_topo_m": 3.0,
+    "material": "clt"
+   },
+   {
+    "pontos": [
+     [
+      10.918,
+      13.527
+     ],
+     [
+      10.918,
+      16.036
+     ]
+    ],
+    "espessura_m": 0.1,
+    "cota_base_m": 0.0,
+    "cota_topo_m": 3.0,
+    "material": "clt"
+   },
+   {
+    "pontos": [
+     [
+      10.918,
+      0.0
+     ],
+     [
+      10.918,
+      1.831
+     ]
+    ],
+    "espessura_m": 0.1,
+    "cota_base_m": 0.0,
+    "cota_topo_m": 3.0,
+    "material": "clt"
+   },
+   {
+    "pontos": [
+     [
+      10.918,
+      0.0
+     ],
+     [
+      10.918,
+      1.831
+     ]
+    ],
+    "espessura_m": 0.1,
+    "cota_base_m": 3.36,
+    "cota_topo_m": 6.06,
+    "material": "clt"
+   },
+   {
+    "pontos": [
+     [
+      10.918,
+      13.527
+     ],
+     [
+      10.918,
+      16.036
+     ]
+    ],
+    "espessura_m": 0.1,
+    "cota_base_m": 3.36,
+    "cota_topo_m": 6.06,
+    "material": "clt"
+   }
   ]
  },
- "fonte": "Home_A.en1.pdf (CLT Rezult) — plantas −1 / R/C / 1.º andar a 1:50, lidas por ConstruPilot em 09.11.2026"
+ "fonte": "Home_A.en1.pdf (CLT Rezult) — plantas −1 / R/C / 1.º andar a 1:50, lidas por ConstruPilot em 09.11.2026 · contorno do −1 e do R/C corrigido em 14.11.2026 (recanto de entrada a sudeste: parede sul até ao eixo 5, 7,108 m; recuo até ao eixo Б, 1,831 m) · geometria do 1.º andar, vãos exteriores e empenas medidos em 14.11.2026 nos troços CLT vetoriais das plantas (eixos da grelha como origem)",
+ "vaos": [
+  {
+   "eixo": "y",
+   "linha": 0.0,
+   "de": 6.523,
+   "ate": 7.394,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "y",
+   "linha": 0.0,
+   "de": 8.474,
+   "ate": 9.463,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "y",
+   "linha": 10.918,
+   "de": 7.229,
+   "ate": 8.22,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "y",
+   "linha": 10.918,
+   "de": 9.927,
+   "ate": 11.915,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 0.0,
+   "de": 0.439,
+   "ate": 3.315,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 0.0,
+   "de": 4.156,
+   "ate": 7.053,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 1.831,
+   "de": 7.273,
+   "ate": 8.474,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 1.831,
+   "de": 9.63,
+   "ate": 10.868,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 13.527,
+   "de": 0.644,
+   "ate": 4.687,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 13.527,
+   "de": 6.034,
+   "ate": 10.077,
+   "cota_base": 0.0,
+   "peitoril": 0.0,
+   "altura": 2.9
+  },
+  {
+   "eixo": "x",
+   "linha": 1.831,
+   "de": 4.443,
+   "ate": 8.173,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.3
+  },
+  {
+   "eixo": "x",
+   "linha": 1.831,
+   "de": 9.62,
+   "ate": 10.86,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.6
+  },
+  {
+   "eixo": "y",
+   "linha": 3.757,
+   "de": 1.903,
+   "ate": 4.073,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.3
+  },
+  {
+   "eixo": "x",
+   "linha": 7.072,
+   "de": 3.811,
+   "ate": 5.04,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.3
+  },
+  {
+   "eixo": "y",
+   "linha": 5.221,
+   "de": 7.432,
+   "ate": 8.393,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.3
+  },
+  {
+   "eixo": "x",
+   "linha": 13.527,
+   "de": 6.039,
+   "ate": 10.279,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.6
+  },
+  {
+   "eixo": "y",
+   "linha": 10.918,
+   "de": 7.248,
+   "ate": 8.238,
+   "cota_base": 3.36,
+   "peitoril": 0.0,
+   "altura": 2.6
+  }
+ ]
 }

@@ -48,13 +48,15 @@ STATUS = {"edificio3d_gerar": "A lançar o Blender: modelo 3D, materiais e rende
           "edificio3d_fotorrealista": "A aplicar o acabamento fotorrealista sobre o render Blender…"}
 INSTRUCTIONS = (
     "\nEDIFÍCIO 3D GEORREFERENCIADO (Blender + ArcGIS Pro): quando pedirem um edifício, casa ou moradia em 3D, renders, "
-    "fachadas, vista aérea, antes/depois ou implantação num local, chama edificio3d_gerar IMEDIATAMENTE com o que já "
+    "fachadas, vista aérea, antes/depois ou implantação num local SEM planos da casa, chama edificio3d_gerar IMEDIATAMENTE com o que já "
     "souberes (coordenadas ou morada, dimensões, pisos, orientação); não perguntes o que tem valor por omissão. "
     "O trabalho corre em segundo plano (minutos): dá a ligação /edificio-3d/<job_id> e usa edificio3d_estado para ver o "
     "progresso. Quando estiver concluído e pedirem imagens mais realistas/fotográficas, usa edificio3d_fotorrealista "
     "(vista concreta ou «todas»). Diz sempre que os renders e o modelo são produzidos pelo Blender (e ArcGIS Pro, se pedido) "
     "e que o acabamento fotorrealista é aplicado por cima do render Blender, que fica como referência técnica. "
-    "Nunca inventes números de geometria: usa só os devolvidos.\n"
+    "Nunca inventes números de geometria: usa só os devolvidos. Se o utilizador ENVIOU OS PLANOS da casa, a foto 3D tem de "
+    "respeitar a geometria desses planos: nunca uses edificio3d_gerar (volume genérico 12 × 9 m com telhado de duas águas); "
+    "para o «Home A» / «Fração A» da CLT Rezult usa calcul_ucrania(caso=home_a_rezult_kyiv, so_fotos=true).\n"
 )
 VISTAS = ["perspetiva", "fachada_frente", "fachada_tardoz", "fachada_esquerda", "fachada_direita",
           "aerea_telhado", "aerea_envolvente"]
@@ -78,7 +80,9 @@ async def execute(name: str, args: Dict[str, Any], user: Dict[str, Any]) -> Dict
     uid = user["user_id"]
     if name == "edificio3d_gerar":
         if a.get("latitude") is None and not (a.get("morada") or "").strip():
-            return {"ok": False, "error": "Indicar coordenadas (latitude/longitude) ou uma morada."}
+            return {"ok": False, "error": "Indicar coordenadas (latitude/longitude) ou uma morada. ATENÇÃO: edificio3d_gerar faz um volume "
+                    "GENÉRICO (retângulo + telhado de duas águas) e não serve para fotos 3D de uma casa cujos planos foram enviados — "
+                    "para o «Home A» / «Fração A» da CLT Rezult usa calcul_ucrania(caso=home_a_rezult_kyiv, so_fotos=true)."}
         try:
             body = R.ProjetoIn(**a)
         except Exception as e:  # noqa: BLE001

@@ -228,9 +228,10 @@ def library_defaults():
     return items
 
 
-def library_merged(saved):
+def library_merged(saved, country=None):
     """Library defaults overlaid with the company items. A saved item with
-    `deleted` removes a standard item from the calculation."""
+    `deleted` removes a standard item from the calculation. country: the items
+    the company has not saved take the market reference of its country (clt_market)."""
     result = library_defaults()
     for code, item in (saved or {}).items():
         if item.get("deleted"):
@@ -239,6 +240,9 @@ def library_merged(saved):
         base = result.get(code, {"standard": False})
         result[code] = {**base, **{k: (str(v) if isinstance(v, Decimal) else v) for k, v in item.items()},
                         "standard": base.get("standard", False)}
+    if country:
+        from bim_studio.clt_market import apply
+        result = apply(result, saved, country)
     return result
 
 

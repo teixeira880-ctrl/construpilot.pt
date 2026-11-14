@@ -444,7 +444,10 @@ UCRANIA_TOOL = _tool(
      "caso": _enum(pacote_ua.listar(), "plan already read and stored by ConstruPilot: home_a_rezult_kyiv = CLT Rezult «Home A» / «Fração A» "
                    "(plans -1, ground floor, first floor 1:50). Use it whenever the user's plan is Home A / Fração A of CLT Rezult: the tool then "
                    "delivers the COMPLETE package (dossiers UK + EN, construction drawings UK + EN with electrical / water / heating, detailed cost "
-                   "estimate UK + EN). Other fields may stay null.")})
+                   "estimate UK + EN). Other fields may stay null."),
+     "so_fotos": {"type": ["boolean", "null"], "description": "true when the user only asks for 3D photos / renders / images of the house "
+                  "(«foto 3D», «imagem 3D», «render», «como fica a casa»): delivers ONLY the photos, made from the geometry read in the plans "
+                  "(same volumes, setbacks, roof terraces, entrance recess) — no dossiers, no drawings, no estimate. null/false = complete package."}})
 
 # 16. Estudo CLT completo (página CLT da empresa: quantidades, preços, plano, rentabilidade)
 ESTUDO_CLT_TOOL = _tool(
@@ -454,15 +457,36 @@ ESTUDO_CLT_TOOL = _tool(
     "acabamentos), preços de compra e de produção da biblioteca da empresa, custos indiretos, IVA, plano de seguimento da compra e fabrico "
     "até à montagem e à entrega da chave (Gantt, curva de custo, folha de controlo do lote), rentabilidade e sensibilidade. Se o utilizador é da CLT Rezult, empresa=clt-rezult. Usa os pisos revistos na página CLT (última estimativa da conta) ou "
     "pisos_json. Betão e lajes de betão ficam fora. NÃO faz cálculo de cargas, muros, planos de execução nem projetos de eletricidade ou "
-    "canalização: só quantidades e preços. Disponível em todas as contas da app PT; cada empresa usa os seus parâmetros e preços.",
+    "canalização: só quantidades e preços. Junta sempre os COMPLEMENTOS APROXIMADOS que a biblioteca ainda não tem (ventilação mecânica, aquecimento, "
+    "terraço, escada, ligações, rufos e as camadas da cobertura, laje e fachada uma a uma), num capítulo próprio com a regra de cada quantidade, "
+    "e o total da casa completa; e as vistas 3D do CLT montado quando há geometria dos troços. Disponível em todas as contas da app PT; cada "
+    "empresa usa os seus parâmetros e preços.",
     {"titulo": _NS("título do estudo, p. ex. 'Home A · CLT'"), "local": _NS("local da obra, se conhecido"),
      "empresa": _enum(["clt-rezult"], "marca da empresa no dossier premium (logótipo na capa e nas páginas): clt-rezult = CLT Rezult"),
      "regime_iva": _enum(["pt", "ua", "ua_export"], "IVA: pt = Portugal 23 % (CIVA art. 18.º); ua = casa construída na Ucrânia, ПДВ 20 % (ПКУ ст. 193.1); "
                          "ua_export = painéis exportados da Ucrânia, 0 % (ПКУ ст. 195.1.1). Projeto na Ucrânia ou CLT Rezult a construir na Ucrânia → ua"),
      "lingua": _enum(["pt", "en", "uk"], "língua do dossier (null = pt; en = inglês, uk = ucraniano); os números são os mesmos"),
-     "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT; null = a última estimativa feita na página CLT da conta")})
+     "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT; null = a última estimativa feita na página CLT da conta"),
+     "document_id": _NS("id do PDF vetorial dos planos anexado nesta conversa (o Home A da CLT Rezult é medido diretamente, com divisões e vãos); "
+                        "null = estudo CLT da conversa ou última estimativa da página CLT")})
 
-CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
+# 17. Só CLT (14/11, Martinho): quantidades exatas dos painéis CLT, perdas de corte e custo de produção, com seguimento
+CLT_SO_TOOL = _tool(
+    "clt_so_quantidades",
+    "SÓ O CLT de uma casa: quantidades exatas dos painéis CLT (paredes, laje, cobertura, lintéis, painéis sobre portas) em m² bruto, vãos "
+    "cortados (janelas e portas), m² líquido e m³; perdas de corte na prensa; consumos (madeira, cola, energia, horas) e CUSTO DE PRODUÇÃO com "
+    "a biblioteca da empresa. Sem estrutura, caixilharia, isolamentos, acabamentos, transporte para a obra, montagem, venda nem IVA. O PDF "
+    "traz sempre o seguimento: planta só com o CLT e cada peça numerada e cotada, alçados de fabrico com os vãos, faixas da laje e da "
+    "cobertura, plano de corte, e o cruzamento com o que está escrito nos planos. Geometria: document_id do PDF vetorial dos planos (o Home A "
+    "da CLT Rezult é medido diretamente); sem ele, usa o estudo CLT desta conversa (clt_agente_ler_planta / clt_agente_definir_piso) ou a "
+    "última estimativa da página CLT. Usar quando pedem «calcular o CLT», «só o CLT», «quantidades CLT e custo de produção».",
+    {"document_id": _NS("id do PDF vetorial dos planos anexado nesta conversa; null = estudo CLT da conversa ou última estimativa da página CLT"),
+     "titulo": _NS("título, p. ex. 'Home A · Só CLT'"),
+     "empresa": _enum(["clt-rezult"], "marca da empresa no PDF: clt-rezult = CLT Rezult"),
+     "lingua": _enum(["pt", "en"], "língua do PDF (null = pt)"),
+     "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT, só se o utilizador o der")})
+
+CALC_TOOLS = [CLT_SO_TOOL, REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
               PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, ESTUDO_CLT_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
@@ -482,6 +506,7 @@ PROGRESS_LABELS = {
     "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
     "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
     "estudo_clt_completo": "A preparar o estudo CLT completo (quantidades, preços, plano e rentabilidade)…",
+    "clt_so_quantidades": "A medir só o CLT: peças, vãos, perdas de corte e custo de produção…",
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
 }
 
@@ -496,7 +521,18 @@ PROTOCOL_PT = (
     "canalização → solar térmico) usa calcul_lotes_tecnicos; só o piso radiante: calcul_piso_radiante; solar térmico (AQS, coletores, depósito): "
     "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
     "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
-    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo; "
+    "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN; se o pedido for SÓ uma foto / imagem / render 3D da casa, so_fotos=true — entrega só as fotos com a geometria dos planos, nunca o pacote de planos, e nunca edificio3d_gerar, que faz um volume genérico) e NÃO lances o estudo BET completo; "
+    "MÉTODO DE TRABALHO PARA QUANTIDADES (vale para CLT e para qualquer obra): (1) a geometria vem sempre medida no plano pelos motores, nunca "
+    "de um volume genérico nem de memória; (2) cruza o que os motores mediram com o que está ESCRITO no plano (cotas, áreas, legendas, cortes) e "
+    "diz o que confere e o que diverge; (3) quando uma indicação do utilizador contraria o plano, ou quando uma marcação sobre um desenho pode "
+    "ser lida de duas maneiras, pergunta numa frase qual é a leitura certa ANTES de tirar ou acrescentar quantidades, e escreve no dossier a "
+    "decisão; (4) todo o dossier de quantidades leva o seguimento (planta com cada elemento numerado, tabela com os mesmos números): se a "
+    "ferramenta não o entregar, diz que falta, não o inventes; (5) preços que não são da empresa são PREÇOS FICTÍCIOS: di-lo na primeira frase "
+    "da resposta e nunca apresentes custo, venda ou margem como reais sem a biblioteca da empresa; (6) o que for aproximação diz-se como "
+    "aproximação, com a regra usada; (7) nunca digas que algo foi calculado se a ferramenta não o devolveu. "
+    "pedido de SÓ o CLT (quantidades exatas dos painéis CLT, perdas, custo de produção — sem estrutura, janelas nem acabamentos; na conta "
+    "CLT Rezult, «calcula o CLT» sem mais é isto): clt_so_quantidades com o document_id do PDF dos planos, e nunca calcul_ucrania nem "
+    "estudo_clt_completo para esse pedido; "
     "estudo completo de uma casa em CLT (quantidades CLT e de todos os materiais, preços, plano da fabricação à montagem, "
     "rentabilidade; sem cálculos de cargas nem projetos de especialidade): estudo_clt_completo "
     "(os motores calculam, tu restituis).")
@@ -574,12 +610,61 @@ def _res_can(k) -> list[str]:
     return out
 
 
+def _clt_full_from_pdf(pdf: bytes):
+    """Reviewed plan (Home A): complete estimate input measured on the sheets, plus what the complements and the 3D need."""
+    from bim_studio import clt_only
+    reviewed = clt_only.floors_from_reviewed_pdf(pdf)
+    if not reviewed:
+        return None
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from bim_studio.clt_pdf import estimate_input, inspect_pdf
+    g = reviewed["geometria"]
+    polys = [Polygon(p["contorno_m"]) for fl in g.values() for p in fl.get("placas") or [] if p["kind"] == "cobertura"]
+    upper = [Polygon(p["contorno_m"]) for p in (g.get("+1") or {}).get("placas") or [] if p["kind"] == "cobertura"]
+    edge = (unary_union(polys).length if polys else 0.0) + sum(p.length for p in upper)
+    terrace = next((float(r["usado"].split(" m²")[0].replace(",", ".")) for r in reviewed["cruzamento"] if r["item"].startswith("Terraço coberto")), 0.0)
+    return {"entrada": estimate_input(inspect_pdf(pdf)), "extra": {"terrace_m2": terrace, "roof_edge_m": round(edge, 2), "geometria": g}}
+
+
 def _ret(o: dict, res: list[str], data: dict, extra=None) -> dict:
     res.append(FIM)
     out = {"titre": o["titre"], "resume": "\n".join(res), "pdf": o["pdf"], "png": o["png"], "data": data}
     if extra:
         out["pdf_extra"] = extra
     return out
+
+
+FOTOS_EN = {"Візуалізація 3D": "3D photo", "Загальний вигляд": "main view", "Вигляд з боку тераси": "terrace side",
+            "Вигляд з висоти": "aerial view",
+            "Згенеровано з моделі робочих креслень (Mitsuba 3, трасування шляхів, фізичне сонце й небо). "
+            "Геометрія — за кресленнями; фасади, прорізи та озеленення — орієнтовні.":
+            "Generated from the model read in the plans (Mitsuba 3 path tracing, physical sun and sky). Volumes, setbacks, roof terraces and "
+            "entrance recess as in the plans; window positions, materials and planting are indicative."}
+
+
+def _fotos_caso(caso: str) -> dict:
+    """14/11 (Martinho): «foto 3D da casa» → só as fotos, feitas a partir da geometria lida nos planos do caso (nunca o pacote
+    de planos de execução, nunca um volume genérico)."""
+    import copy
+    p = pacote_ua.parametros(caso)
+    mod = gros_oeuvre.calcular(copy.deepcopy(p["modelo_estrutural"]))["modelo"]
+    rs = pacote_ua.renders_fixos(caso) or ucrania.gerar_renders(mod, p.get("render_opcoes"))
+    if not rs:
+        raise ValueError("O motor de render 3D não respondeu agora; tente de novo dentro de 1 minuto (nada foi gerado nem cobrado).")
+    pdf = ucrania.pagina_renders(rs, lambda t: FOTOS_EN.get(t, t))
+    nome = pacote_ua.PROJ["en"]
+    res = [f"3D photos — {nome}: {len(rs)} views ({', '.join(n for n, _ in rs)}), made from the geometry read in the plans "
+           "(−1 / ground floor with the south-east entrance recess, first floor L-shaped setback, flat roofs and roof terrace, covered terrace).",
+           "Window positions, materials and planting are indicative (the plans have no elevations).",
+           "Only the photos were delivered (no drawings, dossiers or estimate)."]
+    import io
+    from PIL import Image
+    b = io.BytesIO()
+    Image.open(io.BytesIO(rs[0][1])).convert("RGB").save(b, "PNG")      # pré-visualização no chat (sempre PNG)
+    o = {"titre": f"3D photos — {nome}", "pdf": pdf, "png": b.getvalue()}
+    return _ret(o, res, {"vistas": [n for n, _ in rs]},
+                extra=[(f"Foto-3D-{n}", f"3D photo — {n}", b) for n, b in rs])
 
 
 def run(name: str, args: dict) -> dict:
@@ -806,6 +891,8 @@ def run(name: str, args: dict) -> dict:
         res += [f"Secção ajustada: {x}" for x in v["ajustes"]] + _hyp(v["hipoteses"])
         res.append("Pré-dimensionamento a validar pelo projetista de estruturas.")
         return _ret(o, res, {"conforme": v["conforme"], "ajustes": v["ajustes"], "escala": o["escala"]})
+    if name == "calcul_ucrania" and a.get("caso") and a.get("so_fotos"):
+        return _fotos_caso(a["caso"])
     if name == "calcul_ucrania":
         caso = a.get("caso")
         p = pacote_ua.parametros(caso) if caso else ((ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {})
@@ -852,6 +939,10 @@ def run(name: str, args: dict) -> dict:
         import json
         from bim_studio.clt_study import note as estudo
         entrada = a.get("_entrada")                                # a ponte junta os pisos, parâmetros e biblioteca da conta
+        if a.get("_pdf") and not a.get("pisos_json"):              # PDF revisto (Home A): entrada completa medida no plano
+            full = _clt_full_from_pdf(a["_pdf"])
+            if full:
+                entrada, a = full["entrada"], {**a, "_extra": full["extra"]}
         if entrada is None and a.get("pisos_json"):
             try:
                 entrada = json.loads(a["pisos_json"])
@@ -861,7 +952,49 @@ def run(name: str, args: dict) -> dict:
             raise ValueError("Sem pisos: faça primeiro a estimativa na página CLT (planos revistos) ou indique pisos_json.")
         if a.get("regime_iva"):
             entrada = {**entrada, "vat_regime": a["regime_iva"]}
-        o = estudo(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"),
-                   empresa=a.get("empresa"), local=a.get("local"), lingua=a.get("lingua") or "pt")
+        par, lib = a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({})
+        lingua = a.get("lingua") or "pt"
+        # complementos aproximados + vistas 3D do CLT montado (14/11, Martinho: «os motores e o assistente trabalham assim»)
+        from bim_studio import clt_complements, clt_only
+        extra = a.get("_extra") or {}
+        comp = clt_complements.lines(entrada, terrace_m2=extra.get("terrace_m2") or 0.0, roof_edge_m=extra.get("roof_edge_m") or 0.0)
+        anexos = []
+        if any(sg.get("rect_m") for fl in entrada["floors"] for sg in fl.get("segments") or []):
+            from bim_studio import clt_render
+            names = {"frente": ("lado da entrada", "entrance side"), "cima": ("vista de cima", "from above")}
+            title = "Vistas 3D do CLT montado" if lingua == "pt" else "3D views of the assembled CLT"
+            for i, (nome, png) in enumerate(v for v in clt_render.views(clt_only.clt_only(entrada), par, extra.get("geometria")) if v[0] in names):
+                anexos.append((title if i == 0 else f"{title} ({i + 1})", png, names[nome][0 if lingua == "pt" else 1]))
+        o = estudo(entrada, par, lib, a.get("titulo"), empresa=a.get("empresa"), local=a.get("local"), lingua=lingua, anexos=anexos or None,
+                   complementos=comp or None)
+        return _ret(o, o["resumo"], o["data"])
+    if name == "clt_so_quantidades":
+        import json
+        from bim_studio import clt_only
+        from bim_studio.clt_economics import library_merged, merged
+        pdf, entrada, geo, origem, notas, cruz = a.get("_pdf"), None, None, "", None, None
+        reviewed = clt_only.floors_from_reviewed_pdf(pdf) if pdf else None
+        if reviewed:                                              # plano revisto: medição vetorial direta, com o cruzamento completo
+            entrada, geo, origem = {"floors": reviewed["floors"]}, reviewed["geometria"], reviewed["origem"]
+            notas, cruz = reviewed["notas"], reviewed["cruzamento"]
+        else:
+            entrada = a.get("_entrada")
+            if entrada is None and a.get("pisos_json"):
+                try:
+                    entrada = json.loads(a["pisos_json"])
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"pisos_json inválido: {exc}") from None
+            if not entrada or not entrada.get("floors"):
+                raise ValueError("Sem geometria CLT para este plano: lê primeiro as paredes com clt_agente_ler_planta e define os pisos com "
+                                 "clt_agente_definir_piso (ou faz a estimativa na página CLT), depois volta a chamar clt_so_quantidades.")
+            origem = a.get("_origem") or "pisos revistos na página CLT da conta"
+            cruz = clt_only.written_on_any_plan(pdf, entrada["floors"]) if pdf else None
+        o = clt_only.note(entrada, a.get("_parametros") or merged({}), a.get("_biblioteca") or library_merged({}), a.get("titulo"),
+                          empresa=a.get("empresa"), lingua=a.get("lingua") or "pt", origem=origem, notas=notas, geometria=geo, cruzamento=cruz)
+        if cruz is not None:
+            bad = [r["item"] for r in cruz if not r["ok"]]
+            o["resumo"].append("Cruzamento com o escrito nos planos: " + ("tudo confere." if not bad else "DIVERGE em " + "; ".join(bad) + "."))
+        else:
+            o["resumo"].append("Sem o PDF dos planos, o cruzamento com o que está escrito nos planos não foi feito: pede o document_id.")
         return _ret(o, o["resumo"], o["data"])
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

@@ -14,6 +14,7 @@ from pymongo.errors import DuplicateKeyError
 
 from bim_studio.clt_access import allowed
 from bim_studio.clt_costs import CostLot, Rate, summary
+from bim_studio.clt_market import country_of
 from bim_studio.clt_economics import (ELECTRICITY_URL, EstimateInput, LibraryItem, Parameter, estimate,
                                       library_merged, lot_from_estimate, merged, parse_eurostat,
                                       read_table_file, rows_to_items)
@@ -302,7 +303,7 @@ async def _store_library(user, changes):
 async def get_library(user=Depends(viewer)):
     from bim_studio.clt_economics import BASES, CATEGORIES
 
-    return {"items": library_merged(await _library(user)),
+    return {"items": library_merged(await _library(user), country_of(user)),
             "categories": {k: v[0] for k, v in CATEGORIES.items()}, "bases": BASES}
 
 
@@ -312,13 +313,13 @@ async def save_library_item(code: str, body: LibraryItem, user=Depends(editor)):
         raise HTTPException(422, "O código do URL e do artigo não coincidem.")
     item = body.model_dump(mode="json")
     await _store_library(user, {body.code: item})
-    return {"items": library_merged(await _library(user))}
+    return {"items": library_merged(await _library(user), country_of(user))}
 
 
 @router.delete("/library/{code}")
 async def delete_library_item(code: str, user=Depends(editor)):
     await _store_library(user, {code.upper(): {"deleted": True}})
-    return {"items": library_merged(await _library(user))}
+    return {"items": library_merged(await _library(user), country_of(user))}
 
 
 class TablePaste(BaseModel):
@@ -365,14 +366,14 @@ async def refresh_electricity(band: Literal["MWH_LT20", "MWH20-499", "MWH500-199
             period, value = parse_eurostat(response.json())
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         raise HTTPException(502, "O Eurostat não respondeu. Tente mais tarde ou introduza o preço.") from exc
-    current = library_merged(await _library(user)).get("EN-ELETRICIDADE")
+    current = library_merged(await _library(user), country_of(user)).get("EN-ELETRICIDADE")
     item = {**(current or {"code": "EN-ELETRICIDADE", "category": "energia", "name": "Eletricidade da fábrica",
                            "unit": "kWh", "sale_eur": None, "basis": "kwh", "per_basis": "1"}),
             "cost_eur": str(value), "origin": "mercado", "effective_from": None,
             "source": f"Eurostat nrg_pc_205, {geo}, não doméstico {band}, sem impostos, {period} (atualizado automaticamente)"}
     item.pop("standard", None)
     await _store_library(user, {"EN-ELETRICIDADE": LibraryItem.model_validate(item).model_dump(mode="json")})
-    return {"period": period, "eur_kwh": float(value), "items": library_merged(await _library(user))}
+    return {"period": period, "eur_kwh": float(value), "items": library_merged(await _library(user), country_of(user))}
 
 
 async def _estimate(body, user):
@@ -381,7 +382,7 @@ async def _estimate(body, user):
         "body": body.model_dump(mode="json", include={"floors", "start", "start_mode", "vat_regime"}), "updated_at": now(),
         "updated_by": user["user_id"]}}, upsert=True)
     doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
-    return estimate(body, merged(doc.get("values")), library_merged(await _library(user)))
+    return estimate(body, merged(doc.get("values")), library_merged(await _library(user), country_of(user)))
 
 
 @router.post("/estimate")

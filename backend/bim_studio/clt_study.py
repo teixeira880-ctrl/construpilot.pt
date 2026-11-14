@@ -232,18 +232,19 @@ def _annex_pages(drawings, title):
 
 
 def note(entrada: dict, parametros: dict, biblioteca: dict, titulo: str | None = None, empresa: str | None = None,
-         anexos: list | None = None, local: str | None = None, capa_imagem: bytes | None = None, lingua: str = "pt") -> dict:
+         anexos: list | None = None, local: str | None = None, capa_imagem: bytes | None = None, lingua: str = "pt",
+         complementos: list | None = None) -> dict:
     """entrada: EstimateInput as JSON; parametros / biblioteca: the account's merged parameters and library;
     empresa: brand slug of engines.calc_lots.premium (logo on cover and pages); anexos: [(title, png bytes, caption)];
     lingua: pt | en | uk (same numbers, translated texts)."""
     token = _LANG.set(lingua if lingua in LANGS else "pt")
     try:
-        return _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_imagem)
+        return _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_imagem, complementos)
     finally:
         _LANG.reset(token)
 
 
-def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_imagem):
+def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_imagem, complementos=None):
     import pymupdf
     from engines.calc_lots import graficos as G
     from engines.calc_lots import premium, rendu
@@ -278,6 +279,24 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
                    {"label": _("Prazo"), "value": str(plan["dias"]), "unit": _("dias")}])]
 
     # 1. synthesis ---------------------------------------------------------------------------------------------------
+    # prices that are not the company's own: said at the top of the dossier (14/11, Martinho)
+    used = [l for l in r["linhas"] if l["quantidade"] and l["fase"] != "indiretos"]
+    foreign = [l for l in used if l["origem"] != "empresa"]
+    if foreign:
+        from engines.calc_lots import premium as _premium
+        brand = _premium.marca(empresa) if empresa else None
+        en = _LANG.get() != "pt"
+        who = (brand or {}).get("nome") or ("the company" if en else "a empresa")
+        every = len(foreign) == len(used)
+        fact = ((f"none of the prices used is the company's own" if every else f"{len(foreign)} of the {len(used)} prices used are not the company's own")
+                if en else ("nenhum dos preços usados é da empresa" if every else f"{len(foreign)} dos {len(used)} preços usados não são da empresa"))
+        B.insert(1, ("hyp", [(f"FICTITIOUS PRICES. We do not have the price library of {who}: {fact}. They are market references and assumptions, used "
+                              "only to show the method. Costs, sale and margin are NOT real until the company enters its prices in the library. The "
+                              "quantities do not depend on prices.") if en else
+                             (f"PREÇOS FICTÍCIOS. Não temos a biblioteca de preços de {who}: {fact}. São referências de mercado e hipóteses, usadas só "
+                              "para mostrar o método. Custos, venda e margem NÃO são reais enquanto a empresa não puser os seus preços na biblioteca. "
+                              "As quantidades não dependem dos preços.")]))
+
     B.append(("h2", _("1. Síntese")))
     B.append(("p", _("Âmbito: da compra da madeira e do fabrico dos painéis CLT até à entrega da chave: estrutura CLT, vigas de aço, revestimentos, isolamentos e estanquidade, caixilharia, eletricidade, canalização e acabamentos. Fora do âmbito: betão e lajes de betão, cálculo estrutural, projetos de especialidade e planos de execução. ") + estado))
     rows = [[stage(s), _n(t["custos_eur"].get(s, 0)), _n(t["custos_eur"].get(s, 0) * 100 / t["custo_total_eur"], 1)]
@@ -420,6 +439,35 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
         [_("Margem prevista"), f"{_n(t['margem_percent'], 1)} %", _("venda − previsão de fecho do lote")]], [40 * W, 40 * W, 100 * W]))
 
     # 6. hypotheses and sources -------------------------------------------------------------------------------------------
+    comp = None
+    if complementos:                                          # approximate complements: own chapter, added to the totals here
+        from bim_studio import clt_complements as CC
+        en = _LANG.get() != "pt"
+        k = "en" if en else "pt"
+        comp = CC.totals(complementos)
+        B.append(("h2", "Approximate complements (not in the totals above)" if en else "Complementos aproximados (fora dos totais acima)"))
+        B.append(("hyp", [("APPROXIMATION. What follows is not drawn or not priced in the library: quantities come from the measured areas, lengths and "
+                           "rooms with the rule shown; unit prices are placeholders. Lines without a price are layers already paid inside a combined "
+                           "line of the estimate, listed here for the material list.") if en else
+                          ("APROXIMAÇÃO. O que se segue não está desenhado ou não tem preço na biblioteca: as quantidades saem das áreas, comprimentos e "
+                           "divisões medidos, pela regra indicada; os preços unitários são provisórios. As linhas sem preço são camadas já pagas dentro "
+                           "de uma linha conjunta do orçamento, listadas aqui para a lista de materiais.")]))
+        for chapter in dict.fromkeys(r["capitulo"] for r in complementos):
+            rows_c = [r for r in complementos if r["capitulo"] == chapter]
+            B.append(("p", CC.CHAPTERS[chapter][1 if en else 0]))
+            B.append(("table", ["Item" if en else "Designação", "Qty" if en else "Qtd", "Unit" if en else "Un", "Unit cost (€)" if en else "Custo un. (€)",
+                                "Cost (€)" if en else "Custo (€)", "Rule" if en else "Regra"],
+                      [[r["nome"][k], _n(r["quantidade"]), r["unidade"], "—" if r["so_quantidade"] else _n(r["custo_un"]),
+                        "—" if r["so_quantidade"] else _n(r["quantidade"] * r["custo_un"]), r["regra"][k]] for r in rows_c],
+                      [62 * W, 16 * W, 10 * W, 20 * W, 20 * W, 48 * W]))
+        base_cost, base_sale = Decimal(str(t["custo_total_eur"])), Decimal(str(t["receita_eur"] or 0))
+        full_cost, full_sale = base_cost + Decimal(str(comp["custo_eur"])), base_sale + Decimal(str(comp["venda_eur"]))
+        B.append(("table", ["", "Cost (€)" if en else "Custo (€)", "Sale excl. VAT (€)" if en else "Venda sem IVA (€)"],
+                  [["Estimate (chapters above)" if en else "Orçamento (capítulos acima)", _n(base_cost), _n(base_sale)],
+                   ["Approximate complements" if en else "Complementos aproximados", _n(comp["custo_eur"]), _n(comp["venda_eur"])],
+                   ["COMPLETE HOUSE, approximate" if en else "CASA COMPLETA, aproximado", _n(full_cost), _n(full_sale)]],
+                  [80 * W, 45 * W, 45 * W]))
+        comp.update(custo_total_eur=float(full_cost), receita_eur=float(full_sale))
     B.append(("h2", _("6. Parâmetros, preços, origens e fontes")))
     rows = []
     for key, v in parametros.items():
@@ -515,4 +563,11 @@ def _note(entrada, parametros, biblioteca, titulo, empresa, anexos, local, capa_
         resumo.append("Hipóteses por confirmar: " + "; ".join(hyp[:25]) + (" …" if len(hyp) > 25 else ""))
     data = {"custo_total_eur": t["custo_total_eur"], "receita_eur": t["receita_eur"], "receita_com_iva_eur": t["receita_com_iva_eur"],
             "margem_percent": t["margem_percent"], "fabrico_m3": t["fabrico_m3"], "dias": plan["dias"], "estado": r["status"], "hipoteses": len(hyp)}
+    if foreign:
+        resumo.insert(1, "PREÇOS FICTÍCIOS: a biblioteca não tem os preços da empresa" + ("" if len(foreign) == len(used) else f" em {len(foreign)} de {len(used)} linhas")
+                      + "; custos, venda e margem servem só para mostrar o método e têm de ser ditos como fictícios ao utilizador.")
+    if comp:
+        data["complementos"] = comp
+        resumo.append(f"Complementos aproximados (ventilação, aquecimento, terraço, escada, ligações, rufos): custo {comp['custo_eur']:,.0f} €; "
+                      f"casa completa aproximada: custo {comp['custo_total_eur']:,.0f} €, venda sem IVA {comp['receita_eur']:,.0f} €.")
     return {"titre": titre, "pdf": pdf, "png": png, "resumo": resumo, "data": data}

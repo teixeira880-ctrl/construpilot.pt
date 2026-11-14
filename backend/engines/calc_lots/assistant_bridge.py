@@ -23,7 +23,7 @@ CALC_STATUS = dict(PROGRESS_LABELS)
 CALC_INSTRUCTIONS = ("\n\nMOTORES DE CÁLCULO (notas PDF determinísticas): " + PROTOCOL_PT +
                      " A nota PDF e a pré-visualização aparecem AUTOMATICAMENTE como ficheiros descarregáveis por baixo da tua resposta: não "
                      "escrevas ligações nem caminhos. Restitui os resultados-chave, as não conformidades e as hipóteses a validar; não recalcules.")
-MIME = {"pdf": "application/pdf", "png": "image/png"}
+MIME = {"pdf": "application/pdf", "png": "image/png", "jpg": "image/jpeg"}
 
 
 def _slug(s: str) -> str:
@@ -41,6 +41,7 @@ async def _clt_context(args: dict, user: dict) -> dict:
     import json
     from bim_studio.clt_access import allowed, is_pilot
     from bim_studio.clt_economics import library_merged, merged
+    from bim_studio.clt_market import country_of
     from bim_studio.store import get_db, tenant_of
     if not allowed(user):
         raise ValueError("O estudo CLT só está disponível nas contas da app PT.")
@@ -57,14 +58,62 @@ async def _clt_context(args: dict, user: dict) -> dict:
     else:
         last = await db.clt_estimate_inputs.find_one({"_id": tenant}) or {}
         entrada = last.get("body")
-    return {**args, "_entrada": entrada, "_parametros": merged(params.get("values")), "_biblioteca": library_merged(library.get("items", {}))}
+    return {**args, "_entrada": entrada, "_parametros": merged(params.get("values")), "_biblioteca": library_merged(library.get("items", {}), country_of(user))}
+
+
+async def _plan_pdf(doc_id: str, user: dict, db) -> bytes:
+    """Bytes of a PDF attached to the Assistant by this user."""
+    d = await db.assistant_docs.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not d:
+        raise ValueError("Documento não encontrado nesta conta: indica o document_id do PDF dos planos anexado nesta conversa.")
+    if d.get("chunk_count"):
+        chunks = [c async for c in db.assistant_doc_chunks.find({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}).sort("index", 1)]
+        raw = b"".join(base64.b64decode(c["data_b64"]) for c in chunks)
+    else:
+        raw = base64.b64decode(d.get("data_b64") or "")
+    if raw[:4] != b"%PDF":
+        raise ValueError("O documento indicado não é um PDF: os motores CLT leem o PDF vetorial dos planos.")
+    return raw
+
+
+async def _clt_only_context(args: dict, user: dict, conv: dict, db) -> dict:
+    """Só CLT: PDF dos planos (se indicado), pisos do estudo CLT desta conversa ou da página CLT, parâmetros e biblioteca da conta."""
+    from bim_studio.clt_access import is_pilot
+    ctx = await _clt_context({k: v for k, v in args.items() if k != "document_id"}, user)
+    if is_pilot(user) and not ctx.get("empresa"):
+        ctx["empresa"] = "clt-rezult"
+    if is_pilot(user) and not ctx.get("lingua"):
+        ctx["lingua"] = "en"                                  # the CLT Rezult account receives its documents in English
+    if args.get("document_id"):
+        ctx["_pdf"] = await _plan_pdf(args["document_id"], user, db)
+    if not args.get("pisos_json"):
+        from engines import assistant_clt_agent as agent
+        study = await db[agent.COLLECTION].find_one(agent._key(user, conv))
+        if study and study.get("pisos"):
+            try:
+                body, _origins, _hyp = agent.build_input(study, ctx["_parametros"])
+                ctx["_entrada"], ctx["_origem"] = body, "paredes lidas no PDF vetorial e pisos definidos no estudo CLT desta conversa"
+            except (ValueError, KeyError):
+                pass                                          # estudo incompleto: fica a última estimativa da página CLT
+    return ctx
 
 
 async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -> dict:
     uid, cid = user["user_id"], conv["conversation_id"]
+    if name == "clt_so_quantidades":
+        try:
+            args = await _clt_only_context(args or {}, user, conv, db)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)[:400]}
     if name == "estudo_clt_completo":                          # o resultado depende dos preços atuais: entram no digest
         try:
-            args = await _clt_context(args or {}, user)
+            doc_id = (args or {}).get("document_id")
+            args = await _clt_context({k: v for k, v in (args or {}).items() if k != "document_id"}, user)
+            if doc_id:
+                args["_pdf"] = await _plan_pdf(doc_id, user, db)
+            from bim_studio.clt_access import is_pilot
+            if is_pilot(user) and not args.get("lingua"):
+                args["lingua"] = "en"                         # the CLT Rezult account receives its documents in English
         except ValueError as exc:
             return {"ok": False, "error": str(exc)[:400]}
     rid = conv.get("_quote_request_id") or cid
@@ -95,8 +144,10 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
     extra = []
     for j, (lab, titre_x, data) in enumerate(out.get("pdf_extra") or []):          # dossiers adicionais (p.ex. versão inglesa)
         aid = "file_" + digest + f"e{j + 1}"
+        fx = "png" if data[:8] == b"\x89PNG\r\n\x1a\n" else ("jpg" if data[:3] == b"\xff\xd8\xff" else "pdf")   # fotos 3D: imagens
         doc = {"artifact_id": aid, "user_id": uid, "conversation_id": cid, "request_id": rid, "title": titre_x, "body": out["resume"],
-               "filename": f"ConstruPilot_{lab}_{_slug(titre_x)}_{day}.pdf", "format": "pdf", "kind": "calc_note", "mime": MIME["pdf"],
+               "filename": f"ConstruPilot_{lab}_{_slug(titre_x)}_{day}.{fx}", "format": fx, "kind": "calc_note" if fx == "pdf" else "calc_preview",
+               "mime": MIME.get(fx) or "image/jpeg",
                "size": len(data), "data_b64": base64.b64encode(data).decode(), "source_artifact_ids": [], "created_at": now,
                "illustrative": False, "calc_note": name, "download": f"/assistant/artifacts/{aid}/content"}
         await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)

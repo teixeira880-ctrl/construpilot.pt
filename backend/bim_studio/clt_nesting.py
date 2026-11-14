@@ -42,6 +42,9 @@ class NestingInput(BaseModel):
     variable_length: bool = True
     variable_width: bool = False
     time_limit_s: Annotated[float, Field(gt=0, le=60)] = 8.0
+    # True: one solver worker and a deterministic work limit instead of wall time, so the same pieces always give the
+    # same layout whatever the load of the machine (time_limit_s then counts deterministic solver time).
+    deterministic: bool = False
 
 
 def _shelf(items, L, W):
@@ -79,7 +82,7 @@ def _shelf(items, L, W):
     return [b["placed"] for b in blanks]
 
 
-def _cp_sat(items, L, W, upper, hint, time_limit):
+def _cp_sat(items, L, W, upper, hint, time_limit, deterministic=False):
     from ortools.sat.python import cp_model
 
     m = cp_model.CpModel()
@@ -127,8 +130,13 @@ def _cp_sat(items, L, W, upper, hint, time_limit):
                 m.AddHint(x, h[1])
                 m.AddHint(y, h[2])
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = time_limit
-    solver.parameters.num_workers = 4
+    if deterministic:
+        solver.parameters.max_deterministic_time = time_limit
+        solver.parameters.max_time_in_seconds = 120.0          # safety only; the deterministic limit stops first
+        solver.parameters.num_workers = 1
+    else:
+        solver.parameters.max_time_in_seconds = time_limit
+        solver.parameters.num_workers = 4
     solver.parameters.random_seed = 7
     status = solver.Solve(m)
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
@@ -155,7 +163,7 @@ def _group_plan(group, body):
     lower = math.ceil(area / (L * W) - 1e-9)
     best, engine, status = heuristic, "heurística de prateleiras", "heurística"
     if len(items) <= 120:
-        solved, status = _cp_sat(items, L, W, heuristic, hint, body.time_limit_s)
+        solved, status = _cp_sat(items, L, W, heuristic, hint, body.time_limit_s, body.deterministic)
         if solved is not None and _score(solved, L) <= _score(heuristic, L):
             best, engine = solved, "OR-Tools CP-SAT"
     return best, {"motor": engine, "estado_solver": status, "limite_inferior_paineis": lower,

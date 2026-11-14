@@ -96,3 +96,56 @@ def render_page(data, number):
         page = doc[number - 1]
         scale = min(1.5, 1280 / max(page.rect.width, page.rect.height))
         return page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False).tobytes("png")
+
+
+def estimate_input(report: dict) -> dict | None:
+    """Complete estimate input of the reviewed sheets (server-side twin of floorsFromReport on the CLT page): walls by
+    thickness, CLT panels, linings and façade areas, rooms, windows, run rectangles and lintels. None when the report
+    has no reviewed sheets."""
+    pages = [p for p in report["pages"] if (p.get("review") or {}).get("in_scope")]
+    offsets = next((p["review"]["structural_offsets"] for p in report["pages"] if (p.get("review") or {}).get("structural_offsets")), None)
+    if not pages or not offsets:
+        return None
+    keys, floors = ["RDC", "+1"], []
+
+    def interior_faces(run, runs, width, height):
+        x, y, X, Y = run["rect"]
+        others = [r for r in runs if r is not run]
+        if (X - x) * width > (Y - y) * height:
+            m = (x + X) / 2
+            hit = lambda test: any(r["rect"][0] <= m <= r["rect"][2] and test(r["rect"]) for r in others)
+            return int(hit(lambda r: r[3] <= y + 1e-6)) + int(hit(lambda r: r[1] >= Y - 1e-6))
+        m = (y + Y) / 2
+        hit = lambda test: any(r["rect"][1] <= m <= r["rect"][3] and test(r["rect"]) for r in others)
+        return int(hit(lambda r: r[2] <= x + 1e-6)) + int(hit(lambda r: r[0] >= X - 1e-6))
+
+    for i, page in enumerate(pages):
+        key = keys[i] if i < len(keys) else page["review"]["floor"]
+        ceilings = [e["values"][0] / 1000 for e in page["evidence"] if e["kind"] == "ceiling_height"]
+        extra = offsets.get(key) or offsets[keys[-1]]
+        runs = [m for m in page["review"]["markers"] if m.get("length_m")]
+        by = {}
+        for m in runs:
+            t = round(m["drawing_width_mm"] / 10) * 10
+            by[t] = by.get(t, 0.0) + m["length_m"]
+        height = max(ceilings) + extra["floor_buildup_m"] + extra["ceiling_zone_m"] if ceilings else 0
+        inner = sum(m["length_m"] * interior_faces(m, runs, page["width"], page["height"]) for m in runs)
+        h = height or (3 if i == 0 else 2.5)
+        faces = inner * h
+        outer = (2 * sum(m["length_m"] for m in runs) - inner) * h
+        more = ((report.get("estimate_extras") or {}).get("floors") or {}).get(key) or {}
+        ceiling = more.get("ceiling_m2") or 0
+        floors.append({
+            "name": key, "height_m": f"{height:.3f}" if height else None,
+            "walls": [{"thickness_mm": str(t), "layers": 5, "length_m": f"{length:.3f}"} for t, length in by.items()],
+            "panels": [{**p, "thickness_mm": str(p["thickness_mm"]), "layers": p["layers"], "area_m2": str(p["area_m2"])} for p in more.get("panels") or []],
+            "board_layers_m2": f"{2 * faces:.2f}", "paint_m2": f"{faces + ceiling:.2f}", "ceiling_m2": f"{ceiling:.2f}",
+            "slab_buildup_m2": str(more.get("slab_buildup_m2") or 0), "roof_buildup_m2": str(more.get("roof_buildup_m2") or 0),
+            "facade_m2": f"{outer:.2f}", "steel_beam_m": str(more.get("steel_beam_m") or 0),
+            "rooms": more.get("rooms") or [], "windows": more.get("windows") or [], "interior_doors": more.get("interior_doors") or 0,
+            "ceiling_height_m": more.get("ceiling_height_m"), "riser_m": more.get("riser_m"),
+            "segments": [{"ref": m["id"], "thickness_mm": str(round(m["drawing_width_mm"] / 10) * 10), "length_m": f"{m['length_m']:.3f}",
+                          "rect_m": m.get("plan_rect_m")} for m in runs],
+            "lintels": [{"ref": m["id"], "rect_m": m["plan_rect_m"], "head_m": m["head_m"], "thickness_mm": m.get("thickness_mm")}
+                        for m in page["review"]["markers"] if m["id"].startswith("lintel-") and m.get("plan_rect_m") and m.get("head_m")]})
+    return {"floors": floors}

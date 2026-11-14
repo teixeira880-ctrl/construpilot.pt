@@ -132,6 +132,9 @@ CASOS = {
                                              deposito=_o("verificar_solar_termico", "deposito", volume_l=150)),
     "calcul_patio_pluvial": lambda: _fill("calcul_patio_pluvial", area_m2=16, profundidade_m=1.1, regiao_pluviometrica="B"),
     "calcul_ucrania": lambda: _fill("calcul_ucrania", exemplo=True, cidade="lviv"),
+    "clt_so_quantidades": lambda: _fill("clt_so_quantidades", titulo="Casa · Só CLT", pisos_json=json.dumps({"floors": [{
+        "name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "12"}],
+        "panels": [{"kind": "cobertura", "label": "Cobertura", "thickness_mm": "140", "layers": 5, "area_m2": "20"}]}]})),
     "estudo_clt_completo": lambda: _fill("estudo_clt_completo", titulo="Casa CLT", pisos_json=json.dumps({"floors": [{
         "name": "RDC", "height_m": "3", "walls": [{"thickness_mm": "100", "layers": 5, "length_m": "12"}],
         "rooms": [{"nome": "Sala", "tipo": "sala", "area_m2": "20", "perimetro_m": "18", "rect_m": [0, 0, 5, 4]}]}]})),
