@@ -90,6 +90,7 @@ function compor(base, vol, estilo, vaos) {
     });
   return {
     terreno, volumes, pisos: n, piso_a_piso_m: sh, vaos: vs, terreno_grelha: base?.terreno_grelha || [], azimutes: base?.azimutes,
+    plantas: base?.plantas || null,
     materiais: { ...(base?.materiais || {}), ...(estilo.fachada ? { fachada: estilo.fachada } : {}), ...(estilo.cobertura ? { cobertura: estilo.cobertura } : {}),
       ...(estilo.caixilharia ? { caixilharia: estilo.caixilharia } : {}) },
     estilo,
@@ -114,6 +115,7 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const [descricao, setDescricao] = useState("");
   const [imagem, setImagem] = useState(null);
   const [modelos, setModelos] = useState(null);
+  const [interior, setInterior] = useState(null);   // null = exterior; n = vista em corte do piso n
 
   useEffect(() => {
     const e0 = processo?.estudio || {};
@@ -126,7 +128,10 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [processoId, temAuto]);
 
-  const modelo = useMemo(() => compor(base, vol, estilo, vaos), [base, vol, estilo, vaos]);
+  const modelo0 = useMemo(() => compor(base, vol, estilo, vaos), [base, vol, estilo, vaos]);
+  const modelo = useMemo(() => (interior === null ? modelo0 : { ...modelo0, corte_piso: interior }), [modelo0, interior]);
+  const nPisos = Number(vol.levels) || 1;
+  const verInterior = (p) => { setInterior(p); if (p !== null) setTimeout(() => casa.current?.vista("interior"), 80); };
   const guardar = () => setHist((h) => [...h.slice(-30), { vol, estilo, vaos }]);
   const mudaVol = (k, val) => { guardar(); setVol((v) => ({ ...v, [k]: val })); };
   const mudaEst = (k, val) => { guardar(); setEstilo((e) => ({ ...e, [k]: val })); };
@@ -199,8 +204,8 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
       await gravarVolume({ ...vol, roof_type: roof });
       const { vaos: _v, ...est } = estilo;
       await api.patch(`/urbanismo/processos/${processoId}`, { estudio: { ...Object.fromEntries(Object.entries(est).filter(([, x]) => x !== undefined && x !== "")),
-        vaos: modelo.vaos } });                      // coordenadas absolutas (as mesmas das peças desenhadas)
-      setVaos(modelo.vaos);
+        vaos: modelo0.vaos } });                      // coordenadas absolutas (as mesmas das peças desenhadas)
+      setVaos(modelo0.vaos);
       toast.success("Estúdio gravado: processo, peças desenhadas e verificação atualizados.");
     } catch (e) { toast.error(e?.response?.data?.detail?.toString?.() || "Gravação impossível."); }
     setOcupado("");
@@ -376,6 +381,14 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
         <span className="text-xs text-muted-foreground hidden md:inline">— edite a casa ao vivo; «Gravar» atualiza as peças desenhadas e a verificação</span>
         <div className="ml-auto flex flex-wrap gap-1">
           {["perspetiva", "frente", "tardoz", "aerea"].map((n) => <Button key={n} size="sm" variant="ghost" onClick={() => casa.current?.vista(n)}>{n === "aerea" ? "Aérea" : n[0].toUpperCase() + n.slice(1)}</Button>)}
+          <div className="flex items-center rounded-md border px-1" data-testid="estudio-interior">
+            <span className="text-xs text-muted-foreground px-1">Interior</span>
+            {Array.from({ length: nPisos }, (_, p) => (
+              <Button key={p} size="sm" variant={interior === p ? "default" : "ghost"} className="h-7 px-2"
+                onClick={() => verInterior(interior === p ? null : p)}>{p === 0 ? "R/C" : `${p}.º`}</Button>
+            ))}
+            {interior !== null && <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => verInterior(null)}>Exterior</Button>}
+          </div>
           <Button size="sm" variant="ghost" onClick={desfazer} disabled={!hist.length}><Undo2 className="h-4 w-4" /></Button>
           {temAuto && <Button size="sm" variant="outline" onClick={fotorrealista} disabled={!!ocupado}>{ocupado === "render" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImageIcon className="h-4 w-4 mr-1" />}Imagem real</Button>}
           <Button size="sm" onClick={gravar} disabled={!!ocupado} data-testid="estudio-gravar">{ocupado === "gravar" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Gravar</Button>

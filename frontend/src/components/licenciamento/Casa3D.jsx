@@ -149,6 +149,83 @@ function fachadaMats(fachada, piso, cache) {
   return [fachada || "reboco_branco"];
 }
 
+const COR_COMP = { sala: 0xd9c3a0, quarto: 0xc9b79a, suite: 0xc9b79a, cozinha: 0xe3e0d8, wc: 0xcfe0ea, wc_social: 0xcfe0ea,
+  escada: 0xbdbdbd, entrada: 0xe6dccb, lavandaria: 0xd8d4e6, circulacao: 0xe9e4da, escritorio: 0xd4bf9e };
+const CORTE_H = 1.1;   // altura de corte das paredes na vista interior (como numa planta)
+
+function etiqueta(texto, sub) {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 192;
+  const g = c.getContext("2d");
+  g.fillStyle = "rgba(255,255,255,0.92)"; g.strokeStyle = "rgba(40,40,40,0.25)"; g.lineWidth = 4;
+  g.beginPath(); g.roundRect(8, 8, 496, 176, 28); g.fill(); g.stroke();
+  g.fillStyle = "#23302a"; g.textAlign = "center"; g.font = "bold 64px sans-serif"; g.fillText(texto, 256, 92);
+  g.font = "bold 52px sans-serif"; g.fillStyle = "#2f6b4f"; g.fillText(sub, 256, 156);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false }));
+  sp.scale.set(2.9, 1.09, 1); sp.renderOrder = 10;
+  return sp;
+}
+
+/** Vista interior em corte do piso `piso`: chão de cada compartimento, paredes cortadas a 1,1 m, nome e área. */
+function construirInterior(group, m, casaV, piso, cache, fach) {
+  const plan = m.plantas;
+  const p = plan?.pisos?.find(q => q.piso === piso);
+  const vx = casaV.pts.map(q => q[0]), vy = casaV.pts.map(q => q[1]);
+  const X0 = Math.min(...vx), X1 = Math.max(...vx), Y0 = Math.min(...vy), Y1 = Math.max(...vy);
+  const sh = m.piso_a_piso_m || 3.0, base = piso * sh;
+  // a planta foi desenhada para a casa gravada: se a casa mudou no Estúdio, escala-se para o contorno atual
+  const [a0, b0, a1, b1] = plan?.casa_rect || [X0, Y0, X1, Y1];
+  const sx = (X1 - X0) / ((a1 - a0) || 1), sy = (Y1 - Y0) / ((b1 - b0) || 1);
+  const tx = x => X0 + (x - a0) * sx, ty = y => Y0 + (y - b0) * sy;
+  // pisos abaixo: maciços; piso cortado: laje + paredes exteriores a 1,1 m
+  for (let k = 0; k < piso; k++) {
+    const me = new THREE.Mesh(new THREE.BoxGeometry(X1 - X0, sh, Y1 - Y0), matFor(fachadaMats(fach, k)[0], cache));
+    me.position.set((X0 + X1) / 2, k * sh + sh / 2, -(Y0 + Y1) / 2); group.add(me);
+  }
+  const laje = new THREE.Mesh(new THREE.BoxGeometry(X1 - X0, 0.2, Y1 - Y0), new THREE.MeshStandardMaterial({ color: 0xbfbab0 }));
+  laje.position.set((X0 + X1) / 2, base - 0.1, -(Y0 + Y1) / 2); group.add(laje);
+  const wallMat = matFor(fachadaMats(fach, piso)[0], cache);
+  const ext = 0.3;
+  for (const [cx, cz, w, d] of [[(X0 + X1) / 2, -(Y0 + ext / 2), X1 - X0, ext], [(X0 + X1) / 2, -(Y1 - ext / 2), X1 - X0, ext],
+    [X0 + ext / 2, -(Y0 + Y1) / 2, ext, Y1 - Y0], [X1 - ext / 2, -(Y0 + Y1) / 2, ext, Y1 - Y0]]) {
+    const me = new THREE.Mesh(new THREE.BoxGeometry(w, CORTE_H, d), wallMat);
+    me.position.set(cx, base + CORTE_H / 2, cz); me.castShadow = true; group.add(me);
+  }
+  // vãos do piso: marcados a azul no topo cortado das paredes
+  for (const o of (m.vaos || []).filter(q => (q.piso ?? 0) === piso)) {
+    const w = o.x1 - o.x0, lateral = o.fachada === "esquerda" || o.fachada === "direita";
+    const g = new THREE.Mesh(new THREE.BoxGeometry(lateral ? 0.34 : w, 0.06, lateral ? w : 0.34),
+      new THREE.MeshStandardMaterial({ color: o.tipo === "porta" ? 0x7a4b28 : 0x4a8ec2, emissive: 0x112233 }));
+    const mid = (o.x0 + o.x1) / 2;
+    if (lateral) g.position.set(o.fachada === "direita" ? X1 - ext / 2 : X0 + ext / 2, base + CORTE_H + 0.03, -(Y0 + mid));
+    else g.position.set(mid, base + CORTE_H + 0.03, o.fachada === "frente" ? -(Y0 + ext / 2) : -(Y1 - ext / 2));
+    group.add(g);
+  }
+  if (!p) return;
+  const intMat = new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.9 });
+  const vistas = new Set();
+  for (const c of p.compartimentos || []) {
+    const x0 = tx(c.x0), x1 = tx(c.x1), y0 = ty(c.y0), y1 = ty(c.y1);
+    const chao = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.1, x1 - x0 - 0.1), 0.04, Math.max(0.1, y1 - y0 - 0.1)),
+      new THREE.MeshStandardMaterial({ color: COR_COMP[c.tipo] || 0xe2ddd2, roughness: 0.8 }));
+    chao.position.set((x0 + x1) / 2, base + 0.02, -(y0 + y1) / 2); chao.receiveShadow = true; group.add(chao);
+    // paredes interiores: arestas do compartimento que não estão no contorno exterior (sem repetir as partilhadas)
+    for (const [ax, ay, bx, by] of [[x0, y0, x1, y0], [x0, y1, x1, y1], [x0, y0, x0, y1], [x1, y0, x1, y1]]) {
+      const naBorda = (ay === by && (Math.abs(ay - Y0) < 0.05 || Math.abs(ay - Y1) < 0.05)) || (ax === bx && (Math.abs(ax - X0) < 0.05 || Math.abs(ax - X1) < 0.05));
+      const k = [ax, ay, bx, by].map(v => v.toFixed(2)).join(",");
+      if (naBorda || vistas.has(k)) continue;
+      vistas.add(k);
+      const horiz = ay === by, len = horiz ? bx - ax : by - ay;
+      const me = new THREE.Mesh(new THREE.BoxGeometry(horiz ? len : 0.12, CORTE_H, horiz ? 0.12 : len), intMat);
+      me.position.set((ax + bx) / 2, base + CORTE_H / 2, -(ay + by) / 2); me.castShadow = true; group.add(me);
+    }
+    const area = c.area_util_m2 != null ? c.area_util_m2 * sx * sy : (x1 - x0) * (y1 - y0);
+    const lab = etiqueta(c.nome, `${area.toFixed(1).replace(".", ",")} m²`);
+    lab.position.set((x0 + x1) / 2, base + CORTE_H + 0.9, -(y0 + y1) / 2); group.add(lab);
+  }
+}
+
 function buildScene(scene, m, cache) {
   const group = new THREE.Group();
   const mats = m.materiais || {};
@@ -196,7 +273,9 @@ function buildScene(scene, m, cache) {
   }
 
   // volumes
+  const corte = Number.isInteger(m.corte_piso) ? m.corte_piso : null;
   for (const v of m.volumes || []) {
+    if (corte !== null && !v.anexo) { construirInterior(group, m, v, Math.min(corte, (m.pisos || 1) - 1), cache, fach); continue; }
     const vx = v.pts.map(p => p[0]), vy = v.pts.map(p => p[1]);
     const x0 = Math.min(...vx), x1 = Math.max(...vx), y0 = Math.min(...vy), y1 = Math.max(...vy);
     const L = x1 - x0, W = y1 - y0;
@@ -313,7 +392,7 @@ function buildScene(scene, m, cache) {
 
   // vãos (as mesmas posições das plantas)
   const casa = (m.volumes || []).find(v => !v.anexo);
-  if (casa) {
+  if (casa && corte === null) {
     const vy = casa.pts.map(p => p[1]); const y0 = Math.min(...vy), y1 = Math.max(...vy);
     const vx_ = casa.pts.map(p => p[0]); const cx0 = Math.min(...vx_), cx1 = Math.max(...vx_);
     // frente/tardoz: x ao longo da frente (coordenadas do terreno); esquerda/direita: x = distância desde a frente da casa
@@ -362,9 +441,19 @@ const Casa3D = forwardRef(function Casa3D({ modelo, altura = 520 }, ref) {
       const s = state.current; if (!s.camera) return;
       const c = s.centro || new THREE.Vector3();
       const d = s.raio || 25;
-      const v = { frente: [0, 0.35, 1], tardoz: [0, 0.35, -1], aerea: [0.3, 1.4, 0.6], perspetiva: [0.9, 0.45, 1.1] }[nome] || [0.9, 0.45, 1.1];
-      s.camera.position.set(c.x + v[0] * d, c.y + v[1] * d, c.z + v[2] * d);
-      s.controls.target.copy(c); s.controls.update();
+      const v = { frente: [0, 0.35, 1], tardoz: [0, 0.35, -1], aerea: [0.3, 1.4, 0.6], perspetiva: [0.9, 0.45, 1.1],
+        interior: [0.35, 0.95, 0.75] }[nome] || [0.9, 0.45, 1.1];
+      // vista interior: centrada na casa e mais perto (a casa enche o ecrã)
+      const casaG = s.scene?.getObjectByName("casa");
+      let cc = c, dd = d;
+      if (nome === "interior" && casaG) {
+        const bx = new THREE.Box3();
+        casaG.traverse(o => { if (o.isMesh && o.geometry?.type === "BoxGeometry") bx.expandByObject(o); });
+        const casaBox = bx;
+        if (!casaBox.isEmpty()) { cc = casaBox.getCenter(new THREE.Vector3()); dd = Math.max(10, casaBox.getSize(new THREE.Vector3()).length() * 1.15); }
+      }
+      s.camera.position.set(cc.x + v[0] * dd, cc.y + v[1] * dd, cc.z + v[2] * dd);
+      s.controls.target.copy(cc); s.controls.update();
     },
   }));
 
