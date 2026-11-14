@@ -3,7 +3,7 @@ import { useStudioCopy } from "@/components/assistant/studioCopy";
 import { lastConversation, rememberConversation, submittedJob } from "@/components/assistant/jobActivity";
 import "@/components/assistant/AssistantStudio.css";
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Check, FolderArchive, Activity } from "lucide-react";
 import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 import { toast } from "sonner";
@@ -159,6 +159,7 @@ export default function Assistant() {
     if (pending) h({ detail: pending });
     return () => window.removeEventListener("cp-assistant-prefill", h);
   }, []);
+  const navigateTo = useNavigate();
   const jobFollow = useConversationJobs(conv?.conversation_id, (data) => {
     if (activeConversation.current !== data.conversation_id) return;
     setConv(data);
@@ -169,6 +170,10 @@ export default function Assistant() {
       for (const action of message.actions || []) {
         if (action.tool === "update_work_draft" && action.result?.ok) window.dispatchEvent(new CustomEvent("construpilot:draft-updated", { detail: action.result.draft }));
         if (action.tool === "save_user_preference" && action.result?.ok) refreshPreferences = true;
+        // um pedido de casa / licenciamento abre logo o Estúdio de Projeto em ecrã inteiro (14/11)
+        if (["licenciamento_automatico", "licenciamento_atualizar"].includes(action.tool) && action.result?.ok && action.result?.processo_id) {
+          setTimeout(() => navigateTo(`/urbanismo/${action.result.processo_id}?estudio=1`), 400);
+        }
       }
     }
     if (refreshPreferences) api.get("/assistant/preferences").then(({ data: preferences }) => setPrefs(preferences)).catch(() => {});

@@ -132,6 +132,23 @@ class ProcessoIn(BaseModel):
     volume: Optional[VolumeIn] = None
 
 
+_COR = "^#[0-9a-fA-F]{6}$"
+
+
+class EstudioIn(BaseModel):
+    """Escolhas do Estúdio 3D (14/11): materiais e cores da casa, editáveis ao vivo."""
+    fachada: Optional[str] = Field(default=None, max_length=40)
+    cobertura: Optional[str] = Field(default=None, max_length=40)
+    caixilharia: Optional[str] = Field(default=None, max_length=40)
+    cor_fachada: Optional[str] = Field(default=None, pattern=_COR)
+    cor_cobertura: Optional[str] = Field(default=None, pattern=_COR)
+    cor_caixilharia: Optional[str] = Field(default=None, pattern=_COR)
+    telhado: Optional[str] = Field(default=None, pattern="^(duas_aguas|quatro_aguas|uma_agua|plana)$")
+    inclinacao_pct: Optional[float] = Field(default=None, ge=0, le=120)
+    beiral_m: Optional[float] = Field(default=None, ge=0, le=2)
+    vaos: Optional[list[dict]] = Field(default=None, max_length=200)
+
+
 class ProcessoPatch(BaseModel):
     title: Optional[str] = Field(default=None, min_length=2, max_length=160)
     tipo_obra: Optional[str] = Field(default=None, pattern="^(moradia_nova|ampliacao|anexo|piscina|muro)$")
@@ -141,6 +158,28 @@ class ProcessoPatch(BaseModel):
     pdm: Optional[PdmIn] = None
     parametros: Optional[dict] = None
     memoria_texto: Optional[str] = Field(default=None, max_length=12000)
+    estudio: Optional[EstudioIn] = None
+
+
+def _clean_vaos(vs: list | None) -> list | None:
+    """Vãos editados no Estúdio: só fachada/piso/tipo/coordenadas numéricas plausíveis (nunca texto livre)."""
+    if vs is None:
+        return None
+    out = []
+    for v in vs[:200]:
+        try:
+            f = v.get("fachada")
+            t = v.get("tipo")
+            x0, x1, z0, z1 = (float(v[k]) for k in ("x0", "x1", "z0", "z1"))
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue
+        if f not in ("frente", "tardoz", "esquerda", "direita") or t not in ("janela", "porta", "envidracado"):
+            continue
+        if not (0 <= x0 < x1 <= 500 and 0 <= z0 < z1 <= 200):
+            continue
+        out.append({"fachada": f, "tipo": t, "piso": int(v.get("piso") or 0), "compartimento": str(v.get("compartimento") or "")[:60],
+                    "x0": round(x0, 3), "x1": round(x1, 3), "z0": round(z0, 3), "z1": round(z1, 3)})
+    return out
 
 
 _PARAM_NUM = ("comprimento_m", "altura_m", "portao_largura_m", "portao_posicao_m", "largura_m",
@@ -212,7 +251,9 @@ def _public(d: dict) -> dict:
     if d.get("auto"):
         au = dict(d["auto"])
         au.pop("orto", None)
-        out["auto"] = {k: au.get(k) for k in ("pressupostos", "avisos", "fontes", "coerencia", "materiais", "implantacao", "programa")}
+        out["auto"] = {k: au.get(k) for k in ("pressupostos", "avisos", "fontes", "coerencia", "materiais", "implantacao", "programa",
+                                              "plantas", "vaos")}
+    out["estudio"] = d.get("estudio") or {}
     out["verificacao"] = verif
     out["checklist"] = _checklist(d, verif)
     out["pecas"] = [{"code": k, **{kk: vv for kk, vv in v.items() if kk != "storage_path"}} for k, v in (d.get("pecas") or {}).items()]
@@ -299,6 +340,20 @@ async def atualizar(pid: str, body: ProcessoPatch, user=Depends(current_user)) -
             patch[k] = data[k].strip() if isinstance(data[k], str) else data[k]
     if data.get("parametros") is not None:
         patch["parametros"] = _clean_params(data["parametros"])
+    if data.get("estudio") is not None:
+        d0 = await _owned(pid, user["user_id"])
+        est = {**(d0.get("estudio") or {}), **{k: v for k, v in data["estudio"].items() if v is not None and k != "vaos"}}
+        if data["estudio"].get("vaos") is not None:
+            est["vaos"] = _clean_vaos(data["estudio"]["vaos"])
+        patch["estudio"] = est
+        # os materiais escolhidos no Estúdio passam a ser os do processo (memória, renders, orçamento)
+        from engines.urbanismo_pt.auto import pecas_auto as PA
+        mats = dict(((d0.get("auto") or {}).get("materiais")) or {})
+        for k, tab in (("fachada", PA.MATERIAIS_FACHADA), ("cobertura", PA.MATERIAIS_COBERTURA), ("caixilharia", PA.CAIXILHARIA)):
+            if est.get(k) in tab:
+                mats[k] = est[k]
+        if d0.get("auto"):
+            patch["auto.materiais"] = mats
     await _set(pid, user["user_id"], patch)
     return _public(await _owned(pid, user["user_id"]))
 

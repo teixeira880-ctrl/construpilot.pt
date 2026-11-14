@@ -154,7 +154,8 @@ function buildScene(scene, m, cache) {
   const mats = m.materiais || {};
   const fach = mats.fachada || "reboco_branco";
   const cob = mats.cobertura || "telha_ceramica";
-  const frame = new THREE.MeshStandardMaterial({ color: CAIXILHO[mats.caixilharia] || 0x2f3235, roughness: 0.4, metalness: 0.3 });
+  const est = m.estilo || {};
+  const frame = new THREE.MeshStandardMaterial({ color: est.cor_caixilharia || CAIXILHO[mats.caixilharia] || 0x2f3235, roughness: 0.4, metalness: 0.3 });
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x2a3a46, roughness: 0.03, metalness: 0.9, envMapIntensity: 1.6, clearcoat: 1,
     clearcoatRoughness: 0.02 });
   const sh = m.piso_a_piso_m || 3.0;
@@ -205,6 +206,7 @@ function buildScene(scene, m, cache) {
       const kind = v.anexo ? (fach === "madeira" || fach === "misto_madeira_reboco" ? "madeira" : fach.startsWith("misto_granito") ? "granito" : fachadaMats(fach, 0)[0])
         : fachadaMats(fach, p)[0];
       const mat = matFor(kind, cache);
+      if (est.cor_fachada && !v.anexo) mat.color.set(est.cor_fachada);
       const geo = boxUV(new THREE.BoxGeometry(L, hPiso, W), (mat.map.userData.m || 2));
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x0 + L / 2, p * hPiso + hPiso / 2, -(y0 + W / 2));
@@ -229,12 +231,36 @@ function buildScene(scene, m, cache) {
     }
     // cobertura
     const hTop = nPisos * hPiso;
-    const roofMat = matFor(v.cobertura === "plana" ? "plana_seixo" : cob, cache);
-    if (v.cobertura === "plana" || v.altura_cobertura_m <= 0) {
+    const tipoTel = v.anexo ? v.cobertura : (est.telhado || v.cobertura);
+    const roofMat = matFor(tipoTel === "plana" ? "plana_seixo" : cob, cache);
+    if (est.cor_cobertura && tipoTel !== "plana") roofMat.color.set(est.cor_cobertura);
+    const beiralE = est.beiral_m ?? 0.5;
+    const rhE = !v.anexo && est.inclinacao_pct != null ? (Math.min(L, W) / 2) * (est.inclinacao_pct / 100) : (v.altura_cobertura_m || 2.0);
+    if (tipoTel === "quatro_aguas" && !v.anexo) {
+      // telhado de 4 águas: cumeeira ao longo do lado maior, 2 trapézios + 2 triângulos (com beiral)
+      const along = L >= W;
+      const A = (along ? L : W) / 2 + beiralE, B = (along ? W : L) / 2 + beiralE, r = Math.max(0, A - B);
+      const cx = x0 + L / 2, cz = -(y0 + W / 2), y = hTop;
+      const P = (u, w_, h) => (along ? [cx + u, y + h, cz + w_] : [cx + w_, y + h, cz + u]);
+      const c1 = P(-A, -B, 0), c2 = P(A, -B, 0), c3 = P(A, B, 0), c4 = P(-A, B, 0), r1 = P(-r, 0, rhE), r2 = P(r, 0, rhE);
+      const tris = [c1, c2, r2, c1, r2, r1, c3, c4, r1, c3, r1, r2, c2, c3, r2, c4, c1, r1];
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(tris.flat(), 3));
+      const rep = roofMat.map.userData.m || 2;
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(tris.flatMap(q => [q[0] / rep, (q[2] + q[1]) / rep]), 2));
+      g.computeVertexNormals();
+      const mesh = new THREE.Mesh(g, roofMat);
+      mesh.material.side = THREE.DoubleSide; mesh.castShadow = true; group.add(mesh);
+    } else if (tipoTel === "uma_agua" && !v.anexo) {
+      const slope = Math.hypot(W + 2 * beiralE, rhE);
+      const pl = new THREE.Mesh(boxUV(new THREE.BoxGeometry(L + 2 * beiralE, 0.08, slope), roofMat.map.userData.m || 2), roofMat);
+      pl.rotation.x = -Math.atan2(rhE, W + 2 * beiralE);
+      pl.position.set(x0 + L / 2, hTop + rhE / 2, -(y0 + W / 2)); pl.castShadow = true; group.add(pl);
+    } else if (tipoTel === "plana" || v.altura_cobertura_m <= 0) {
       const plat = new THREE.Mesh(boxUV(new THREE.BoxGeometry(L + 0.1, 0.35, W + 0.1), 1.5), matFor("betao", cache));
       plat.position.set(x0 + L / 2, hTop + 0.17, -(y0 + W / 2)); plat.castShadow = true; group.add(plat);
     } else {
-      const rh = v.altura_cobertura_m || 2.0, beiral = 0.5;
+      const rh = v.anexo ? (v.altura_cobertura_m || 2.0) : rhE, beiral = v.anexo ? 0.5 : beiralE;
       const ridgeAlongX = L >= W;
       const half = (ridgeAlongX ? W : L) / 2 + beiral;
       const len = (ridgeAlongX ? L : W) + 2 * beiral;
@@ -280,27 +306,33 @@ function buildScene(scene, m, cache) {
   const casa = (m.volumes || []).find(v => !v.anexo);
   if (casa) {
     const vy = casa.pts.map(p => p[1]); const y0 = Math.min(...vy), y1 = Math.max(...vy);
+    const vx_ = casa.pts.map(p => p[0]); const cx0 = Math.min(...vx_), cx1 = Math.max(...vx_);
+    // frente/tardoz: x ao longo da frente (coordenadas do terreno); esquerda/direita: x = distância desde a frente da casa
+    const place = (o, along, y, off) => {
+      const lateral = o.fachada === "esquerda" || o.fachada === "direita";
+      const s_ = o.fachada === "frente" || o.fachada === "direita" ? 1 : -1;
+      const out = lateral ? (o.fachada === "direita" ? cx1 : cx0) + s_ * off : (o.fachada === "frente" ? -y0 : -y1) + s_ * off;
+      return lateral ? [out, y, -(y0 + along)] : [along, y, out];
+    };
     for (const o of m.vaos || []) {
       const w = o.x1 - o.x0, h = o.z1 - o.z0;
-      const zf = o.fachada === "frente" ? -y0 + 0.02 : -y1 - 0.02;
-      const fr = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.06), frame);
-      fr.position.set((o.x0 + o.x1) / 2, o.z0 + h / 2, zf); group.add(fr);
-      const gl = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.07), o.tipo === "porta" ? new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.6 }) : glass);
-      gl.position.set((o.x0 + o.x1) / 2, o.z0 + h / 2, zf + (o.fachada === "frente" ? 0.01 : -0.01)); group.add(gl);
+      const lateral = o.fachada === "esquerda" || o.fachada === "direita";
+      const rotY = lateral ? Math.PI / 2 : 0;
+      const add = (geo, mat, along, y, off) => { const me = new THREE.Mesh(geo, mat); me.position.set(...place(o, along, y, off)); me.rotation.y = rotY; group.add(me); return me; };
+      const mid = (o.x0 + o.x1) / 2;
+      add(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.06), frame, mid, o.z0 + h / 2, 0.02);
+      add(new THREE.BoxGeometry(w, h, 0.07), o.tipo === "porta" ? new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.6 }) : glass, mid, o.z0 + h / 2, 0.03);
       if (o.tipo !== "porta") {   // caixilhos: folhas de ~1,2 m e travessa nas portadas altas
         const folhas = Math.max(1, Math.round(w / 1.2));
-        for (let k = 1; k < folhas; k++) {
-          const mu = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.09), frame);
-          mu.position.set(o.x0 + (w * k) / folhas, o.z0 + h / 2, zf); group.add(mu);
-        }
-        if (h > 1.9) { const tr = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.09), frame); tr.position.set((o.x0 + o.x1) / 2, o.z0 + h * 0.78, zf); group.add(tr); }
+        for (let k = 1; k < folhas; k++) add(new THREE.BoxGeometry(0.06, h, 0.09), frame, o.x0 + (w * k) / folhas, o.z0 + h / 2, 0.02);
+        if (h > 1.9) add(new THREE.BoxGeometry(w, 0.05, 0.09), frame, mid, o.z0 + h * 0.78, 0.02);
       }
       if (o.z0 > 0.5 && o.tipo !== "porta") {   // peitoril em pedra
-        const pe = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.05, 0.18), new THREE.MeshStandardMaterial({ color: 0xcfcac0 }));
-        pe.position.set((o.x0 + o.x1) / 2, o.z0 - 0.03, zf + (o.fachada === "frente" ? 0.08 : -0.08)); group.add(pe);
+        add(new THREE.BoxGeometry(w + 0.2, 0.05, 0.18), new THREE.MeshStandardMaterial({ color: 0xcfcac0 }), mid, o.z0 - 0.03, 0.08);
       }
     }
   }
+  group.name = "casa";
   scene.add(group);
   return group;
 }
@@ -327,15 +359,17 @@ const Casa3D = forwardRef(function Casa3D({ modelo, altura = 520 }, ref) {
     },
   }));
 
+  // 1) cena, luz, câmara e controlos: uma vez (ou quando muda a altura)
   useEffect(() => {
     const el = mount.current;
-    if (!el || !modelo) return undefined;
+    if (!el) return undefined;
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     } catch { setErro(true); return undefined; }
     const w = el.clientWidth || 800;
-    renderer.setSize(w, altura);
+    const h0 = el.clientHeight || altura;
+    renderer.setSize(w, h0);
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -346,55 +380,71 @@ const Casa3D = forwardRef(function Casa3D({ modelo, altura = 520 }, ref) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xcfe3f2);
     scene.fog = new THREE.Fog(0xcfe3f2, 80, 220);
-    const camera = new THREE.PerspectiveCamera(40, w / altura, 0.1, 600);
+    const camera = new THREE.PerspectiveCamera(40, w / h0, 0.1, 600);
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environmentIntensity = 0.45;
     renderer.toneMappingExposure = 0.9;
-    const cache = {};
-    buildScene(scene, modelo, cache);
-    // sol: azimute real a partir da orientação do terreno (fachada da frente) — sol de sul, ~45° de altura
-    const az = (modelo.azimutes || {}).frente ?? 180;
-    const rel = THREE.MathUtils.degToRad(180 - az);          // direção do sul no referencial do terreno
     const sun = new THREE.DirectionalLight(0xfff3df, 2.2);
-    sun.position.set(Math.sin(rel) * 40, 38, Math.cos(rel) * 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 150 });
-    scene.add(sun);
+    scene.add(sun); scene.add(sun.target);
     scene.add(new THREE.HemisphereLight(0xdfefff, 0x6b7a4a, 0.45));
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    state.current = { renderer, scene, camera, controls, sun, cache: {}, posta: false };
+    let raf;
+    const loop = () => { controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(loop); };
+    loop();
+    const onResize = () => { const ww = el.clientWidth || w, hh = el.clientHeight || altura; renderer.setSize(ww, hh); camera.aspect = ww / hh; camera.updateProjectionMatrix(); };
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
+    if (ro) ro.observe(el); else window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (ro) ro.disconnect(); else window.removeEventListener("resize", onResize);
+      controls.dispose();
+      Object.values(state.current.cache || {}).forEach(mt => { mt.map?.dispose(); mt.dispose(); });
+      scene.environment?.dispose(); pmrem.dispose();
+      renderer.dispose();
+      el.innerHTML = "";
+      state.current = {};
+    };
+  }, [altura]);
+
+  // 2) a casa: reconstruída a cada alteração do modelo (a câmara fica onde o utilizador a deixou)
+  useEffect(() => {
+    const s = state.current;
+    if (!s.scene || !modelo) return;
+    const old = s.scene.getObjectByName("casa");
+    if (old) {
+      s.scene.remove(old);
+      old.traverse(o => { o.geometry?.dispose(); });
+    }
+    Object.values(s.cache).forEach(mt => { mt.map?.dispose(); mt.dispose(); });
+    s.cache = {};
+    buildScene(s.scene, modelo, s.cache);
+    const az = (modelo.azimutes || {}).frente ?? 180;
+    const rel = THREE.MathUtils.degToRad(180 - az);
+    s.sun.position.set(Math.sin(rel) * 40, 38, Math.cos(rel) * 40);
     const casa = (modelo.volumes || [])[0];
     const xs = (modelo.terreno || []).map(p => p[0]), ys = (modelo.terreno || []).map(p => p[1]);
     const centro = casa ? new THREE.Vector3(
       (Math.min(...casa.pts.map(p => p[0])) + Math.max(...casa.pts.map(p => p[0]))) / 2, 3,
       -(Math.min(...casa.pts.map(p => p[1])) + Math.max(...casa.pts.map(p => p[1]))) / 2) : new THREE.Vector3();
     const raio = Math.max(18, Math.max(...xs, 20) * 0.9, Math.max(...ys, 20) * 0.6);
-    sun.target.position.copy(centro); scene.add(sun.target);
-    camera.position.set(centro.x + raio * 0.9, centro.y + raio * 0.45, centro.z + raio * 1.1);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.copy(centro);
-    controls.enableDamping = true;
-    controls.maxPolarAngle = Math.PI / 2.05;
-    controls.update();
-    state.current = { renderer, scene, camera, controls, centro, raio };
-    let raf;
-    const loop = () => { controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(loop); };
-    loop();
-    const onResize = () => { const ww = el.clientWidth || w; renderer.setSize(ww, altura); camera.aspect = ww / altura; camera.updateProjectionMatrix(); };
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      controls.dispose();
-      Object.values(cache).forEach(mt => { mt.map?.dispose(); mt.dispose(); });
-      scene.environment?.dispose(); pmrem.dispose();
-      renderer.dispose();
-      el.innerHTML = "";
-    };
-  }, [modelo, altura]);
+    s.sun.target.position.copy(centro);
+    s.centro = centro; s.raio = raio;
+    if (!s.posta) {
+      s.camera.position.set(centro.x + raio * 0.9, centro.y + raio * 0.45, centro.z + raio * 1.1);
+      s.controls.target.copy(centro); s.controls.update();
+      s.posta = true;
+    }
+  }, [modelo]);
 
   if (erro) return <div className="p-6 text-sm text-muted-foreground border rounded">O seu navegador não suporta 3D (WebGL).</div>;
-  return <div ref={mount} style={{ width: "100%", height: altura }} className="rounded-lg overflow-hidden border" data-testid="casa-3d" />;
+  return <div ref={mount} style={{ width: "100%", height: altura === "100%" ? "100%" : altura }} className="rounded-lg overflow-hidden border" data-testid="casa-3d" />;
 });
 
 export default Casa3D;

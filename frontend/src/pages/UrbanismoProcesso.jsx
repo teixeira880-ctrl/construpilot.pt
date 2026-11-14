@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowLeft, FileDown, Upload, Check, Loader2, Sparkles, ShieldCheck, FileText, Building2, Plus, Trash2,
@@ -8,6 +8,7 @@ import {
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import EstudioProjeto from "@/components/estudio/EstudioProjeto";
 
 const EDIFICIO = ["moradia_nova", "ampliacao", "anexo"];
 const VOL_DEF = { shape: "rectangle", plot_l_m: 20, plot_w_m: 15, footprint_l_m: 10, footprint_w_m: 8, wing_l_m: 0, wing_w_m: 0, levels: 2,
@@ -54,6 +55,7 @@ function Field({ label, unit, children }) {
 export default function UrbanismoProcesso() {
   const { id } = useParams();
   const nav = useNavigate();
+  const [sp] = useSearchParams();
   const [cfg, setCfg] = useState(null);
   const [d, setD] = useState(null);
   const [busy, setBusy] = useState("");
@@ -89,11 +91,12 @@ export default function UrbanismoProcesso() {
     finally { setBusy(""); }
   };
 
-  const saveVolume = async () => {
+  const saveVolume = async (volIn) => {
+    const v0 = volIn && volIn.footprint_l_m !== undefined ? volIn : vol;   // chamado pelo botão (evento) ou pelo Estúdio (volume)
     setBusy("volume");
-    const body = { ...vol, levels: Number(vol.levels) || 1, n_fogos: numOrNull(vol.n_fogos), lugares_previstos: numOrNull(vol.lugares_previstos),
-      area_construcao_m2: numOrNull(vol.area_construcao_m2), distancia_alinhamento_fronteiro_m: numOrNull(vol.distancia_alinhamento_fronteiro_m),
-      blocks: (vol.blocks || []).map((b) => ({ name: b.name || "Anexo", l_m: Number(b.l_m) || 1, w_m: Number(b.w_m) || 1, x_m: Number(b.x_m) || 0, y_m: Number(b.y_m) || 0, h_m: numOrNull(b.h_m) })) };
+    const body = { ...v0, levels: Number(v0.levels) || 1, n_fogos: numOrNull(v0.n_fogos), lugares_previstos: numOrNull(v0.lugares_previstos),
+      area_construcao_m2: numOrNull(v0.area_construcao_m2), distancia_alinhamento_fronteiro_m: numOrNull(v0.distancia_alinhamento_fronteiro_m),
+      blocks: (v0.blocks || []).map((b) => ({ name: b.name || "Anexo", l_m: Number(b.l_m) || 1, w_m: Number(b.w_m) || 1, x_m: Number(b.x_m) || 0, y_m: Number(b.y_m) || 0, h_m: numOrNull(b.h_m) })) };
     try { const { data } = await api.post(`/urbanismo/processos/${id}/volume`, body); apply(data); setTs(Date.now()); toast.success("Volumes gravados — peças desenhadas e verificação atualizadas."); }
     catch (e) { const det = e?.response?.data?.detail; toast.error(Array.isArray(det) ? "Valores fora dos limites — verifique as dimensões." : det || "Gravação impossível."); }
     finally { setBusy(""); }
@@ -158,6 +161,12 @@ export default function UrbanismoProcesso() {
   const procCls = rj.procedimento === "isento" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20" : rj.procedimento === "comunicacao_previa" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" : "border-amber-500 bg-amber-50 dark:bg-amber-950/20";
 
   return (
+    <>
+    {isEdif && (
+      <div className="max-w-[1500px] mx-auto px-4 pt-6" data-testid="urb-estudio">
+        <EstudioProjeto processoId={id} processo={d} vol={vol} setVol={setVol} gravarVolume={saveVolume} inicialGrande={sp.get("estudio") === "1"} />
+      </div>
+    )}
     <div className="max-w-4xl mx-auto px-4 py-6 grid gap-5" data-testid="urb-processo-page">
       <button onClick={() => nav("/urbanismo")} className="flex items-center gap-1 text-sm text-muted-foreground w-fit" data-testid="urb-voltar"><ArrowLeft className="h-4 w-4" /> Os meus processos</button>
       <header className="grid gap-1">
@@ -393,5 +402,6 @@ export default function UrbanismoProcesso() {
         <Button variant="ghost" className="text-red-600 shrink-0" onClick={remover} data-testid="urb-eliminar"><Trash2 className="h-4 w-4" /> Eliminar</Button>
       </div>
     </div>
+    </>
   );
 }

@@ -188,6 +188,7 @@ function Processo({ pid }) {
           {modelo && <Casa3D ref={casa} modelo={modelo} altura={460} />}
           <div className="p-3 flex flex-wrap gap-2 items-center border-t">
             {["perspetiva", "frente", "tardoz", "aerea"].map(n => <Button key={n} size="sm" variant="outline" onClick={() => casa.current?.vista(n)}>{n === "aerea" ? "Aérea" : n[0].toUpperCase() + n.slice(1)}</Button>)}
+            <Link to={`/urbanismo/${pid}?estudio=1`}><Button size="sm" variant="default" data-testid="lic-auto-estudio">Abrir no Estúdio (editar ao vivo)</Button></Link>
             <Button size="sm" onClick={fotorrealista} disabled={aRender} data-testid="lic-auto-render">
               {aRender ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImageIcon className="h-4 w-4 mr-1" />}Imagem fotorrealista
             </Button>
