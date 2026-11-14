@@ -133,13 +133,62 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const mudaVao = (i, k, val) => { guardar(); setVaos((vs) => vs.map((o, j) => (j === i ? { ...o, [k]: val } : o))); };
   const desfazer = () => setHist((h) => { const u = h[h.length - 1]; if (!u) return h; setVol(u.vol); setEstilo(u.estilo); setVaos(u.vaos); return h.slice(0, -1); });
 
-  const enviar = (texto) => {
+  // Vãos propostos pela IA → coordenadas relativas à casa (como os acrescentados à mão)
+  const vaosIA = (lista, d, v) => {
+    let vs = lista.map((o, i) => {
+      const a = (d.vaos?.alterar || []).find((x) => x.indice === i);
+      if (!a) return o;
+      const c = (o.x0 + o.x1) / 2, w = a.largura_m ?? (o.x1 - o.x0);
+      return { ...o, x0: c - w / 2, x1: c + w / 2, ...(a.altura_m ? { z1: o.z0 + a.altura_m } : {}), ...(a.tipo ? { tipo: a.tipo } : {}) };
+    }).filter((_, i) => !(d.vaos?.remover || []).includes(i));
+    for (const n of d.vaos?.acrescentar || []) {
+      const comp = ["esquerda", "direita"].includes(n.fachada) ? Number(v.footprint_w_m) : Number(v.footprint_l_m);
+      const w = Math.min(n.largura_m, Math.max(0.6, comp - 0.8));
+      const x0 = n.posicao === "esquerda" ? 0.6 : n.posicao === "direita" ? Math.max(0.6, comp - 0.6 - w) : Math.max(0.4, comp / 2 - w / 2);
+      vs.push({ fachada: n.fachada, piso: n.piso, tipo: n.tipo, compartimento: n.compartimento || "", x0, x1: x0 + w,
+        z0: n.peitoril_m, z1: n.peitoril_m + n.altura_m, _rel: true });
+    }
+    return vs;
+  };
+
+  const enviar = async (texto) => {
     const t = (texto ?? cmd).trim();
-    if (!t) return;
-    const r = aplicarComando(t, { vol, estilo, vaos });
-    if (!r.falhou) { guardar(); setVol(r.vol); setEstilo(r.estilo); setVaos(r.vaos); }
-    setLog((l) => [...l, { eu: t, resp: r.falhou ? `Não percebi. Experimente, por exemplo: «${EXEMPLOS[Math.floor(Math.random() * EXEMPLOS.length)]}».` : `Feito: ${r.feito.join(" · ")}.` }]);
+    if (!t || ocupado === "ia") return;
     setCmd("");
+    const r = aplicarComando(t, { vol, estilo, vaos });
+    const simples = !r.falhou && t.split(/\s+/).length <= 8;
+    if (simples) {
+      guardar(); setVol(r.vol); setEstilo(r.estilo); setVaos(r.vaos);
+      setLog((l) => [...l, { eu: t, resp: `Feito: ${r.feito.join(" · ")}.` }]);
+      return;
+    }
+    // pedido livre ou composto → Assistente IA (alterações validadas no servidor)
+    setOcupado("ia");
+    setLog((l) => [...l, { eu: t, resp: "A pensar…", pendente: true }]);
+    let resp;
+    try {
+      const { vaos: _x, ...est } = estilo;
+      const { data } = await api.post(`/urbanismo-auto/processos/${processoId}/estudio/ia`,
+        { texto: t, vol, estilo: est, vaos, historico: log.filter((m) => !m.pendente).slice(-6).map(({ eu, resp: rr }) => ({ eu, resp: rr })) },
+        { timeout: 90000 });
+      if (data.erro) {
+        if (!r.falhou) { guardar(); setVol(r.vol); setEstilo(r.estilo); setVaos(r.vaos); resp = `Feito: ${r.feito.join(" · ")}.`; }
+        else resp = data.erro;
+      } else {
+        if (data.alterou) {
+          guardar();
+          const v2 = { ...vol, ...data.vol };
+          setVol(v2); setEstilo((e) => ({ ...e, ...data.estilo })); setVaos((vs) => vaosIA(vs, data, v2));
+        }
+        resp = (data.resposta || (data.alterou ? "Feito." : "Sem alterações.")) +
+          (data.recusas?.length ? ` Não aplicado: ${data.recusas.join("; ")}.` : "");
+      }
+    } catch (e) {
+      if (!r.falhou) { guardar(); setVol(r.vol); setEstilo(r.estilo); setVaos(r.vaos); resp = `Feito: ${r.feito.join(" · ")}.`; }
+      else resp = "O assistente não respondeu. Tente de novo ou use um comando simples (ex.: «telhado de 4 águas»).";
+    }
+    setLog((l) => [...l.filter((m) => !m.pendente), { eu: t, resp }]);
+    setOcupado("");
   };
 
   const gravar = async () => {
@@ -207,12 +256,12 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 text-sm">
         {tab === "assistente" && (
           <>
-            <p className="text-xs text-muted-foreground">Diga o que quer mudar e a casa muda logo. Ex.: {EXEMPLOS.slice(0, 4).map((x) => `«${x}»`).join(", ")}.</p>
+            <p className="text-xs text-muted-foreground">Diga o que quer mudar, como diria a um arquiteto — «quero a casa mais moderna, térrea, com uma sala virada a sul toda envidraçada» — e a casa muda logo (pode desfazer). Pedidos curtos aplicam-se de imediato: {EXEMPLOS.slice(0, 3).map((x) => `«${x}»`).join(", ")}.</p>
             <div className="space-y-2" data-testid="estudio-log">
               {log.map((m, i) => (
                 <div key={i} className="space-y-1">
                   <div className="ml-8 rounded-lg bg-primary/10 px-3 py-2">{m.eu}</div>
-                  <div className="mr-8 rounded-lg bg-muted px-3 py-2">{m.resp}</div>
+                  <div className={`mr-8 rounded-lg bg-muted px-3 py-2 ${m.pendente ? "animate-pulse" : ""}`}>{m.resp}</div>
                 </div>
               ))}
             </div>
@@ -312,8 +361,10 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
         )}
       </div>
       <div className="border-t p-2 flex gap-2">
-        <Input value={cmd} onChange={(e) => setCmd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} placeholder="Ex.: fachada em granito e telhado de 4 águas" data-testid="estudio-cmd" />
-        <Button size="icon" onClick={() => enviar()} aria-label="Enviar"><Send className="h-4 w-4" /></Button>
+        <Input value={cmd} onChange={(e) => setCmd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} placeholder="Ex.: quero a casa mais moderna, térrea, com a sala virada a sul toda envidraçada" data-testid="estudio-cmd" />
+        <Button size="icon" onClick={() => enviar()} aria-label="Enviar" disabled={ocupado === "ia"}>
+          {ocupado === "ia" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
       </div>
     </div>
   );

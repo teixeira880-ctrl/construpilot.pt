@@ -218,8 +218,17 @@ function buildScene(scene, m, cache) {
       }
     }
     if (fach === "misto_madeira_reboco" && !v.anexo) {   // painel ripado na fachada do sol
-      const pan = new THREE.Mesh(boxUV(new THREE.BoxGeometry(L * 0.35, nPisos * sh * 0.95, 0.06), 1.5), matFor("madeira", cache));
-      pan.position.set(x0 + L * 0.2, nPisos * sh / 2, -(y0) + 0.04); group.add(pan);
+      // o painel ocupa o maior troço LIVRE da frente (nunca tapa um vão), até 35 % da fachada
+      const ocup = (m.vaos || []).filter(o => o.fachada === "frente").map(o => [o.x0 - 0.25, o.x1 + 0.25]).sort((a, b) => a[0] - b[0]);
+      let livre = [], cur = x0 + 0.3;
+      for (const [a, b] of ocup) { if (a > cur) livre.push([cur, Math.min(a, x0 + L - 0.3)]); cur = Math.max(cur, b); }
+      if (cur < x0 + L - 0.3) livre.push([cur, x0 + L - 0.3]);
+      const seg = livre.filter(([a, b]) => b - a >= 1.2).sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0];
+      if (seg) {
+        const pw = Math.min(seg[1] - seg[0], L * 0.35);
+        const pan = new THREE.Mesh(boxUV(new THREE.BoxGeometry(pw, nPisos * sh * 0.95, 0.06), 1.5), matFor("madeira", cache));
+        pan.position.set(seg[0] + pw / 2, nPisos * sh / 2, -(y0) + 0.04); group.add(pan);
+      }
     }
     // portão da garagem
     if (v.anexo) {

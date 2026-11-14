@@ -365,6 +365,22 @@ async def aplicar_variante(pid: str, vid: str, user=Depends(current_user)) -> di
     return {"ok": True, "variante": vid, "titulo": v["titulo"], "verificacao": {"procedimento": verif["rjue"]["procedimento"]}}
 
 
+class EstudioIaIn(BaseModel):
+    texto: str = Field(min_length=1, max_length=1500)
+    vol: Dict[str, Any] = Field(default_factory=dict)
+    estilo: Dict[str, Any] = Field(default_factory=dict)
+    vaos: List[Dict[str, Any]] = Field(default_factory=list, max_length=200)
+    historico: List[Dict[str, str]] = Field(default_factory=list, max_length=20)
+
+
+@router.post("/processos/{pid}/estudio/ia")
+async def estudio_ia(pid: str, body: EstudioIaIn, user=Depends(current_user)) -> dict:
+    """Assistente IA do Estúdio: pedido livre → alterações validadas (o Estúdio aplica; nada é gravado aqui)."""
+    from engines.urbanismo_pt.auto import estudio_ia as EIA
+    await _owned(pid, user["user_id"])
+    return await EIA.interpretar(body.texto, {"vol": body.vol, "estilo": body.estilo, "vaos": body.vaos}, body.historico)
+
+
 @router.get("/processos/{pid}/modelo3d")
 async def get_modelo3d(pid: str, user=Depends(current_user)) -> dict:
     return modelo3d(await _owned(pid, user["user_id"]))
