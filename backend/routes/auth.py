@@ -21,6 +21,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr
+    phone: str          # obrigatório (14/11, Martinho) — formato validado, sem SMS
     password: str
     referred_by_code: str | None = None
     lang: str | None = None
@@ -80,6 +81,8 @@ def _public(u: dict) -> dict:
                                   "doc_langs")}
     out["has_password"] = bool(u.get("password_hash"))
     out["email_verified"] = bool(u.get("email_verified"))
+    # contas antigas / Google sem telefone → o frontend pede-o antes de continuar (as contas de demonstração ficam isentas)
+    out["phone_required"] = not u.get("phone") and not u.get("is_demo")
     return out
 
 
@@ -145,6 +148,11 @@ async def _record_failed_login(identifier: str) -> None:
 @limiter.limit("5/minute")
 async def register(body: RegisterIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
+    from core.phone import normalizar as _norm_phone
+    try:
+        phone = _norm_phone(body.phone, body.lang)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Telefone obrigatório: indique um número válido com indicativo (ex.: +351 912 345 678)")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Já existe uma conta com este email")
     if len(body.password) < 6:
@@ -159,7 +167,7 @@ async def register(body: RegisterIn, request: Request, response: Response) -> di
             raise HTTPException(status_code=400, detail="NIF/NIPC inválido (9 dígitos necessários)")
     from engines.email_i18n import norm_lang
     user = {
-        "user_id": new_user_id(), "email": email, "name": body.name,
+        "user_id": new_user_id(), "email": email, "name": body.name, "phone": phone,
         "password_hash": hash_password(body.password), "picture": None,
         "role": "user", "plan": "free", "auth_provider": "password",
         "account_type": account_type,
@@ -367,7 +375,11 @@ async def update_profile(body: ProfileIn, user=Depends(current_user)) -> dict:
             raise HTTPException(status_code=400, detail="Nome: entre 2 e 80 caracteres")
         updates["name"] = name
     if body.phone is not None:
-        updates["phone"] = body.phone.strip()[:20] or None
+        from core.phone import normalizar as _norm_phone
+        try:
+            updates["phone"] = _norm_phone(body.phone, user.get("lang"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Telefone obrigatório: indique um número válido com indicativo (ex.: +351 912 345 678)")
     if body.lang is not None:
         from engines.email_i18n import norm_lang
         updates["lang"] = norm_lang(body.lang)

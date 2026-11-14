@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from core.db import db
+from core.demo_accounts import NOT_DEMO, is_demo_email
 from core.security import admin_user, current_user
 from core.account_purge import purge_user_data
 from engines.catalog import LOTS, REGIONS
@@ -40,7 +41,7 @@ async def admin_inbox(hours: int = 168) -> dict:
     leads = await leads_cur.to_list(50)
 
     # Nouveaux utilisateurs (>= depuis N heures)
-    users_cur = db.users.find({"created_at": {"$gte": since_iso}},
+    users_cur = db.users.find({"created_at": {"$gte": since_iso}, **NOT_DEMO},
                                 {"_id": 0, "user_id": 1, "email": 1, "name": 1,
                                  "role": 1, "plan": 1, "created_at": 1}
                                 ).sort("created_at", -1).limit(50)
@@ -97,7 +98,7 @@ async def admin_inbox(hours: int = 168) -> dict:
 
 @router.get("/stats")
 async def stats() -> dict:
-    users = await db.users.count_documents({})
+    users = await db.users.count_documents(NOT_DEMO)
     projects = await db.projects.count_documents({})
     leads = await db.leads.count_documents({})
     quotes = await db.quote_analyses.count_documents({})
@@ -120,7 +121,7 @@ async def drill_metric(metric: str) -> dict:
     Retourne { title, description, columns:[{key,label}], rows:[...] } avec les coordonnées
     (nom, e-mail, téléphone, société) pour cibler une campagne publicitaire.
     """
-    users = await db.users.find({}, {"_id": 0, "user_id": 1, "name": 1, "email": 1,
+    users = await db.users.find(NOT_DEMO, {"_id": 0, "user_id": 1, "name": 1, "email": 1,
                                       "plan": 1, "role": 1, "phone": 1, "city": 1,
                                       "brand_city": 1, "company": 1, "brand_company_name": 1,
                                       "brand_phone": 1, "created_at": 1}).to_list(10000)
@@ -157,7 +158,7 @@ async def drill_metric(metric: str) -> dict:
                  "created_at": u.get("created_at")} for u in users]
         rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
         return {"title": "Utilizadores", "description": "Todas as contas registadas — público-alvo publicitário direto.",
-                "conditions": ["Coleção `users`, sem filtro de data: total acumulado desde a abertura", "Todas as funções (particular, profissional, membro de equipa, admin) e todos os planos, contas não verificadas incluídas", "As contas eliminadas deixam de ser contadas", "Cada linha = uma conta (nunca duplicada por e-mail: o e-mail é único)"],
+                "conditions": ["Coleção `users`, sem filtro de data: total acumulado desde a abertura", "Todas as funções (particular, profissional, membro de equipa, admin) e todos os planos, contas não verificadas incluídas", "As contas eliminadas deixam de ser contadas", "Cada linha = uma conta (nunca duplicada por e-mail: o e-mail é único)", "Excluídas: contas de demonstração (empresa fictícia Teste Websummit)"],
                 "columns": CONTACT_COLS + [{"key": "role", "label": "Função"},
                                            {"key": "city", "label": "Cidade"},
                                            {"key": "last_seen", "label": "Última atividade"},
@@ -292,7 +293,7 @@ async def drill_inbox(metric: str, hours: int = 168) -> dict:
                           "description": (l.get("description") or "")[:160]} for l in rows]}
 
     if metric == "new_users":
-        rows = await db.users.find({"created_at": {"$gte": since}}, {"_id": 0, "email": 1, "name": 1, "role": 1, "plan": 1, "created_at": 1,
+        rows = await db.users.find({"created_at": {"$gte": since}, **NOT_DEMO}, {"_id": 0, "email": 1, "name": 1, "role": 1, "plan": 1, "created_at": 1,
                                                                         "brand_company_name": 1, "company": 1, "city": 1, "brand_city": 1, "email_verified": 1}).sort("created_at", -1).to_list(50)
         return {**base, "title": f'Novas contas — {win}',
                 "description": "Contas criadas no período (registo por e-mail, Google ou convite de equipa), todas as funções e planos.",
@@ -368,7 +369,7 @@ async def admin_bulk_email(body: BulkEmailBody, admin=Depends(admin_user)) -> di
     emails: list[str] = []
     for e in body.recipients or []:
         e = (e or "").strip().lower()
-        if e and e not in seen and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+        if e and e not in seen and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e) and not is_demo_email(e):
             seen.add(e)
             emails.append(e)
     emails = emails[:200]
@@ -425,7 +426,7 @@ def _parse_recipients(raw: str) -> list[str]:
     out: list[str] = []
     for p in parts:
         e = p.strip().lower()
-        if e and e not in seen and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+        if e and e not in seen and re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e) and not is_demo_email(e):
             seen.add(e)
             out.append(e)
     return out[:200]
@@ -638,7 +639,7 @@ async def assistant_queue_unstick(older_than_minutes: int = 10) -> dict:
 
 @router.get("/users")
 async def users():
-    return await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
+    return await db.users.find(NOT_DEMO, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
 
 
 class UserIn(BaseModel):

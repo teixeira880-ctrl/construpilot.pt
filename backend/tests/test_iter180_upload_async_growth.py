@@ -234,6 +234,7 @@ def test_f_register_with_attribution(admin_tok):
     email = f"test.iter180.{unique}@example.com"
     payload = {
         "email": email,
+        "phone": "+351912000000",
         "password": "TestIter180!",
         "name": "Iter180 Test",
         "attribution": {

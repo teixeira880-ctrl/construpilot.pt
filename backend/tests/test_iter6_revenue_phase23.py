@@ -92,7 +92,7 @@ def test_referral_apply_with_other_user_code(demo_token, admin_token):
     # Create a fresh user
     email = f"test_iter6_{int(time.time())}@example.com"
     r = requests.post(f"{API}/auth/register",
-                      json={"email": email, "password": "Passw0rd!", "name": "Iter6"},
+                      json={"phone": "+351912000000", "email": email, "password": "Passw0rd!", "name": "Iter6"},
                       timeout=20)
     assert r.status_code in (200, 201), r.text
     new_token = r.json().get("token") or r.json().get("access_token") or _login({"email": email, "password": "Passw0rd!"})

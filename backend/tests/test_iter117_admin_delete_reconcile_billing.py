@@ -50,7 +50,7 @@ class TestAdminDelete:
         suffix = uuid.uuid4().hex[:8]
         email = f"TEST_del_{suffix}@construpilot.fr"
         r = requests.post(f"{API}/auth/register", json={
-            "email": email, "password": "TempPwd2026!", "name": "Test Delete",
+            "phone": "+351912000000", "email": email, "password": "TempPwd2026!", "name": "Test Delete",
             "account_type": "particulier"
         }, timeout=15)
         assert r.status_code in (200, 201), r.text

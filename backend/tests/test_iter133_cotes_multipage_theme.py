@@ -78,7 +78,7 @@ def test_report_all_404_no_check(pro_client):
     email = f"test_iter133_{uuid.uuid4().hex[:8]}@construpilot.fr"
     s2 = requests.Session()
     s2.headers.update(HEADERS)
-    r = s2.post(f"{API}/auth/register", json={"name": "t", "email": email, "password": "abcdef1"})
+    r = s2.post(f"{API}/auth/register", json={"name": "t", "phone": "+351912000000", "email": email, "password": "abcdef1"})
     assert r.status_code == 200, r.text
     tok = r.json()["token"]
     s2.headers.update({"Authorization": f"Bearer {tok}"})
@@ -106,7 +106,7 @@ def test_cotes_latest_fresh_user():
     email = f"test_iter133_fresh_{uuid.uuid4().hex[:8]}@construpilot.fr"
     s = requests.Session()
     s.headers.update(HEADERS)
-    r = s.post(f"{API}/auth/register", json={"name": "fresh", "email": email, "password": "abcdef1"})
+    r = s.post(f"{API}/auth/register", json={"name": "fresh", "phone": "+351912000000", "email": email, "password": "abcdef1"})
     assert r.status_code == 200
     tok = r.json()["token"]
     s.headers.update({"Authorization": f"Bearer {tok}"})

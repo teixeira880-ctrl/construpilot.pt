@@ -43,7 +43,7 @@ def _make_throwaway(role: str = "user"):
     pendant que d'autres tests les utilisent en parallèle (xdist)."""
     email = f"jetable76-{uuid.uuid4().hex[:8]}@test.fr"
     r = requests.post(f"{API}/auth/register",
-                      json={"name": "Jetable 76", "email": email, "password": "Jetable2026!"},
+                      json={"name": "Jetable 76", "phone": "+351912000000", "email": email, "password": "Jetable2026!"},
                       timeout=30)
     assert r.status_code == 200, r.text
     if role == "admin":

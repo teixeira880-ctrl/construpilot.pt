@@ -533,7 +533,10 @@ async def _seed_impl():
     # Web Summit demo (PT) — fail-closed: só cria contas se env tiver as passwords.
     # Corre SEMPRE no startup (não condicional a SEED_DEMO_DATA) porque é a conta
     # pública usada no stand do evento. Se segredos ausentes, log neutro + skip.
+    # 14/11 (Martinho): as contas do stand foram apagadas e não voltam a ser criadas — só com WEBSUMMIT_STAND_SEED=on.
     try:
+        if (os.environ.get("WEBSUMMIT_STAND_SEED") or "off").lower() != "on":
+            raise RuntimeError("desligado (WEBSUMMIT_STAND_SEED≠on)")
         from core.websummit_seed_pt import seed_websummit_demo_pt
         _ws_summary = await seed_websummit_demo_pt(
             db, hash_password, verify_password, new_user_id
@@ -547,6 +550,12 @@ async def _seed_impl():
         logger.info("client grants: %s", await apply_client_grants(db, hash_password, new_user_id))
     except Exception as e:  # noqa: BLE001
         logger.warning("client grants skipped: %s", e)
+    # Contas de testes automáticos e do stand: apagadas uma vez; empresa fictícia marcada como demonstração (fora das listas).
+    try:
+        from core.demo_accounts import run_on_startup as _demo_accounts
+        logger.info("demo/test accounts: %s", await _demo_accounts(db))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("demo/test accounts skipped: %s", e)
     # Empresa de demonstração « Teste Websummit » (Pro Business completa, PT/FR/UK/US) — semeada uma
     # única vez através da própria API, em tarefa separada para não atrasar o resto do arranque.
     try:

@@ -38,6 +38,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { MobileTabBar } from "@/components/pwa/MobileTabBar";
 import CookieConsent from "@/components/CookieConsent";
+import PhoneGate from "@/components/PhoneGate";
 import StandBar from "@/components/StandBar";
 import { DomTranslator } from "@/components/DomTranslator";
 
@@ -509,6 +510,7 @@ function App() {
                         <MicFab />
                         <InstallPrompt />
                         <CookieConsent />
+                        <PhoneGate />
                         <StandBar />
                         <DomTranslator />
                         <Toaster position="top-right" richColors />

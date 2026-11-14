@@ -65,7 +65,7 @@ def new_user():
     sess = _fresh_session()
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     r = sess.post(f"{API}/auth/register",
-                  json={"name": "Testeur", "email": email, "password": "Passw0rd!"}, timeout=30)
+                  json={"name": "Testeur", "phone": "+351912000000", "email": email, "password": "Passw0rd!"}, timeout=30)
     assert r.status_code == 200, r.text
     data = r.json()
     return {"email": email, "token": data["token"], "user": data["user"]}

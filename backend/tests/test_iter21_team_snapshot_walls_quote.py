@@ -45,7 +45,7 @@ def _login(creds):
 def _register(email, name="Test User", password=TEST_PASSWORD):
     r = requests.post(
         f"{API}/auth/register",
-        json={"email": email, "name": name, "password": password},
+        json={"phone": "+351912000000", "email": email, "name": name, "password": password},
         timeout=30,
     )
     assert r.status_code == 200, f"register failed: {r.text}"

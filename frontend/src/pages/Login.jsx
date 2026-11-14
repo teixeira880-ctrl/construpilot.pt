@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Hammer, ArrowLeft, Gift } from "lucide-react";
+import { validPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [tfa, setTfa] = useState(() => location.state?.twoFactor || null);
   const [tfaCode, setTfaCode] = useState("");
-  const [form, setForm] = useState({ name: "", email: params.get("email") || "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
+  const [form, setForm] = useState({ name: "", email: params.get("email") || "", phone: "", password: "", ref: refCodeFromUrl, account_type: "particulier", siret: "", kbis: null, decennale: null });
   const [demoStatus, setDemoStatus] = useState({ pro: false, particular: false });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -80,9 +81,13 @@ export default function Login() {
             setBusy(false); return;
           }
         }
+        if (!validPhone(form.phone)) {
+          toast.error(t("login.phone_invalid"));
+          setBusy(false); return;
+        }
         sessionStorage.setItem("construpilot_new_signup", "1");
         await register(form.name, form.email, form.password, ref || null,
-                       { account_type: acct, siret: isPro ? form.siret : null });
+                       { account_type: acct, siret: isPro ? form.siret : null, phone: form.phone.trim() });
         if (isPro) {
           const fd = new FormData();
           fd.append("kbis", form.kbis);
@@ -329,6 +334,11 @@ export default function Login() {
                 <div className="grid gap-2">
                   <Label htmlFor="register-email-input">{t("login.email")}</Label>
                   <Input id="register-email-input" required type="email" value={form.email} onChange={set("email")} data-testid="register-email-input" className="rounded-sm h-11" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="register-phone-input">{t("login.phone")}</Label>
+                  <Input id="register-phone-input" required type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={set("phone")}
+                         placeholder="+351 912 345 678" data-testid="register-phone-input" className="rounded-sm h-11" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="register-password-input">{t("login.password")}</Label>

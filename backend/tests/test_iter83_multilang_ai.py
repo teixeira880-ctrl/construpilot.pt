@@ -75,7 +75,7 @@ class TestLanguage:
     def test_register_with_lang(self):
         email = f"test_lang_{uuid.uuid4().hex[:8]}@example.com"
         r = requests.post(f"{BASE_URL}/api/auth/register", json={
-            "email": email, "password": "TestPass123!", "name": "Test Lang", "lang": "de"
+            "phone": "+351912000000", "email": email, "password": "TestPass123!", "name": "Test Lang", "lang": "de"
         })
         assert r.status_code in (200, 201), r.text
         user = r.json().get("user", {})

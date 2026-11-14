@@ -88,7 +88,7 @@ async def revenue_kpis(admin=Depends(admin_user)) -> dict:
     # Funnel (30 derniers jours)
     d30 = now - timedelta(days=30)
     d30_iso = _iso(d30)
-    signups_30 = await db.users.count_documents({"created_at": {"$gte": d30_iso}})
+    signups_30 = await db.users.count_documents({"created_at": {"$gte": d30_iso}, "is_demo": {"$ne": True}})
     trials_30 = await db.entitlements.count_documents(
         {"status": "trialing", "started_at": {"$gte": d30_iso}})
     paid_30 = await db.payment_transactions.count_documents(

@@ -28,7 +28,7 @@ def _register():
     s = _sess()
     email = f"iter7_{uuid.uuid4().hex[:8]}@example.com"
     r = s.post(f"{API}/auth/register",
-               json={"name": "Iter7 User", "email": email, "password": "Passw0rd!"}, timeout=30)
+               json={"name": "Iter7 User", "phone": "+351912000000", "email": email, "password": "Passw0rd!"}, timeout=30)
     assert r.status_code == 200, r.text
     return {"email": email, "token": r.json()["token"], "user": r.json()["user"]}
 

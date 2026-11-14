@@ -113,7 +113,7 @@ def test_seed_defaults_new_user_creates_6():
     import secrets
     email = f"test_iter58_{secrets.token_hex(4)}@construpilot.fr"
     reg = requests.post(f"{BASE_URL}/api/auth/register",
-                        json={"email": email, "password": "Testpass2026!",
+                        json={"phone": "+351912000000", "email": email, "password": "Testpass2026!",
                               "name": "Iter58 Seed Test"}, timeout=10)
     if reg.status_code != 200:
         pytest.skip(f"Registration failed: {reg.status_code} {reg.text}")

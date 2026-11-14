@@ -150,7 +150,7 @@ def test_einv_unreconcile_cleanup(pro_headers):
 def _register_disposable():
     email = f"TEST_purge_{uuid.uuid4().hex[:8]}@construpilot.fr"
     r = requests.post(f"{API}/auth/register", json={
-        "email": email, "password": "TestPurge2026!",
+        "phone": "+351912000000", "email": email, "password": "TestPurge2026!",
         "name": "Purge Tester", "account_type": "particulier",
     }, timeout=15)
     assert r.status_code == 200, r.text

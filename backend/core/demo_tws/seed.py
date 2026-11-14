@@ -987,7 +987,13 @@ async def _step_tools(ctx):
 
 async def run_seed(app, db, hash_password, new_user_id, force: bool = False) -> dict:
     try:
-        return await seed_teste_websummit(app, db, hash_password, new_user_id, force=force)
+        out = await seed_teste_websummit(app, db, hash_password, new_user_id, force=force)
+        try:  # empresa fictícia: nunca conta como contas oficiais (14/11, Martinho)
+            from core.demo_accounts import mark_demo
+            await mark_demo(db)
+        except Exception:  # noqa: BLE001
+            logger.warning("demo_tws mark_demo failed", exc_info=True)
+        return out
     except Exception as exc:  # noqa: BLE001
         logger.exception("demo_tws seed failed")
         await db.demo_seed_state.update_one({"_id": STATE_ID}, {"$set": {"status": "error", "error": str(exc)[:500]}}, upsert=True)

@@ -46,7 +46,7 @@ def other_token():
     s = _sess()
     email = f"other_{uuid.uuid4().hex[:8]}@example.com"
     r = s.post(f"{API}/auth/register",
-               json={"name": "Autre User", "email": email, "password": "Passw0rd!"},
+               json={"name": "Autre User", "phone": "+351912000000", "email": email, "password": "Passw0rd!"},
                timeout=30)
     assert r.status_code == 200, r.text
     return r.json()["token"]

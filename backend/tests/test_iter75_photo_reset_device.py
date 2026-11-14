@@ -89,7 +89,7 @@ def test_forgot_password_no_enumeration():
 def test_reset_password_full_flow():
     email = f"reset-{uuid.uuid4().hex[:8]}@test.fr"
     r = requests.post(f"{API}/auth/register",
-                      json={"name": "Reset Flow", "email": email, "password": "AncienMdp2026!"},
+                      json={"name": "Reset Flow", "phone": "+351912000000", "email": email, "password": "AncienMdp2026!"},
                       timeout=30)
     assert r.status_code == 200, r.text
     user_id = r.json()["user"]["user_id"]

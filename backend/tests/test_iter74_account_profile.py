@@ -81,7 +81,7 @@ def test_profile_name_too_short_rejected():
 def test_change_password_clears_must_change_flag():
     email = f"jetable-{uuid.uuid4().hex[:8]}@test.fr"
     r = requests.post(f"{API}/auth/register",
-                      json={"name": "Jetable Flag", "email": email, "password": "Jetable2026!"},
+                      json={"name": "Jetable Flag", "phone": "+351912000000", "email": email, "password": "Jetable2026!"},
                       timeout=30)
     assert r.status_code == 200, r.text
     h = {"Authorization": f"Bearer {r.json()['token']}"}

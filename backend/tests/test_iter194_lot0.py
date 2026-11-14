@@ -67,7 +67,7 @@ def test_register_and_delete_account(s):
     email = f"lot0.qa.{rnd}@example.com"
     password = "Test12345!"
     # Register
-    r = s.post(f"{API}/auth/register", json={"email": email, "password": password, "name": "QA Lot0"}, timeout=30)
+    r = s.post(f"{API}/auth/register", json={"phone": "+351912000000", "email": email, "password": password, "name": "QA Lot0"}, timeout=30)
     assert r.status_code in (200, 201), r.text
     # me
     r = s.get(f"{API}/auth/me", timeout=30)
