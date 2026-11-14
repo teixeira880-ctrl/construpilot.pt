@@ -82,9 +82,36 @@ async def _launch(args: dict, user: dict) -> dict:
         await launch_run(run["run_id"], ExecIn(), user=user)
     except HTTPException as exc:
         return {"ok": False, "error": str(exc.detail)}
-    return {"ok": True, "run_id": run["run_id"], "status": "queued", "options": run["mission"]["options"],
-            "warnings": run.get("warnings") or [], "link": _link(run["run_id"]),
-            "rappel": "Execução em segundo plano; acompanhar com suivre_programme_ia. Nenhum envio automático."}
+    # 14/11 (Martinho: «o estudo para, não lê, não faz nada»): o Assistente já não termina a resposta com uma promessa —
+    # espera pelo programa (até MISSION_WAIT_S) e devolve os entregáveis reais ou o erro exato de cada opção.
+    fim = await _esperar(run["run_id"], user["user_id"])
+    return {"ok": True, "run_id": run["run_id"], "options": run["mission"]["options"], "warnings": run.get("warnings") or [],
+            "link": _link(run["run_id"]), **fim,
+            "rappel": "Mostra ao profissional os entregáveis (ligações) e os erros tal como vêm; se ainda estiver em curso, "
+                      "diz que continua e chama suivre_programme_ia. Nenhum envio automático."}
+
+
+MISSION_WAIT_S = 270   # o Assistente corta cada ferramenta aos 5 min
+
+
+async def _esperar(run_id: str, uid: str) -> dict:
+    import asyncio
+    import time
+    t0 = time.monotonic()
+    estado = "queued"
+    while time.monotonic() - t0 < MISSION_WAIT_S:
+        run = await db.agent_runs.find_one({"run_id": run_id, "user_id": uid}, {"_id": 0, "status": 1, "error": 1, "result": 1,
+                                                                                  "partial_result": 1, "mission": 1})
+        estado = (run or {}).get("status") or "?"
+        if estado in ("done", "error"):
+            res = run.get("result") if isinstance(run.get("result"), dict) else run.get("partial_result") or {}
+            steps = res.get("steps") or (run.get("mission") or {}).get("steps") or []
+            return {"status": estado, "erreur": run.get("error"), "resultats": [_step(s) for s in steps]}
+        if estado == "queued" and time.monotonic() - t0 > 90:
+            return {"status": "queued", "erreur": "O programa ficou em fila mais de 90 s sem começar: o executor de programas do "
+                                                  "servidor não o apanhou. Diz isto ao profissional tal como está (não é falta de dados)."}
+        await asyncio.sleep(5)
+    return {"status": estado, "erreur": None, "nota": f"Ainda em curso após {MISSION_WAIT_S // 60} min — acompanhar com suivre_programme_ia."}
 
 
 def _step(s: dict) -> dict:
