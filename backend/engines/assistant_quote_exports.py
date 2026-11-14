@@ -228,7 +228,8 @@ def _materiais_sheets(wb, doc, branding, t, lang):
     lg = _lang(lang)
     h = _MAT[lg]
     est = _ESTADO[lg]
-    r = mapa_materiais.mapa(_rows(doc))
+    from engines.mapa_materiais_i18n import traduzir
+    r = traduzir(mapa_materiais.mapa(_rows(doc)), lg)
     ws = wb.create_sheet(h[0][:31])
     r0 = _sheet_head(ws, h[0], doc, branding, t)
     heads = [h[2], t["qty"], t["unit"], h[10], h[3], h[4], h[5], h[6], t["unit"], h[7], h[8], h[9]]
@@ -348,7 +349,8 @@ def build_metre_pdf(doc, branding=None, lang="fr") -> bytes:
     from engines import mapa_materiais
     lg2 = _lang(lang)
     hm, est = _MAT[lg2], _ESTADO[lg2]
-    mm_ = mapa_materiais.mapa(rows)
+    from engines.mapa_materiais_i18n import traduzir
+    mm_ = traduzir(mapa_materiais.mapa(rows), lg2)
     story += [PageBreak(), Paragraph(escape(hm[1]), h2), Paragraph(escape(mm_["aviso"]), small), Spacer(1, 3 * mm)]
     dm = [[hm[3], hm[4], hm[6], t["unit"], t["lines"]]]
     for m in mm_["totais"]:

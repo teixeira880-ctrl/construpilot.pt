@@ -243,5 +243,5 @@ def traduzir(resultado: dict, lang: str) -> dict:
     out["artigos"] = [{**a, "motivo": fr(a.get("motivo")), "perfil_tipo": fr(a.get("perfil_tipo")),
                        "materiais": [{**m, **{k: fr(m.get(k)) for k in ("material", "fonte", "em_falta", "embalagens")}} for m in a["materiais"]]}
                       for a in resultado["artigos"]]
-    out["totais"] = [{**t, "material": fr(t["material"])} for t in resultado["totais"]]
+    out["totais"] = sorted(({**t, "material": fr(t["material"])} for t in resultado["totais"]), key=lambda t: t["material"].lower())
     return out
