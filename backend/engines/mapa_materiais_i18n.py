@@ -188,6 +188,12 @@ FR: dict[str, str] = {
     "Fita de pintor / proteções": "Ruban de masquage / protections", " (barras de 2,4 m)": " (barres de 2,4 m)",
     "Cola de montagem / pregos de rodapé (≈ 3 fixações por m)": "Colle de montage / pointes de plinthe (≈ 3 fixations par m)",
     "Cortes e esquadrias 8 %": "Coupes et onglets 8 %",
+    "Folha de porta interior": "Vantail de porte intérieure", "Aro / caixilho de porta (jogo)": "Huisserie (jeu)",
+    "Guarnições (2 faces)": "Chambranles (2 faces)", "Dobradiças (3 por folha)": "Paumelles (3 par vantail)",
+    "Fechadura + puxador (conjunto)": "Serrure + béquille (ensemble)", "Parafusos de fixação do aro (≈ 8 por aro)": "Vis de fixation de l'huisserie (≈ 8 par huisserie)",
+    "Espuma de poliuretano de fixação do aro": "Mousse polyuréthane de fixation de l'huisserie", "Pregos/cola das guarnições": "Pointes/colle des chambranles",
+    "Perímetro do vão nas 2 faces + cortes 8 %": "Périmètre de la baie sur 2 faces + coupes 8 %", "3 dobradiças por folha até 2,10 m": "3 paumelles par vantail jusqu'à 2,10 m",
+    "1 lata 750 ml ≈ 4 aros": "1 bombe 750 ml ≈ 4 huisseries",
     # ── fontes ──
     "Perda de colocação 3 % (NP EN 206 / prática corrente)": "Perte de mise en œuvre 3 % (NF EN 206 / pratique courante)",
     "Taxa de armadura indicada no artigo": "Ratio d'armatures indiqué dans l'article",

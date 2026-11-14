@@ -408,6 +408,20 @@ def _r_ripado(q, txt):
             _m("Óleo/velatura de proteção (2 demãos, ≈ 0,2 L/m²)", "L", 0.2, 0.10, (5.0, "lata 5 L"), F_PERFIL)]
 
 
+def _r_porta_interior(q, txt):
+    f = formato_cm(txt)
+    w, h = ((f[0] / 100, f[1] / 100) if f and len(f) >= 2 else (0.80, 2.00))
+    guarn = 2 * (2 * (h + 0.07) + w + 0.14)
+    return [_m(f"Folha de porta interior {w*100:.0f}×{h*100:.0f} cm", "un", 1.0, 0.0, None, F_GEOM),
+            _m("Aro / caixilho de porta (jogo)", "un", 1.0, 0.0, None, F_GEOM),
+            _m("Guarnições (2 faces)", "m", guarn, 0.08, None, "Perímetro do vão nas 2 faces + cortes 8 %"),
+            _m("Dobradiças (3 por folha)", "un", 3.0, 0.0, None, "3 dobradiças por folha até 2,10 m"),
+            _m("Fechadura + puxador (conjunto)", "un", 1.0, 0.0, None, F_GEOM),
+            _m("Parafusos de fixação do aro (≈ 8 por aro)", "un", 8.0, 0.10, (100, "caixa 100"), F_PERFIL),
+            _m("Espuma de poliuretano de fixação do aro", "un", 0.25, 0.0, None, "1 lata 750 ml ≈ 4 aros"),
+            _m("Pregos/cola das guarnições", "un", 12.0, 0.10, (500, "caixa 500"), F_PERFIL)]
+
+
 def _r_verde(q, txt):
     e = espessura_m(txt)
     out = [_m(f"Terra vegetal (e = {e*100:g} cm)", "m3", e, 0.10, None, F_GEOM) if e else
@@ -422,6 +436,7 @@ def _r_pintura_rodov(q, txt):
 
 
 RECEITAS = [
+    ("porta_interior", ("un",), r"porta interior|portas interiores|bloc.porte|porte interieure|porte de distribution", _r_porta_interior),
     ("linear", ("m",), r"^(rodape|fita de pintor|plinthe|bande de masquage)", _r_linear),
     ("telhado_ceramico", ("m2",), r"telha (ceramica|lusa|marselha|preta|vermelha)|cobertura em telha|telhado ceramico|tuiles? (terre cuite|canal|romane)", _r_telhado_ceramico),
     ("cobertura_plana", ("m2",), r"cobertura plana|terraco (nao )?acessivel|toiture.terrasse|toit plat", _r_cobertura_plana),

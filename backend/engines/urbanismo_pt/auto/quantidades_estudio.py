@@ -86,6 +86,7 @@ def calcular(vol: Dict[str, Any], estilo: Dict[str, Any], vaos: List[Dict[str, A
     area_int_paredes = 0.0
     pav_flut = pav_cer = 0.0
     rod_flut = rod_cer = 0.0
+    portas = defaultdict(int)
     if plantas and plantas.get("pisos"):
         a0, b0, a1, b1 = plantas["casa_rect"]
         x0, y0, x1, y1 = casa.bounds
@@ -97,6 +98,8 @@ def calcular(vol: Dict[str, Any], estilo: Dict[str, Any], vaos: List[Dict[str, A
             for c in p["compartimentos"]:
                 w, d = (c["x1"] - c["x0"]) * sx, (c["y1"] - c["y0"]) * sy
                 soma_per += 2 * (w + d)
+                if c["tipo"] not in ("circulacao", "escada", "entrada"):
+                    portas["70x200" if c["tipo"] in ("wc", "wc_social") else "80x200"] += 1
                 if c["tipo"] in SECO:
                     pav_cer += w * d
                     rod_cer += 2 * (w + d) - 0.8                  # menos a porta
@@ -107,6 +110,9 @@ def calcular(vol: Dict[str, Any], estilo: Dict[str, Any], vaos: List[Dict[str, A
     else:
         pav_flut = area_impl * pisos * 0.8
         pav_cer = area_impl * pisos * 0.2
+    for dim, n in sorted(portas.items()):
+        item("Carpintarias", f"Porta interior {dim} cm (folha, aro, guarnições e ferragens)", "un", n,
+             _hip(f"1 porta por compartimento ({n}), {dim.replace('x', ' × ')} cm; contada nas plantas"))
     item("Paredes interiores", "Alvenaria de tijolo 30x20x11 — paredes divisórias", "m2", area_int_paredes,
          _hip("tijolo furado 30×20×11 cm; comprimento das divisórias medido nas plantas × piso a piso"))
     item("Revestimentos interiores", "Reboco interior e=1,5 cm (paredes divisórias, 2 faces)", "m2", area_int_paredes * 2, _hip("estuque 1,5 cm nas duas faces"))
