@@ -24,6 +24,12 @@ EXPORT_INSTRUCTIONS = (
     "estes 4 ficheiros. Para fornecer os ficheiros de um orçamento existente, chama read_quote_draft. "
     "Não cries um PDF separado com create_downloadable_file para um orçamento ou medição: usa estes ficheiros. "
     "Se files_error estiver presente, di-lo honestamente e volta a chamar read_quote_draft.\n"
+    "MAPA DE QUANTIDADES = ATÉ AOS PARAFUSOS (regra do Martinho, todos os pedidos): a medição traz automaticamente a "
+    "decomposição de cada artigo em TODOS os materiais (placas, perfis, parafusos, buchas, pregos, colas, argamassas, "
+    "fitas…) e a lista total para encomenda. Para isso: (1) cada artigo tem de ser MEDIDO (quantidade lida nas plantas, "
+    "nunca por rácio €/m² nem «1 un» global); (2) escreve na designação as dimensões que o desenho dá (espessura, formato "
+    "do tijolo/peça, L×A do vão, n.º de demãos); (3) o que o desenho não dá fica «a confirmar» — nunca inventado. "
+    "Uma estimativa por rácios NUNCA se chama mapa de quantidades: chama-se estimativa e diz o que falta para medir.\n"
 )
 _LINE_KINDS_SKIP = ("section", "subsection", "text", "pagebreak")
 
@@ -190,12 +196,79 @@ def _metre_sheet(ws, doc, branding, t):
     ws.freeze_panes = ws.cell(row=r0 + 1, column=1)
 
 
+_MAT = {"fr": ("Matériaux par article", "Liste des matériaux", "Article", "Matériau", "Qté nette", "Perte %", "Qté à commander",
+                "Conditionnement", "Source du coefficient", "Manque", "État"),
+        "pt": ("Materiais por artigo", "Lista de materiais", "Artigo", "Material", "Qtd. líquida", "Perda %", "Qtd. a encomendar",
+               "Embalagens", "Fonte do coeficiente", "Em falta", "Estado"),
+        "en": ("Materials by item", "Materials list", "Item", "Material", "Net qty", "Waste %", "Qty to order",
+               "Packaging", "Coefficient source", "Missing", "Status")}
+_ESTADO = {"pt": {"completo": "Decomposto", "parcial": "Parcial — falta dimensão", "sem_medicao": "Sem medição",
+                  "global": "Artigo global — medir", "sem_receita": "Sem decomposição"},
+           "fr": {"completo": "Décomposé", "parcial": "Partiel — dimension manquante", "sem_medicao": "Non métré",
+                  "global": "Article global — à métrer", "sem_receita": "Sans décomposition"},
+           "en": {"completo": "Broken down", "parcial": "Partial — dimension missing", "sem_medicao": "Not measured",
+                  "global": "Lump-sum item — measure", "sem_receita": "No breakdown"}}
+
+
+def _materiais_sheets(wb, doc, branding, t, lang):
+    """Mapa de materiais até aos parafusos (engines.mapa_materiais): por artigo + totais para encomenda."""
+    from openpyxl.styles import Alignment, Font
+    from engines import mapa_materiais
+    lg = _lang(lang)
+    h = _MAT[lg]
+    est = _ESTADO[lg]
+    r = mapa_materiais.mapa(_rows(doc))
+    ws = wb.create_sheet(h[0][:31])
+    r0 = _sheet_head(ws, h[0], doc, branding, t)
+    heads = [h[2], t["qty"], t["unit"], h[10], h[3], h[4], h[5], h[6], t["unit"], h[7], h[8], h[9]]
+    for i, x in enumerate(heads, 1):
+        ws.cell(row=r0, column=i, value=x)
+    _style_header(ws, r0, len(heads))
+    n = r0
+    for a in r["artigos"]:
+        n += 1
+        ws.cell(row=n, column=1, value=a["designacao"]).font = Font(bold=True)
+        ws.cell(row=n, column=2, value=a["quantidade"])
+        ws.cell(row=n, column=3, value=a["unidade"])
+        ws.cell(row=n, column=4, value=est.get(a["estado"], a["estado"]))
+        if a.get("motivo") and not a["materiais"]:
+            ws.cell(row=n, column=12, value=a["motivo"])
+        for m in a["materiais"]:
+            n += 1
+            vals = [None, None, None, None, m["material"], m["quantidade_liquida"], m["perda_pct"], m["quantidade_encomenda"],
+                    m["unidade"], m["embalagens"], m["fonte"], m["em_falta"]]
+            for i, v in enumerate(vals, 1):
+                c = ws.cell(row=n, column=i, value=v)
+                if i in (6, 8) and v is not None:
+                    c.number_format = "#,##0.00"
+                if i in (11, 12):
+                    c.alignment = Alignment(wrap_text=True, vertical="top")
+    ws.cell(row=n + 2, column=1, value=r["aviso"]).font = Font(italic=True)
+    for col, w in zip("ABCDEFGHIJKL", (40, 10, 7, 22, 44, 12, 8, 14, 7, 22, 46, 40)):
+        ws.column_dimensions[col].width = w
+    ws.freeze_panes = ws.cell(row=r0 + 1, column=1)
+    wt = wb.create_sheet(h[1][:31])
+    r1 = _sheet_head(wt, h[1], doc, branding, t)
+    for i, x in enumerate([h[3], h[4], h[6], t["unit"], t["lines"]], 1):
+        wt.cell(row=r1, column=i, value=x)
+    _style_header(wt, r1, 5)
+    for k, m in enumerate(r["totais"], 1):
+        for i, v in enumerate([m["material"], m["quantidade_liquida"], m["quantidade_encomenda"], m["unidade"], m["artigos"]], 1):
+            c = wt.cell(row=r1 + k, column=i, value=v)
+            if i in (2, 3):
+                c.number_format = "#,##0.00"
+    for col, w in zip("ABCDE", (52, 14, 16, 8, 10)):
+        wt.column_dimensions[col].width = w
+    return r
+
+
 def build_metre_xlsx(doc, branding=None, lang="fr") -> bytes:
     from openpyxl import Workbook
     t = L[_lang(lang)]
     wb = Workbook()
     _metre_sheet(wb.active, doc, branding, t)
     wb.active.title = t["takeoff"][:31]
+    _materiais_sheets(wb, doc, branding, t, lang)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -260,6 +333,30 @@ def build_metre_pdf(doc, branding=None, lang="fr") -> bytes:
                             + [("BACKGROUND", (0, i), (-1, i), colors.HexColor("#E9EDF1")) for i in lot_rows]
                             + [("LINEBELOW", (0, i), (-1, i), 0.8, accent) for i in lot_rows]))
     story += [tbl, Spacer(1, 4 * mm), Paragraph(f"<i>{escape(t['note_metre'])}</i>", small)]
+    # Mapa de materiais até aos parafusos: totais para encomenda + artigos não decompostos (com o que falta)
+    from engines import mapa_materiais
+    lg2 = _lang(lang)
+    hm, est = _MAT[lg2], _ESTADO[lg2]
+    mm_ = mapa_materiais.mapa(rows)
+    story += [PageBreak(), Paragraph(escape(hm[1]), h2), Paragraph(escape(mm_["aviso"]), small), Spacer(1, 3 * mm)]
+    dm = [[hm[3], hm[4], hm[6], t["unit"], t["lines"]]]
+    for m in mm_["totais"]:
+        dm.append([Paragraph(escape(m["material"]), small), f"{m['quantidade_liquida']:,.2f}".replace(",", " "),
+                   f"{m['quantidade_encomenda']:,.2f}".replace(",", " "), m["unidade"], str(m["artigos"])])
+    if len(dm) == 1:
+        dm.append([Paragraph("—", small), "", "", "", ""])
+    tm = LongTable(dm, colWidths=[140 * mm, 32 * mm, 36 * mm, 18 * mm, 20 * mm], repeatRows=1)
+    tm.setStyle(TableStyle(head_style + [("ALIGN", (1, 1), (-1, -1), "RIGHT")]))
+    story += [tm]
+    falt = [a for a in mm_["artigos"] if a["estado"] != "completo"]
+    if falt:
+        dn = [[hm[2], hm[10], hm[9]]]
+        for a in falt:
+            dn.append([Paragraph(escape(a["designacao"]), small), Paragraph(escape(est.get(a["estado"], a["estado"])), small),
+                       Paragraph(escape(a.get("motivo") or ""), small)])
+        tn = LongTable(dn, colWidths=[90 * mm, 45 * mm, 111 * mm], repeatRows=1)
+        tn.setStyle(TableStyle(head_style))
+        story += [Spacer(1, 5 * mm), Paragraph(escape(f"{hm[2]} — {hm[9]}"), h2), tn]
     pdf.build(story)
     raw = buf.getvalue()
     capa = {"tipo": titulo_tipo, "titulo": doc.get("title") or titulo_tipo, "subtitulo": _client(doc) or "",
