@@ -1,3 +1,4 @@
+import { familyById, familyLabel } from "./families";
 export const WORKSPACE_EXTRA = {
   fr: {
     permissionsLoading: "A verificar os acessos…", permissionsError: "Acessos profissionais temporariamente bloqueados: não foi possível verificar as permissões.", accessDenied: "A sua função não permite este acesso.",
@@ -24,4 +25,4 @@ const TOOL_LABELS = {
     factures: "Invoices", clients: "Clients", situations: "Progress claims", "controle-cotes": "Dimension checks", "suivi-chantier": "Site tracking", "plan/compare": "Compare plans", appro: "Technical analysis and AI procurement", "rendu-ia": "AI rendering (before/after)", "etudes-pc": "Planning studies", "mesure-photo": "Measure a photo", prix: "Material prices", calculateurs: "Calculators", "scanner-devis": "Quote analysis", entreprise: "Company workspace", equipe: "Team", rh: "HR — Time tracking", "mon-catalogue": "Price catalogue", bibliotheque: "Library", rentabilite: "Profitability report", "factures-electroniques": "Electronic invoicing", "mes-demandes": "My enquiries", radar: "Construction radar", "mes-avis": "Customer reviews", fournisseur: "Supplier workspace", photo: "Photo analysis", coach: "AI coach", diy: "Do it myself", marketplace: "Find a professional", blog: "Blog", fonctionnalites: "Features", comparatif: "Comparison", docs: "API and developers", developpeurs: "API keys", inviter: "Refer a friend", investisseurs: "Investors", admin: "Administration",
   },
 };
-export const translatedToolLabel = (item, lang, t) => item.to === "/admin/despesas" ? ({ pt: "Despesas das APIs", en: "API expenses", fr: "Despesas das APIs" }[lang] || item.label) : TOOL_LABELS[lang]?.[item.to.slice(1)] || t(item.key || "", item.label);
+export const translatedToolLabel = (item, lang, t) => item.hub ? (familyById(item.hub) ? familyLabel(familyById(item.hub), lang) : item.label) : item.to === "/admin/despesas" ? ({ pt: "Despesas das APIs", en: "API expenses", fr: "Despesas das APIs" }[lang] || item.label) : TOOL_LABELS[lang]?.[item.to.slice(1)] || t(item.key || "", item.label);
