@@ -1,4 +1,5 @@
 import { AssistantMark } from "@/components/assistant/AssistantMark";
+import { APP_FAMILIES, FAMILY_MEMBER_PATHS, familyOfPath, familyHubFor } from "./families";
 import { Trash2, Bot, LayoutDashboard, FileText, Calculator, Ruler, Search, Users, HardHat, Building2, Receipt, Layers, Camera, Truck, Wand2, Radar, Contact, Library, Tag, Brain, KeyRound, Sparkles, Wrench, FileSearch, MessageSquare, Handshake, TrendingUp, Inbox, Shield, Globe, LifeBuoy, FileSpreadsheet, Footprints, Leaf, CalendarRange } from "lucide-react";
 
 export const AssistantIcon = ({ size = 18, className = "" }) => (
@@ -36,6 +37,8 @@ export const WORKSPACE_LINKS = [
   { to: "/suivi-chantier", key: "nav.site", label: "Acompanhamento de obra", icon: HardHat, group: "chantiers", pro: true, perm: "chantier", pin: true },
   { to: "/planning", label: "Planeamento de obra", icon: CalendarRange, group: "chantiers", pro: true, pin: true, words: "planeamento gantt caminho crítico equipas atraso replaneamento sequenciamento or-tools prazos" },
   { to: "/plan/compare", label: "Comparar plantas", icon: Layers, group: "chantiers", pro: true },
+  { to: "/medicao-rapida", label: "Medição rápida", icon: Ruler, group: "chantiers", words: "área perímetro volume divisão prompt" },
+  { to: "/bim", label: "ConstruPilot BIM Studio", icon: Layers, group: "chantiers", pro: true, words: "ifc ifcopenshell 3d bim medições orçamento" },
   { to: "/appro", key: "nav.appro", label: "Análise técnica & Aprovisionamento IA", icon: Truck, group: "chantiers", pro: true, words: "aço armaduras fornecedores encomenda" },
   { to: "/rendu-ia", key: "nav.render", label: "Renderização IA (antes/depois)", icon: Wand2, group: "chantiers", min: "particulier_payant" },
   { to: "/etudes-pc", key: "nav.studies", label: "Estudos de licença", icon: FileSearch, group: "chantiers", pro: true, words: "licença construção" },
@@ -60,6 +63,7 @@ export const WORKSPACE_LINKS = [
   { to: "/photo", key: "nav.photo", label: "Análise de fotografia", icon: Camera, group: "discover" },
   { to: "/coach", key: "nav.coach", label: "Coach IA", icon: MessageSquare, group: "assistant" },
   { to: "/diy", key: "nav.diy", label: "Faço eu mesmo", icon: Wrench, group: "discover", personalPin: true },
+  { to: "/licenciamento-automatico", label: "Licenciamento automático de moradia", icon: Shield, group: "chantiers", words: "licenciamento automático moradia terreno morada bupi pdm ran ren caop implantação garagem 3d fachadas projeto de arquitetura" },
   { to: "/particulares/autorizacao-obras", label: "Autorização de obras", icon: Shield, group: "discover", words: "licenciamento comunicação prévia escassa relevância rjue dl 555 obra licença câmara" },
   { to: "/marketplace", key: "nav.marketplace", label: "Encontrar um profissional", icon: Wrench, group: "discover", personalPin: true },
   { to: "/blog", key: "nav.blog", label: "Blog", icon: FileSearch, group: "discover" },
@@ -77,13 +81,28 @@ export const WORKSPACE_LINKS = [
   { to: "/admin/despesas", label: "Despesas das APIs", icon: Receipt, group: "account", admin: true, pin: true, words: "despesas custos budget autodesk ctt correio" },
   { to: "/admin/growth", label: "Growth · SEO & IA", icon: TrendingUp, group: "account", admin: true, pin: true, words: "growth seo visibilidade ia referenciação conteúdos blogue auditoria" },
 ];
+const _RANK0 = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };
+const _memberMin = (item) => item.min || (item.pro ? "pro" : item.subscriber ? "particulier_payant" : "particulier_gratuit");
+// Uma entrada por família (app fusionada). Os membros continuam no catálogo
+// (permissões por rota, ligações diretas), mas o menu só mostra a família.
+for (const family of APP_FAMILIES) {
+  const members = family.members.map(to => WORKSPACE_LINKS.find(l => l.to === to)).filter(Boolean);
+  const min = members.map(_memberMin).sort((a, b) => _RANK0[a] - _RANK0[b])[0] || "particulier_gratuit";
+  const first = Math.min(...members.map(m => WORKSPACE_LINKS.indexOf(m)));
+  WORKSPACE_LINKS.splice(Number.isFinite(first) ? first : WORKSPACE_LINKS.length, 0, {
+    to: family.to, hub: family.id, label: family.label.pt, icon: family.icon, group: family.group,
+    pin: family.pin, personalPin: family.personalPin, min, upsell: members.some(m => m.upsell) || undefined,
+    words: [family.label.pt, family.label.en, family.label.fr, ...members.map(m => `${m.label} ${m.words || ""}`)].join(" "),
+  });
+}
 export const WORKSPACE_GROUPS = ["favorites", "today", "chantiers", "billing", "clients", "library", "assistant", "discover", "account"];
 // Keep every specialist tool available in the directory; only daily work is pinned.
 export const workspaceEssentials = (links, professional) => {
   const paths = professional
-    ? ["/dashboard", "/chantiers", "/plan", "/agents", "/devis", "/factures", "/clients", "/assistant"]
-    : ["/dashboard", "/estimation", "/assistant", "/agents", "/calculadoras", "/precos", "/marketplace"];
-  return paths.map(path => links.find(item => item.to === path && !item.locked)).filter(Boolean);
+    ? ["/dashboard", "/chantiers", "/estudos-engenharia", "/licenciamento", "/plantas-medicoes", "/agents", "/devis", "/faturacao", "/clients", "/assistant"]
+    : ["/dashboard", "/estimar", "/assistant", "/agents", "/licenciamento", "/precos-biblioteca", "/marketplace"];
+  const hubs = [...new Set(paths.map(familyHubFor))];
+  return hubs.map(path => links.find(item => item.to === path && !item.locked)).filter(Boolean);
 };
 const RANK = { particulier_gratuit: 0, particulier_payant: 1, pro: 2, business: 3 };
 const _levelOf = (user, tier) => {
@@ -143,6 +162,24 @@ export const UPSELL_BENEFITS = {
   "/ma-page": "A sua página pública e os seus documentos personalizados.",
   "/radar": "Detete obras e oportunidades perto de si.",
   "/docs": "API e integrações para ligar as suas ferramentas.",
+  "/developpeurs": "Crie e gira as chaves de acesso à API ConstruPilot.",
+  "/licenciamento-automatico": "Da morada ao processo de licenciamento completo: terreno, PDM/RAN/REN, implantação, peças desenhadas e 3D.",
+  "/particulares/autorizacao-obras": "Diagnóstico RJUE e processo para a Câmara Municipal (comunicação prévia, licença, isenção).",
+  "/medicao-rapida": "Áreas, perímetro e volume de uma divisão — por prompt ou à mão.",
+  "/bim": "Abra um IFC: modelo 3D, medições e orçamento (BIM Studio).",
+  "/estimation": "Estime o custo de uma obra em poucos cliques.",
+  "/smart-project": "Descreva o projeto: a IA prepara o plano de obra e o orçamento.",
+  "/calculadoras": "Cálculos rápidos de construção: betão, armaduras, revestimentos, quantidades.",
+  "/precos": "Pesquise preços de materiais atualizados.",
+  "/btp-solver": "Descreva um problema (fissura, humidade, patologia): diagnóstico e soluções.",
+  "/photo": "Analise uma fotografia da obra ou do defeito com IA.",
+  "/coach": "Um orientador IA para tirar dúvidas de construção.",
+  "/diy": "Guias passo a passo para fazer você mesmo.",
+  "/mes-avis": "Recolha e mostre as opiniões dos seus clientes.",
+  "/mes-demandes": "Os pedidos de clientes recebidos pelo ConstruPilot.",
+  "/scanner-devis": "Analise um orçamento recebido: preços, quantidades e incoerências.",
+  "/factures-electroniques": "Emissão e envio de faturas eletrónicas conformes.",
+  "/rentabilite": "Margens e rentabilidade por obra.",
 };
 export const benefitFor = (to, level) => UPSELL_BENEFITS[to] || `Função incluída na oferta ${LEVEL_LABELS[level] || "payante"}.`;
 export const visibleWorkspaceLinks = (user, can, tier) => {
@@ -154,7 +191,7 @@ export const visibleWorkspaceLinks = (user, can, tier) => {
 };
 // Same catalogue. Accessible items respect team permissions; locked (higher-tier)
 // items are HIDDEN for lower tiers EXCEPT a few `upsell` vedettes kept as teasers.
-export const workspaceLinks = (user, can, tier) => {
+const _resolveLinks = (user, can, tier) => {
   const level = _levelOf(user, tier);
   return WORKSPACE_LINKS
     .filter(item => user && (!item.admin || user.role === "admin"))
@@ -163,7 +200,35 @@ export const workspaceLinks = (user, can, tier) => {
       const locked = RANK[level] < RANK[minLevel];
       return { ...item, locked, requiredLevel: locked ? minLevel : null };
     })
-    .filter(item => item.locked ? !!item.upsell : (!item.perm || can(item.perm)));
+    .filter(item => item.hub || (item.locked ? !!item.upsell : (!item.perm || can(item.perm))));
+};
+// Ferramentas de uma família acessíveis (ou em destaque bloqueado) para este utilizador.
+export const familyMemberLinks = (familyId, user, can, tier) => {
+  const family = APP_FAMILIES.find(f => f.id === familyId);
+  if (!family) return [];
+  const all = _resolveLinks(user, can, tier);
+  return family.members.map(to => all.find(l => l.to === to && !l.hub)).filter(Boolean);
+};
+// Menu: só as apps (famílias fusionadas + ferramentas sem família).
+// Uma família aparece desbloqueada se pelo menos uma ferramenta for acessível;
+// bloqueada (destaque) se só restarem ferramentas "upsell"; senão fica oculta.
+export const workspaceLinks = (user, can, tier) => {
+  const all = _resolveLinks(user, can, tier);
+  const out = [];
+  for (const item of all) {
+    if (FAMILY_MEMBER_PATHS.has(item.to) && !item.hub) continue;
+    if (!item.hub) { out.push(item); continue; }
+    const family = APP_FAMILIES.find(f => f.id === item.hub);
+    const members = family.members.map(to => all.find(l => l.to === to && !l.hub)).filter(Boolean);
+    if (!members.length) continue;
+    const open = members.find(m => !m.locked);
+    if (open) out.push({ ...item, locked: false, requiredLevel: null });
+    else {
+      const required = members.map(m => m.requiredLevel).sort((x, y) => RANK[x] - RANK[y])[0];
+      out.push({ ...item, locked: true, requiredLevel: required, upsell: true });
+    }
+  }
+  return out;
 };
 export const routePermission = (pathname, search = "") => {
   if (pathname === "/pointage") return "pointage";
@@ -171,6 +236,10 @@ export const routePermission = (pathname, search = "") => {
   return WORKSPACE_LINKS.filter(item => item.perm && routeMatches(pathname, item.to)).sort((a, b) => b.to.length - a.to.length)[0]?.perm;
 };
 export const routeMatches = (pathname, to) => pathname === to || pathname.startsWith(to + "/");
-export const activeWorkspaceLink = (pathname, links) => links.filter(l => routeMatches(pathname, l.to)).sort((a,b) => b.to.length - a.to.length)[0]?.to;
+export const activeWorkspaceLink = (pathname, links) => {
+  const family = familyOfPath(pathname);
+  if (family && links.some(l => l.to === family.to)) return family.to;
+  return links.filter(l => routeMatches(pathname, l.to)).sort((a,b) => b.to.length - a.to.length)[0]?.to;
+};
 export const OPEN_WORKSPACE_MENU = "construpilot:open-tools";
 

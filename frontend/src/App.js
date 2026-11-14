@@ -8,6 +8,8 @@ import WorkspaceNavigation from "@/components/workspace/WorkspaceNavigation";
 import { PermissionNotice } from "@/components/workspace/PermissionNotice";
 import { usePermissions } from "@/context/PermissionContext";
 import { routePermission, meetsLevel } from "@/components/workspace/navigation";
+import FamilyTabs from "@/components/workspace/FamilyTabs";
+import { APP_FAMILIES } from "@/components/workspace/families";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider, useBilling } from "@/context/BillingContext";
@@ -106,6 +108,7 @@ const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 const BimViewerLazy = lazy(() => import("@/pages/BimViewer"));
+const AppFamilyHubLazy = lazy(() => import("@/pages/AppFamilyHub"));
 import AppsHub from "@/pages/AppsHub";
 import MedicaoRapida from "@/pages/MedicaoRapida";
 import BottomTabBar from "@/components/mobile/BottomTabBar";
@@ -242,11 +245,11 @@ const Shell = ({ children }) => {
   const { pathname } = useLocation();
   const assistant = pathname === "/assistant";
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main><Footer /><HelpChatbot /></>;
+  if (!user) return <><Nav /><FamilyTabs /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main><Footer /><HelpChatbot /></>;
   return <div className={`workspace${assistant ? " workspace-chat" : ""}`}>
     <WorkspaceNavigation />
     <div className="workspace-content">
-      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main">{children}</main>
+      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main"><FamilyTabs />{children}</main>
       {!assistant && <WorkspaceFooter />}
     </div>
     {!assistant && <HelpChatbot />}
@@ -270,6 +273,9 @@ function AppRouter() {
       <Route path="/experience" element={<Navigate to="/experiencia" replace />} />
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
+      {APP_FAMILIES.map(f => (
+        <Route key={`family-${f.id}`} path={f.to} element={<Shell><Suspense fallback={<RouteSkeleton />}><AppFamilyHubLazy /></Suspense></Shell>} />
+      ))}
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
       <Route path="/particulares" element={<LandingParticuliers />} />
       <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />

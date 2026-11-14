@@ -17,8 +17,9 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import PushToggle from "@/components/PushToggle";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { AssistantActivity } from "@/components/assistant/AssistantActivity";
-import { workspaceLinks, isProfessional, activeWorkspaceLink, OPEN_WORKSPACE_MENU, WORKSPACE_GROUPS, workspaceEssentials, benefitFor } from "./navigation";
+import { WORKSPACE_LINKS, workspaceLinks, isProfessional, activeWorkspaceLink, OPEN_WORKSPACE_MENU, WORKSPACE_GROUPS, workspaceEssentials, benefitFor } from "./navigation";
 import { normalizeSearch, useWorkspaceCopy } from "./copy";
+import { familyHubFor, familyById } from "./families";
 import { translatedToolLabel } from "./translations";
 import { UpgradeLock } from "@/components/UpgradeLock";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -52,10 +53,11 @@ export default function WorkspaceNavigation() {
   const deckLabel = { pt: "Apresentação", en: "Presentation", fr: "Apresentação" }[lang] || "Apresentação";
   const groups = WORKSPACE_GROUPS.filter(g => g !== "favorites");
   const favorites = Array.isArray(user?.nav_favorites) ? user.nav_favorites : [];
-  const favoriteLinks = favorites.map(to => links.find(l => l.to === to)).filter(Boolean);
+  const favoriteLinks = [...new Set(favorites.map(familyHubFor))].map(to => links.find(l => l.to === to)).filter(Boolean);
   const essentials = workspaceEssentials(links, isPro);
   const needle = normalizeSearch(query);
-  const filtered = needle ? links.filter(item => normalizeSearch(`${label(item)} ${item.label} ${item.words || ""} ${ui(item.group)}`).includes(needle))
+  const memberText = (item) => item.hub ? (familyById(item.hub)?.members || []).map(to => WORKSPACE_LINKS.find(l => l.to === to && !l.hub)).filter(Boolean).map(m => label(m)).join(" ") : "";
+  const filtered = needle ? links.filter(item => normalizeSearch(`${label(item)} ${item.label} ${item.words || ""} ${memberText(item)} ${ui(item.group)}`).includes(needle))
     : category === "essentials" ? essentials : category === "favorites" ? favoriteLinks : category === "all" ? links : links.filter(item => item.group === category);
   const extraFavorites = favoriteLinks.filter(item => !essentials.some(e => e.to === item.to));
   const currentExtra = links.find(item => item.to === active && !essentials.some(e => e.to === active) && !extraFavorites.slice(0, 4).some(e => e.to === active));
