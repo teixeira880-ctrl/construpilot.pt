@@ -18,6 +18,7 @@ import re
 import unicodedata
 
 _ATUAL: dict = {}          # designação do artigo em decomposição (as receitas decidem pela designação)
+_A_PARTE = re.compile(r"medid[oa]s? a parte|em artigo proprio|mesurees? a part")
 GLOBAL_UNITS = {"un", "u", "vg", "cj", "conj", "conjunto", "forfait", "ft", "global", "lote", "ens", "ensemble", "lot", "gl"}
 
 
@@ -175,7 +176,8 @@ def _r_pintura(q, txt):
     else:
         out.append(_m(f"Tinta de acabamento ({n} demãos, 10 m²/L por demão)", "L", n * 0.1, 0.05, (15.0, "lata 15 L"),
                       "Rendimento típico de ficha técnica — confirmar no produto"))
-    out.append(_m("Fita de pintor / proteções", "m", None, falta="comprimento de remates — medir nas plantas"))
+    if not _A_PARTE.search(_norm(txt)):
+        out.append(_m("Fita de pintor / proteções", "m", None, falta="comprimento de remates — medir nas plantas"))
     return out
 
 
@@ -195,14 +197,28 @@ def _r_ceramico(q, txt):
     else:
         out.append(_m("Betume de juntas", "kg", None, falta="formato das peças não indicado (necessário para o consumo de betume)"))
         out.append(_m("Cruzetas / niveladores", "un", None, falta="formato das peças não indicado"))
-    out.append(_m("Rodapé / remates", "m", None, falta="comprimento de rodapé — artigo próprio medido em ml"))
+    if not _A_PARTE.search(_norm(txt)):
+        out.append(_m("Rodapé / remates", "m", None, falta="comprimento de rodapé — artigo próprio medido em ml"))
     return out
 
 
 def _r_flutuante(q, txt):
-    return [_m("Pavimento flutuante / laminado", "m2", 1.0, 0.07, None, "Perda de corte 7 % (ficha de colocação)"),
-            _m("Subcamada (espuma / cortiça)", "m2", 1.05, 0.03, None, "Sobreposição 5 %"),
-            _m("Rodapé e perfis de transição", "m", None, falta="comprimento de rodapé — medir nas plantas")]
+    out = [_m("Pavimento flutuante / laminado", "m2", 1.0, 0.07, None, "Perda de corte 7 % (ficha de colocação)"),
+           _m("Subcamada (espuma / cortiça)", "m2", 1.05, 0.03, None, "Sobreposição 5 %")]
+    if not _A_PARTE.search(_norm(txt)):
+        out.append(_m("Rodapé e perfis de transição", "m", None, falta="comprimento de rodapé — medir nas plantas"))
+    return out
+
+
+def _r_linear(q, txt):
+    """Rodapés, remates e fitas medidos em comprimento: o próprio material, em barras comerciais."""
+    nome = (_ATUAL.get("nome") or txt).split(" (")[0][:80]
+    barra = 2.4 if re.search(r"rodape|plinthe", _norm(nome)) else None
+    out = [_m(f"{nome}" + (" (barras de 2,4 m)" if barra else ""), "m", 1.0, 0.08, (barra, f"barra {barra:g} m") if barra else None,
+              "Cortes e esquadrias 8 %")]
+    if barra:
+        out.append(_m("Cola de montagem / pregos de rodapé (≈ 3 fixações por m)", "un", 3.0, 0.10, (100, "caixa 100"), F_PERFIL))
+    return out
 
 
 def _r_betuminoso(q, txt):
@@ -346,6 +362,52 @@ def _r_anticorrosiva(q, txt):
             _m("Diluente (10 %)", "L", 0.10 * (0.15 + 0.12 * max(n - 1, 1)), 0.0, (5.0, "lata 5 L"), F_PERFIL)]
 
 
+def _r_telhado_ceramico(q, txt):
+    """Telha cerâmica (aba e canudo / lusa) sobre ripado: valores por m² de vertente (área inclinada)."""
+    return [_m("Telha cerâmica lusa (≈ 12,5 un/m²)", "un", 12.5, 0.05, (None, "palete"), "Ficha técnica de telha lusa: 12–13 un/m²"),
+            _m("Telha de cumeeira/remate (≈ 0,35 un/m² de vertente)", "un", 0.35, 0.05, None, F_PERFIL),
+            _m("Subtelha / membrana respirável (sobreposição 10 %)", "m2", 1.10, 0.03, (75.0, "rolo 75 m²"), F_PERFIL),
+            _m("Ripa de madeira tratada 30×40 mm (a cada 0,35 m)", "m", 1 / 0.35, 0.08, None, "Afastamento de ripas da telha lusa ≈ 0,35 m"),
+            _m("Contra-ripa 30×40 mm (a cada 0,60 m)", "m", 1 / 0.60, 0.08, None, F_PERFIL),
+            _m("Prego/parafuso de fixação de ripas", "un", 1 / 0.35 / 0.60 * 2, 0.10, (500, "caixa 500"), F_PERFIL),
+            _m("Grampo/parafuso de fixação de telha (1 em cada 5 telhas)", "un", 12.5 / 5, 0.10, (500, "caixa 500"), F_PERFIL),
+            _m("Isolamento térmico XPS/lã mineral (e = 10 cm) sob a cobertura", "m2", 1.0, 0.05, None, F_PERFIL)]
+
+
+def _r_cobertura_plana(q, txt):
+    return [_m("Betão leve de forma de pendentes (e média 8 cm)", "m3", 0.08, 0.05, None, F_PERFIL),
+            _m("Primário betuminoso", "kg", 0.3, 0.05, (25.0, "lata 25 kg"), "Ficha técnica — 0,3 kg/m²"),
+            _m("Membrana betuminosa (2 camadas)", "m2", 2.0, 0.15, (10.0, "rolo 10 m²"), "Sobreposições de 10 cm + remates: 15 % (ficha de aplicação)"),
+            _m("Isolamento térmico XPS (e = 8 cm)", "m2", 1.0, 0.05, None, F_PERFIL),
+            _m("Geotêxtil de proteção (sobreposição 10 %)", "m2", 1.10, 0.05, (100.0, "rolo 100 m²"), F_PERFIL),
+            _m("Seixo rolado 16/32 (e = 5 cm)", "m3", 0.05, 0.05, None, F_PERFIL)]
+
+
+def _r_zinco(q, txt):
+    return [_m("Chapa de zinco (junta agrafada, 0,65 mm)", "m2", 1.12, 0.05, None, "Agrafos e dobras ≈ 12 %"),
+            _m("Patilhas de fixação (≈ 4 un/m²)", "un", 4.0, 0.05, (250, "caixa 250"), F_PERFIL),
+            _m("Painel OSB 18 mm de suporte", "m2", 1.0, 0.08, None, F_PERFIL),
+            _m("Membrana separadora estruturada", "m2", 1.10, 0.03, None, F_PERFIL),
+            _m("Parafuso de fixação de OSB (≈ 12 un/m²)", "un", 12.0, 0.10, (500, "caixa 500"), F_PERFIL)]
+
+
+def _r_pedra(q, txt):
+    e = espessura_m(txt) or 0.03
+    return [_m(f"Placas de pedra natural (e = {e*100:g} cm)", "m2", 1.0, 0.08, None, "Cortes e quebras 8 %"),
+            _m("Grampo/ancoragem em inox (≈ 4 un/m²)", "un", 4.0, 0.05, (100, "caixa 100"), F_PERFIL),
+            _m("Bucha química/metálica para ancoragem", "un", 4.0, 0.05, (100, "caixa 100"), F_PERFIL),
+            _m("Argamassa-cola C2 de assentamento (≈ 5 kg/m²)", "kg", 5.0, 0.05, (25.0, "saco 25 kg"), F_PERFIL)]
+
+
+def _r_ripado(q, txt):
+    return [_m("Ripas de madeira tratada 20×70 mm (afastamento 1 cm)", "m", 1 / 0.08, 0.08, None, "Ripas de 7 cm + junta de 1 cm"),
+            _m("Sarrafos de suporte 30×50 mm (a cada 0,50 m)", "m", 2.0, 0.08, None, F_PERFIL),
+            _m("Parafusos inox de fixação (2 por ripa e sarrafo)", "un", 2 * (1 / 0.08) * 2, 0.10, (500, "caixa 500"), F_PERFIL),
+            _m("Bucha de fixação dos sarrafos à parede", "un", 2.0 / 0.6, 0.10, (100, "caixa 100"), F_PERFIL),
+            _m("Membrana impermeável respirável", "m2", 1.10, 0.03, None, F_PERFIL),
+            _m("Óleo/velatura de proteção (2 demãos, ≈ 0,2 L/m²)", "L", 0.2, 0.10, (5.0, "lata 5 L"), F_PERFIL)]
+
+
 def _r_verde(q, txt):
     e = espessura_m(txt)
     out = [_m(f"Terra vegetal (e = {e*100:g} cm)", "m3", e, 0.10, None, F_GEOM) if e else
@@ -360,6 +422,12 @@ def _r_pintura_rodov(q, txt):
 
 
 RECEITAS = [
+    ("linear", ("m",), r"^(rodape|fita de pintor|plinthe|bande de masquage)", _r_linear),
+    ("telhado_ceramico", ("m2",), r"telha (ceramica|lusa|marselha|preta|vermelha)|cobertura em telha|telhado ceramico|tuiles? (terre cuite|canal|romane)", _r_telhado_ceramico),
+    ("cobertura_plana", ("m2",), r"cobertura plana|terraco (nao )?acessivel|toiture.terrasse|toit plat", _r_cobertura_plana),
+    ("zinco", ("m2",), r"\bzinco\b|\bzinc\b|junta agrafada|joint debout", _r_zinco),
+    ("pedra", ("m2",), r"revestimento (em |de )?(granito|pedra|xisto)|placagem (em |de )?(granito|pedra)|parement (en )?pierre|habillage pierre", _r_pedra),
+    ("ripado", ("m2",), r"ripado|revestimento (em |de )?madeira|bardage (en )?bois|claire.voie", _r_ripado),
     ("perfis", ("kg", "t"), r"\b(ipe|hea|heb|upn|ipn|rhs|shs|chs)\s?\d|\bs(235|275|355)\b|perfis? metalic|estrutura metalica|chapas? de ligacao|profiles? metallique|charpente metallique|platines?|goussets?", _r_perfis),
     ("fornecimento", ("un",), r"parafus|chumbadour|porca|bucha quimica|varao roscado|boulon|tiges? d.ancrage|cheville chimique|tige filetee", _r_fornecimento),
     ("painel_sandwich", ("m2",), r"painel sandwich|painel sanduiche|panneau sandwich|panneaux sandwich|bac acier|bardage double peau", _r_painel_sandwich),

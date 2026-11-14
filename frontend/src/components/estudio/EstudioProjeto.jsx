@@ -126,6 +126,8 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const [imagem, setImagem] = useState(null);
   const [modelos, setModelos] = useState(null);
   const [interior, setInterior] = useState(null);   // null = exterior; n = vista em corte do piso n
+  const [qtd, setQtd] = useState(null);
+  const [qtdTodos, setQtdTodos] = useState(false);
 
   useEffect(() => {
     const e0 = processo?.estudio || {};
@@ -141,6 +143,32 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const modelo0 = useMemo(() => compor(base, vol, estilo, vaos), [base, vol, estilo, vaos]);
   const modelo = useMemo(() => (interior === null ? modelo0 : { ...modelo0, corte_piso: interior }), [modelo0, interior]);
   const nPisos = Number(vol.levels) || 1;
+  // mapa de quantidades AO VIVO: recalcula 0,9 s depois da última alteração, só com o separador aberto
+  const pedidoQtd = (formato = "json") => {
+    const { vaos: _x, ...est } = estilo;
+    return api.post(`/urbanismo-auto/processos/${processoId}/estudio/quantidades`, { vol, estilo: est, vaos: modelo0.vaos, formato },
+      { timeout: 120000, ...(formato === "json" ? {} : { responseType: "blob" }) });
+  };
+  useEffect(() => {
+    if (tab !== "quantidades") return undefined;
+    const t = setTimeout(async () => {
+      setOcupado((o) => o || "qtd");
+      try { const { data } = await pedidoQtd(); setQtd(data); } catch (e) { setQtd({ erro: e?.response?.data?.detail || "Cálculo impossível." }); }
+      setOcupado((o) => (o === "qtd" ? "" : o));
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, modelo0]);
+  const descarregarQtd = async (formato) => {
+    setOcupado(`qtd-${formato}`);
+    try {
+      const { data } = await pedidoQtd(formato);
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a"); a.href = url; a.download = `Mapa-de-quantidades.${formato}`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch { toast.error("Ficheiro impossível de gerar."); }
+    setOcupado("");
+  };
   const verInterior = (p) => { setInterior(p); if (p !== null) setTimeout(() => casa.current?.vista("interior"), 80); };
   const guardar = () => setHist((h) => [...h.slice(-30), { vol, estilo, vaos }]);
   const mudaVol = (k, val) => { guardar(); setVol((v) => ({ ...v, [k]: val })); };
@@ -264,7 +292,7 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const painel = (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex border-b text-xs">
-        {[["assistente", "Assistente"], ["modelos", "Modelos"], ["casa", "Casa"], ["materiais", "Materiais"], ["vaos", "Vãos"]].map(([k, l]) => (
+        {[["assistente", "Assistente"], ["modelos", "Modelos"], ["casa", "Casa"], ["materiais", "Materiais"], ["vaos", "Vãos"], ["quantidades", "Quantidades"]].map(([k, l]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`flex-1 py-2 ${tab === k ? "border-b-2 border-primary font-medium" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
@@ -284,6 +312,36 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
               {EXEMPLOS.map((x) => <button key={x} type="button" onClick={() => enviar(x)} className="text-[11px] border rounded-full px-2 py-0.5 hover:bg-muted">{x}</button>)}
             </div>
           </>
+        )}
+        {tab === "quantidades" && (
+          <div className="space-y-2" data-testid="estudio-quantidades">
+            <p className="text-xs text-muted-foreground">Mapa de quantidades da casa tal como está no Estúdio — medido nas paredes, vãos, divisões, cobertura e anexos, com a estrutura calculada — e todos os materiais até aos parafusos. Atualiza-se a cada alteração.</p>
+            {ocupado === "qtd" && <p className="text-xs flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />A calcular…</p>}
+            {qtd?.erro && <p className="text-xs text-red-700">{qtd.erro}</p>}
+            {qtd?.resumo && (<>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                {[["Implantação", qtd.resumo.area_implantacao_m2, "m²"], ["Área bruta", qtd.resumo.area_bruta_m2, "m²"], ["Paredes exteriores", qtd.resumo.paredes_exteriores_m2, "m²"],
+                  ["Vãos", qtd.resumo.vaos_m2, "m²"], ["Cobertura", qtd.resumo.cobertura_m2, "m²"], ["Pilares (cálculo)", qtd.estrutura?.pilares ?? "—", ""]].map(([k, v, u]) => (
+                  <div key={k} className="rounded border px-2 py-1"><div className="text-muted-foreground">{k}</div><div className="font-medium">{typeof v === "number" ? v.toLocaleString("pt-PT") : v} {u}</div></div>))}
+              </div>
+              {qtd.estrutura?.erro && <p className="text-xs text-amber-700">{qtd.estrutura.erro}</p>}
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => descarregarQtd("xlsx")} disabled={!!ocupado}>Excel</Button>
+                <Button size="sm" variant="outline" onClick={() => descarregarQtd("pdf")} disabled={!!ocupado}>PDF</Button>
+                <span className="text-[11px] text-muted-foreground self-center">{qtd.artigos.length} artigos · {qtd.totais.length} materiais</span>
+              </div>
+              <table className="w-full text-[11px]">
+                <thead><tr className="text-left text-muted-foreground"><th className="py-1">Material</th><th className="text-right">A encomendar</th><th /></tr></thead>
+                <tbody>
+                  {(qtdTodos ? qtd.totais : qtd.totais.slice(0, 25)).map((t) => (
+                    <tr key={t.material + t.unidade} className="border-t"><td className="py-0.5 pr-1">{t.material}</td>
+                      <td className="text-right whitespace-nowrap">{Number(t.quantidade_encomenda).toLocaleString("pt-PT", { maximumFractionDigits: 2 })}</td><td className="pl-1">{t.unidade}</td></tr>))}
+                </tbody>
+              </table>
+              {qtd.totais.length > 25 && <button type="button" className="text-xs underline" onClick={() => setQtdTodos((x) => !x)}>{qtdTodos ? "ver menos" : `ver os ${qtd.totais.length} materiais`}</button>}
+              <p className="text-[10px] text-muted-foreground">{qtd.aviso}</p>
+            </>)}
+          </div>
         )}
         {tab === "modelos" && (!temAuto ? (
           <p className="text-xs text-muted-foreground">Os modelos adaptados precisam do terreno real: crie o processo pelo Assistente ou pelo licenciamento automático (morada ou terreno).</p>

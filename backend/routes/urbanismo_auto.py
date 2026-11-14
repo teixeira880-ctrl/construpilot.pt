@@ -381,6 +381,44 @@ async def estudio_ia(pid: str, body: EstudioIaIn, user=Depends(current_user)) ->
     return await EIA.interpretar(body.texto, {"vol": body.vol, "estilo": body.estilo, "vaos": body.vaos}, body.historico)
 
 
+class EstudioQtdIn(BaseModel):
+    vol: Dict[str, Any] = Field(default_factory=dict)
+    estilo: Dict[str, Any] = Field(default_factory=dict)
+    vaos: List[Dict[str, Any]] = Field(default_factory=list, max_length=200)
+    formato: str = Field(default="json", pattern="^(json|xlsx|pdf)$")
+    estrutura: bool = True
+
+
+@router.post("/processos/{pid}/estudio/quantidades")
+async def estudio_quantidades(pid: str, body: EstudioQtdIn, user=Depends(current_user)):
+    """Mapa de quantidades AO VIVO da casa do Estúdio (medições + estrutura calculada + materiais até aos parafusos)."""
+    from engines import mapa_materiais as MM
+    from engines.urbanismo_pt.auto import quantidades_estudio as QE
+    d = await _owned(pid, user["user_id"])
+    vol = {**(d.get("volume") or {}), **body.vol}
+    plantas = (d.get("auto") or {}).get("plantas")
+    try:
+        r = await run_in_threadpool(QE.calcular, vol, body.estilo, body.vaos, plantas, body.estrutura)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(422, f"Quantidades impossíveis com esta casa ({type(e).__name__}).") from None
+    titulo = f"Mapa de quantidades — {d.get('title') or 'casa do Estúdio'}"
+    if body.formato != "json":
+        from engines.assistant_quote_exports import build_metre_pdf, build_metre_xlsx
+        doc = {"title": titulo, "lines": r["linhas"]}
+        if body.formato == "xlsx":
+            data = await run_in_threadpool(build_metre_xlsx, doc, {}, "pt")
+            mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            data = await run_in_threadpool(build_metre_pdf, doc, {}, "pt")
+            mime = "application/pdf"
+        return Response(content=data, media_type=mime, headers={
+            "Content-Disposition": content_disposition(nom_document("Mapa-de-quantidades", d.get("title"), ext=body.formato))})
+    m = MM.mapa(r["linhas"])
+    return {"resumo": r["resumo"], "estrutura": r["estrutura"], "artigos": [
+        {"capitulo": l["category"], "designacao": l["designation"], "unidade": l["unit"], "quantidade": l["qty"]} for l in r["linhas"]],
+        "estado": m["contagem"], "totais": m["totais"], "aviso": m["aviso"]}
+
+
 @router.get("/processos/{pid}/modelo3d")
 async def get_modelo3d(pid: str, user=Depends(current_user)) -> dict:
     return modelo3d(await _owned(pid, user["user_id"]))
