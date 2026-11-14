@@ -715,9 +715,9 @@ async function runV3Shell(browser, vp) {
 
     // Cookie banner (sem accept) não intercepta: aceita cookie já posto, só valida
     // que algum card do AppsHub é clicável. Os cards do AppsHub usam
-    // `apps-escadas`, `apps-medicao-rapida` etc. — nunca `apps-hub-*`.
+    // `apps-engenharia`, `apps-plantas` etc. — nunca `apps-hub-*`.
     try {
-      const firstCard = page.locator('[data-testid="apps-escadas"]').first();
+      const firstCard = page.locator('[data-testid="apps-engenharia"]').first();
       await firstCard.scrollIntoViewIfNeeded({ timeout: 3000 });
       await firstCard.click({ timeout: 5000 });
       await page.waitForTimeout(1500);
