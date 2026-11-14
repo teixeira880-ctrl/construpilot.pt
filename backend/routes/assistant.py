@@ -173,6 +173,8 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "page_index": {"type": "integer"},
                                                      "scope_text": {"type": "string"}, "effort": {"type": "string", "enum": ["high", "max"]}},
                     "required": ["plan_id", "page_index", "scope_text", "effort"], "additionalProperties": False}, "strict": True},
+    {"type": "function", "name": "medir_camadas_cad", "description": "Mede um desenho CAD (DWG/DXF) camada a camada: áreas das tramas (pavimento betuminoso, pavê, espaços verdes, marcações), comprimentos (lancis, muros, vedações; linhas duplas face/tardoz contadas uma vez), contagens de blocos. Devolve os artigos MEDIDOS prontos para o mapa de quantidades, com a origem de cada quantidade, e os materiais previstos. Chamar SEMPRE antes de um mapa de quantidades/orçamento de um DWG/DXF.",
+     "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "get_plan_results", "description": "Obtém os resultados existentes (cotas exatas, cadeias, fachadas, elementos, análise OpenAI) de uma página de planta para os explicar.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "page_index": {"type": "integer"}},
                     "required": ["plan_id", "page_index"], "additionalProperties": False}, "strict": True},
@@ -267,7 +269,7 @@ TOOL_ESTIMATE = {"type": "function", "name": "estimate_budget_range",
                                   "included_items", "excluded_items", "assumptions", "uncertainty_factors", "missing_information",
                                   "recommended_questions_for_contractors", "confidence"], "additionalProperties": False}, "strict": True}
 
-INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", "define_analysis_scope", "analyze_plan", "get_plan_results", "generate_branded_pdf", "save_user_preference", "create_project_task", "ask_user_choices",
+INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", "define_analysis_scope", "analyze_plan", "get_plan_results", "medir_camadas_cad", "generate_branded_pdf", "save_user_preference", "create_project_task", "ask_user_choices",
                          "compare_documents", "generate_conversation_report", "read_native_dimensions", "read_rebar_schedule", "cross_check", *METRE_TOOL_NAMES, *SOURCE_TOOL_NAMES, *PLATFORM_TOOL_NAMES}
 
 
@@ -714,6 +716,30 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 "items_truncated": len(st.get("items", [])) > 150,
                 "download": f"/takeoffs/{args['plan_id']}/pc-study/pdf" if st else None,
                 "note": "As quantidades e os preços estão calculados. A leitura completa e as hipóteses continuam por controlar; nenhuma precisão de 98 % certificada."}
+    if name == "medir_camadas_cad":
+        from engines import cad_quantidades_camadas as CQ, mapa_materiais as MM
+        from engines.plan_sources import load_cad_source
+        p = await db.plans_takeoff.find_one({"plan_id": args["plan_id"], "user_id": uid}, {"_id": 0, "plan_id": 1, "kind": 1, "filename": 1, "cad_quantidades": 1})
+        if not p:
+            raise PermissionError("Documento inacessível para esta conta")
+        res = p.get("cad_quantidades") or {}
+        if res.get("versao") != CQ.VERSAO:
+            if p.get("kind") != "dxf":
+                return {"ok": False, "error": "Esta planta não é um desenho CAD (DWG/DXF): a medição por camadas só existe para CAD. Use as cotas e áreas lidas na planta."}
+            data = await load_cad_source(db, args["plan_id"], uid, "converted_dxf") or await load_cad_source(db, args["plan_id"], uid, "original")
+            if not data:
+                return {"ok": False, "error": "Fonte CAD não guardada para esta planta: volte a importar o DWG/DXF."}
+            if data[:4] == b"AC10":
+                from engines.dwg_convert import dwg_to_dxf
+                data = await dwg_to_dxf(data, p.get("filename") or "plan.dwg", user_id=uid)
+            res = await asyncio.to_thread(CQ.medir_bytes, data)
+            await db.plans_takeoff.update_one({"plan_id": args["plan_id"], "user_id": uid}, {"$set": {"cad_quantidades": res}})
+        mm = MM.mapa(res.get("linhas") or [])
+        return {"ok": True, **{k: v for k, v in res.items() if k != "versao"},
+                "materiais_previstos": {"estado_dos_artigos": mm["contagem"], "totais": mm["totais"][:80],
+                                        "perfis_tipo": [{"artigo": a["designacao"], "perfil": a.get("perfil_tipo")} for a in mm["artigos"] if a.get("perfil_tipo")]},
+                "instrucao": "Usa estas linhas como artigos do mapa (designação, unidade, quantidade e descrição tal como vêm). Diz ao utilizador "
+                             "os perfis-tipo aplicados (hipóteses de espessura) e as camadas excluídas/sem material, como pontos a confirmar."}
     if name == "get_plan_results":
         p = await _allowed_plan(args["plan_id"], uid)
         rep = (p.get("cotes_checks") or {}).get(str(args["page_index"])) or {}
@@ -1880,7 +1906,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…",
+TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -1896,7 +1922,7 @@ TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor 
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
 TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
-               "get_plan_results": "Leitura dos resultados da planta…", "generate_branded_pdf": "Preparação do relatório PDF…",
+               "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",
                "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "Leitura do orçamento atual…", "update_quote_draft": "Atualização do rascunho de orçamento…", "add_quote_lines": "Adição das linhas ao orçamento…", "find_quote_drafts": "Pesquisa dos seus orçamentos existentes…", "save_user_preference": "Memorização da preferência…",
                "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…", "estimate_budget_range": "Cálculo do intervalo orçamental…",

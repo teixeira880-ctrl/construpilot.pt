@@ -27,7 +27,8 @@ def test_nao_inventa_quantidades_nem_espessuras():
     g = M.decompor({"designation": "Rede exterior de águas pluviais", "unit": "un", "qty": 1})
     assert g["estado"] == "global" and g["materiais"] == []
     s = M.decompor({"designation": "Pavimento betuminoso", "unit": "m2", "qty": 4897.03})
-    assert s["estado"] == "parcial" and _mat(s, "Mistura betuminosa")["quantidade_liquida"] is None
+    # 14/11: sem espessura no desenho → perfil-tipo DECLARADO como hipótese (nunca apresentado como «decomposto» puro)
+    assert s["estado"] == "hipotese" and "5 cm" in s["perfil_tipo"] and "hipótese" in s["motivo"]
     c = M.decompor({"designation": "Pavimento betuminoso AC 14 surf e=5cm", "unit": "m2", "qty": 1000})
     assert _mat(c, "Mistura betuminosa")["quantidade_liquida"] == 120.0
     x = M.decompor({"designation": "Divisória gesso cartonado", "unit": "m2", "qty": None, "quantity_missing": True})

@@ -281,7 +281,23 @@ def _r_escavacao(q, txt):
     return [_m("Terras a transportar (empolamento 25 %)", "m3", 1.25, 0.0, None, "Empolamento de terras correntes 20–30 %")]
 
 
+def _r_verde(q, txt):
+    e = espessura_m(txt)
+    out = [_m(f"Terra vegetal (e = {e*100:g} cm)", "m3", e, 0.10, None, F_GEOM) if e else
+           _m("Terra vegetal", "m3", None, falta="espessura de terra vegetal — pormenor de espaços verdes")]
+    out.append(_m("Semente de relva (mistura)", "kg", None, falta="dosagem de sementeira — caderno de encargos de espaços verdes"))
+    return out
+
+
+def _r_pintura_rodov(q, txt):
+    return [_m("Tinta de marcação rodoviária", "kg", None, falta="tipo de tinta e espessura de película — projeto de sinalização"),
+            _m("Microesferas de vidro", "kg", None, falta="dosagem de microesferas — projeto de sinalização")]
+
+
 RECEITAS = [
+    ("verde", ("m2",), r"espacos verdes|relvad|ajardinad|sementeira|zona verde", _r_verde),
+    ("pintura_rodov", ("m2", "m"), r"marcacao rodoviaria|marcas rodoviarias|sinalizacao horizontal|pintura rodoviaria", _r_pintura_rodov),
+    ("pave_drenante", ("m2",), r"pave.{0,20}(drenan|permeav)|(drenan|permeav).{0,20}pave", _r_pave),
     ("divisoria_gc", ("m2",), r"divisori|parede.*(gesso cartonado|pladur|placoplatre|plaque de platre)|cloison", _r_divisoria),
     ("teto_gc", ("m2",), r"teto falso|teto suspenso|tecto falso|faux plafond|plafond suspendu", _r_teto),
     ("etics", ("m2",), r"etics|capoto|isolamento (termico )?pelo exterior|ite\b", _r_etics),
@@ -300,6 +316,55 @@ RECEITAS = [
     ("caixilharia", ("un",), r"caixilh|janela|porta de sacada|vao envidra|fenetre|menuiserie", _r_caixilharia),
     ("escavacao", ("m3",), r"escava|aterro|desaterro|terrassement|deblai", _r_escavacao),
 ]
+
+
+# ── PERFIS-TIPO (hipótese declarada) ─────────────────────────────────────────────────────────────────────────────────
+# Um desenho de implantação mede as ÁREAS e os COMPRIMENTOS, mas não traz espessuras nem secções. Quando faltam, em vez
+# de deixar o material vazio, aplica-se o perfil-tipo corrente — SEMPRE dito como hipótese, com as espessuras escritas,
+# para o utilizador confirmar ou trocar (basta escrever a espessura no artigo e a receita deixa de usar o perfil-tipo).
+F_PERFIL = "Perfil-tipo corrente (hipótese a confirmar com o projeto)"
+PERFIS_TIPO = {
+    "betuminoso": ("camada de desgaste AC 14 surf e = 5 cm; rega de impregnação; base em ABGE e = 20 cm; sub-base em ABGE e = 15 cm "
+                   "(estacionamento/arruamento de tráfego ligeiro)",
+                   [("Mistura betuminosa AC 14 surf (e = 5 cm, 2,40 t/m³)", "t", 0.05 * 2.40, 0.03, None),
+                    ("Emulsão betuminosa de rega de impregnação (1,0 kg/m²)", "kg", 1.0, 0.05, None),
+                    ("ABGE — base (e = 20 cm, compactado)", "m3", 0.20, 0.10, None),
+                    ("ABGE — sub-base (e = 15 cm, compactado)", "m3", 0.15, 0.10, None)]),
+    "pave": ("blocos de betão 20×10×8 cm; almofada de areia e = 4 cm; base em ABGE e = 20 cm",
+             [("Blocos de pavê 20×10×8 cm", "un", 50.0, 0.03, None),
+              ("Areia de assentamento (e = 4 cm)", "m3", 0.04, 0.10, None),
+              ("Areia fina de refechamento de juntas (≈ 5 L/m²)", "m3", 0.005, 0.10, None),
+              ("ABGE — base (e = 20 cm, compactado)", "m3", 0.20, 0.10, None)]),
+    "pave_drenante": ("blocos drenantes de betão 20×10×8 cm; gravilha 2/6 mm de assentamento e = 4 cm; gravilha de juntas; "
+                      "base granular aberta e = 20 cm; geotêxtil de separação",
+                      [("Blocos de pavê drenante 20×10×8 cm", "un", 50.0, 0.03, None),
+                       ("Gravilha 2/6 mm de assentamento (e = 4 cm)", "m3", 0.04, 0.10, None),
+                       ("Gravilha 2/6 mm de enchimento de juntas (≈ 8 L/m²)", "m3", 0.008, 0.10, None),
+                       ("Agregado britado 4/32 mm — base drenante (e = 20 cm)", "m3", 0.20, 0.10, None),
+                       ("Geotêxtil de separação (sobreposição 10 %)", "m2", 1.10, 0.05, (100.0, "rolo 100 m²"))]),
+    "lancil": ("lancil de betão 100×25×15 cm assente em fundação de betão C16/20 (0,30 × 0,20 m) com encosto",
+               [("Lancil de betão 100×25×15 cm (peças de 1 m)", "un", 1.0, 0.02, None),
+                ("Betão C16/20 de fundação e encosto (0,06 m³/m)", "m3", 0.06, 0.05, None),
+                ("Argamassa de juntas (juntas de 1 cm)", "m3", 0.002, 0.10, None)]),
+    "verde": ("terra vegetal e = 15 cm; sementeira de relva a 35 g/m²; adubo de fundo a 50 g/m²",
+              [("Terra vegetal (e = 15 cm)", "m3", 0.15, 0.10, None),
+               ("Semente de relva (35 g/m²)", "kg", 0.035, 0.05, (25.0, "saco 25 kg")),
+               ("Adubo de fundo (50 g/m²)", "kg", 0.05, 0.05, (25.0, "saco 25 kg"))]),
+    "pintura_rodov": ("tinta acrílica de marcação rodoviária 0,72 kg/m² (película húmida ≈ 400 µm) com microesferas de vidro 0,30 kg/m²",
+                      [("Tinta de marcação rodoviária (0,72 kg/m²)", "kg", 0.72, 0.05, (25.0, "balde 25 kg")),
+                       ("Microesferas de vidro (0,30 kg/m²)", "kg", 0.30, 0.05, (25.0, "saco 25 kg"))]),
+}
+
+
+def _especificado(rid: str, txt: str) -> bool:
+    """O artigo já diz a sua especificação principal? Então NUNCA se substitui pelo perfil-tipo."""
+    if rid in ("betuminoso", "verde"):
+        return espessura_m(txt) is not None
+    if rid in ("pave", "pave_drenante", "lancil"):
+        return formato_cm(txt) is not None or espessura_m(txt) is not None
+    if rid == "pintura_rodov":
+        return bool(re.search(r"kg/m|g/m2|µm|micron", _norm(txt)))
+    return False
 
 
 def _embalagens(qtd: float, emb) -> str | None:
@@ -328,7 +393,12 @@ def decompor(linha: dict) -> dict:
     rid, fn = rec
     mult = 1000.0 if (rid == "aco" and un == "t") else 1.0
     mats = []
-    for m in fn(qtd, txt):
+    receita = fn(qtd, txt)
+    perfil = None
+    if rid in PERFIS_TIPO and any(m["liq"] is None for m in receita) and not _especificado(rid, txt):
+        perfil, lista = PERFIS_TIPO[rid]
+        receita = [_m(n, u_, liq, perda, emb, F_PERFIL) for n, u_, liq, perda, emb in lista]
+    for m in receita:
         if m["liq"] is None:
             mats.append({"material": m["nome"], "unidade": m["un"], "quantidade_liquida": None, "perda_pct": None,
                          "quantidade_encomenda": None, "embalagens": None, "fonte": m["fonte"], "em_falta": m["falta"]})
@@ -341,6 +411,9 @@ def decompor(linha: dict) -> dict:
                      "quantidade_encomenda": round(enc, 3), "embalagens": _embalagens(enc, m["emb"]), "fonte": m["fonte"],
                      "em_falta": m["falta"]})
     completo = all(x["em_falta"] is None for x in mats)
+    if perfil:
+        return {**base, "estado": "hipotese", "receita": rid, "materiais": mats, "perfil_tipo": perfil,
+                "motivo": f"espessuras/secção não indicadas no desenho — perfil-tipo aplicado (hipótese a confirmar): {perfil}"}
     return {**base, "estado": "completo" if completo else "parcial", "receita": rid, "materiais": mats,
             "motivo": None if completo else "; ".join(x["em_falta"] for x in mats if x["em_falta"])}
 
@@ -362,8 +435,10 @@ def mapa(linhas: list[dict]) -> dict:
     totais = sorted(({**v, "quantidade_liquida": round(v["quantidade_liquida"], 3),
                       "quantidade_encomenda": round(v["quantidade_encomenda"], 3)} for v in tot.values()),
                     key=lambda r: r["material"])
-    contagem = {e: sum(1 for a in artigos if a["estado"] == e) for e in ("completo", "parcial", "sem_medicao", "global", "sem_receita")}
+    contagem = {e: sum(1 for a in artigos if a["estado"] == e) for e in ("completo", "hipotese", "parcial", "sem_medicao", "global", "sem_receita")}
     return {"artigos": artigos, "totais": totais, "contagem": contagem,
             "aviso": ("Quantidades dos artigos: só as medidas no orçamento. Dimensões: só as escritas no artigo. "
                       "Consumos: coeficientes publicados dos sistemas (fonte indicada) — confirmar com o produto escolhido. "
-                      "Artigos globais, sem medição ou sem dimensões aparecem como não decompostos, com o que falta.")}
+                      "Artigos globais, sem medição ou sem dimensões aparecem como não decompostos, com o que falta. "
+                      "Onde o desenho não traz espessuras, aplica-se um perfil-tipo DECLARADO como hipótese (estado «Hipótese»), "
+                      "com as espessuras escritas — confirmar com o projeto.")}

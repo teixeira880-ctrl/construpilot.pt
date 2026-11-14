@@ -30,6 +30,14 @@ EXPORT_INSTRUCTIONS = (
     "nunca por rácio €/m² nem «1 un» global); (2) escreve na designação as dimensões que o desenho dá (espessura, formato "
     "do tijolo/peça, L×A do vão, n.º de demãos); (3) o que o desenho não dá fica «a confirmar» — nunca inventado. "
     "Uma estimativa por rácios NUNCA se chama mapa de quantidades: chama-se estimativa e diz o que falta para medir.\n"
+    "DESENHO CAD (DWG/DXF) → chama PRIMEIRO medir_camadas_cad(plan_id): devolve os artigos MEDIDOS camada a camada "
+    "(áreas das tramas, comprimentos de lancis/muros/vedações, contagens de blocos), com a origem de cada quantidade. "
+    "Usa essas linhas TAL COMO VÊM (designação, unidade, quantidade, descrição) como artigos do mapa — são elas que dão "
+    "a lista de materiais (blocos de pavê, t de betuminoso, ABGE, lancis, betão, terra vegetal, tinta…). Áreas escritas "
+    "no desenho (lotes, área de implantação, domínio público), cadeias de cotas e lugares de estacionamento são "
+    "INFORMAÇÃO, não artigos de obra: não as orçamentes como artigos. Um edifício só com área bruta não é medido: "
+    "diz que faltam as plantas/cortes do edifício para o medir, em vez de o pôr a €/m². As camadas «excluidas» "
+    "(levantamento/existente) e «camadas_area_sem_material» são ditas ao utilizador como pontos a confirmar.\n"
 )
 _LINE_KINDS_SKIP = ("section", "subsection", "text", "pagebreak")
 
@@ -202,11 +210,11 @@ _MAT = {"fr": ("Matériaux par article", "Liste des matériaux", "Article", "Mat
                "Embalagens", "Fonte do coeficiente", "Em falta", "Estado"),
         "en": ("Materials by item", "Materials list", "Item", "Material", "Net qty", "Waste %", "Qty to order",
                "Packaging", "Coefficient source", "Missing", "Status")}
-_ESTADO = {"pt": {"completo": "Decomposto", "parcial": "Parcial — falta dimensão", "sem_medicao": "Sem medição",
+_ESTADO = {"pt": {"completo": "Decomposto", "hipotese": "Decomposto — perfil-tipo (hipótese)", "parcial": "Parcial — falta dimensão", "sem_medicao": "Sem medição",
                   "global": "Artigo global — medir", "sem_receita": "Sem decomposição"},
-           "fr": {"completo": "Décomposé", "parcial": "Partiel — dimension manquante", "sem_medicao": "Non métré",
+           "fr": {"completo": "Décomposé", "hipotese": "Décomposé — profil-type (hypothèse)", "parcial": "Partiel — dimension manquante", "sem_medicao": "Non métré",
                   "global": "Article global — à métrer", "sem_receita": "Sans décomposition"},
-           "en": {"completo": "Broken down", "parcial": "Partial — dimension missing", "sem_medicao": "Not measured",
+           "en": {"completo": "Broken down", "hipotese": "Broken down — typical section (assumption)", "parcial": "Partial — dimension missing", "sem_medicao": "Not measured",
                   "global": "Lump-sum item — measure", "sem_receita": "No breakdown"}}
 
 

@@ -89,6 +89,7 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
         "page_count": parsed["page_count"],
         "detected_scale_denominator": parsed.get("detected_scale_denominator"),
         "structural_metre": parsed.get("structural_metre"),
+        "cad_quantidades": parsed.get("cad_quantidades"),
         "cad_import": parsed.get("cad_import"),
         "pages": parsed["pages"],
         "calibrations": calibrations,

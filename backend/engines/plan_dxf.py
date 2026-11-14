@@ -464,7 +464,12 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
         walls["validation"]["message"]=INCOMPLETE_MSG
     from engines.dxf_takeoff import extract_structural_metre
     metre=extract_structural_metre(doc,unit_to_m)
-    return {"kind":"dxf","page_count":1,"dxf_units":units["name"],"cad_import":cad,"structural_metre":metre,
+    try:  # 14/11: medição real por camadas (pavimentos, lancis, verdes…) para o mapa de quantidades e de materiais
+        from engines.cad_quantidades_camadas import medir as _medir_camadas
+        cad_q=_medir_camadas(doc,entities)
+    except Exception as exc:  # noqa: BLE001 — a importação nunca falha por causa desta medição
+        cad_q={"erro":type(exc).__name__}
+    return {"kind":"dxf","page_count":1,"dxf_units":units["name"],"cad_import":cad,"structural_metre":metre,"cad_quantidades":cad_q,
             "analysis_pdf_b64":base64.b64encode(mapping["pdf_bytes"]).decode("ascii"),"detected_scale_denominator":None,
             "pages":[{"index":0,"width_px":mapping["width"],"height_px":mapping["height"],"dpi":mapping["dpi"],
                       "image_png_b64":base64.b64encode(png).decode("ascii"),"img_mime":"image/png",
