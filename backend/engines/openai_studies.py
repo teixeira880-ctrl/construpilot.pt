@@ -152,9 +152,19 @@ def _selected_page_pdf(pdf_bytes: bytes, page_index: int) -> bytes:
             return selected.tobytes()
 
 
+# A interface/ferramenta diz «max» = o mais forte; a API OpenAI (gpt-5.5) só aceita none/low/medium/high/xhigh → 400 com «max».
+_EFFORT_API = {"max": "xhigh", "maximum": "xhigh", "maximo": "xhigh", "máximo": "xhigh"}
+
+
+def effort_api(effort: str) -> str:
+    e = (effort or "high").strip().lower()
+    e = _EFFORT_API.get(e, e)
+    return e if e in ("none", "low", "medium", "high", "xhigh") else "high"
+
+
 async def _respond(client, model: str, effort: str, instructions: str, content: list[dict], schema: dict, name: str):
     response = await client.responses.create(
-        model=model, reasoning={"effort": effort}, instructions=instructions,
+        model=model, reasoning={"effort": effort_api(effort)}, instructions=instructions,
         input=[{"role": "user", "content": content}],
         text={"format": {"type": "json_schema", "name": name, "strict": True, "schema": schema}})
     if getattr(response, "status", "completed") != "completed" or not response.output_text:

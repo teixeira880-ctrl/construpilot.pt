@@ -23,7 +23,9 @@ class AutodeskError(RuntimeError):
 # este cliente lia só APS_* e dizia «não configurada» com a conta ligada. Aceita os dois nomes, e os endereços públicos
 # da APS têm valor por omissão (não são segredos). A atividade Design Automation (APS_ACTIVITY_*, APS_ENGINE) continua
 # a ter de ser definida explicitamente.
-_ALIASES = {"APS_CLIENT_ID": "AUTODESK_CLIENT_ID", "APS_CLIENT_SECRET": "AUTODESK_CLIENT_SECRET", "APS_BUCKET_KEY": "AUTODESK_BUCKET_KEY"}
+# O bucket NÃO é partilhado com o Plantas Pro: esse é «persistent» e este módulo exige «transient» (ficheiros temporários,
+# apagados pela Autodesk) — partilhá-lo dava «Preparação Autodesk impossível» em todas as leituras.
+_ALIASES = {"APS_CLIENT_ID": "AUTODESK_CLIENT_ID", "APS_CLIENT_SECRET": "AUTODESK_CLIENT_SECRET"}
 _DEFAULTS = {"APS_TOKEN_URL": "https://developer.api.autodesk.com/authentication/v2/token",
              "APS_OSS_BASE_URL": "https://developer.api.autodesk.com/oss/v2",
              "APS_AUTOMATION_BASE_URL": "https://developer.api.autodesk.com/da",
@@ -32,7 +34,7 @@ _DEFAULTS = {"APS_TOKEN_URL": "https://developer.api.autodesk.com/authentication
 
 def _bucket_derivado() -> str:
     cid = os.environ.get("APS_CLIENT_ID", "").strip() or os.environ.get("AUTODESK_CLIENT_ID", "").strip()
-    return f"construpilot-plans-{hashlib.sha1(cid.encode()).hexdigest()[:12]}" if cid else ""
+    return f"construpilot-tmp-{hashlib.sha1(cid.encode()).hexdigest()[:12]}" if cid else ""
 
 
 def config(name):
@@ -40,7 +42,7 @@ def config(name):
     if not value and name in _ALIASES:
         value = os.environ.get(_ALIASES[name], "").strip()
     if not value and name == "APS_BUCKET_KEY":
-        value = _bucket_derivado()           # o mesmo bucket que o módulo Plantas Pro usa
+        value = _bucket_derivado()           # bucket próprio, temporário
     if not value:
         value = _DEFAULTS.get(name, "")
     if not value:

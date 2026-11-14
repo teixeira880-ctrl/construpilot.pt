@@ -1,5 +1,6 @@
 """Durable, tenant-scoped DWG conversions. Unknown POSTs are never resubmitted."""
 import asyncio
+import logging
 import hashlib
 import re
 import secrets
@@ -83,6 +84,16 @@ async def claim(data, user_id):
         return existing, False
 
 
+def _causa(exc) -> str:
+    """Causa legível (código + mensagem, nunca segredos) em vez de engolir o erro."""
+    if isinstance(exc, AutodeskError):
+        txt = f"{exc.code}" + (f" HTTP {exc.status}" if exc.status else "") + f": {exc}"
+    else:
+        txt = type(exc).__name__
+    logging.getLogger("autodesk").warning("preparação Autodesk falhou: %s", txt)
+    return txt[:200]
+
+
 async def prepare_and_submit(job, data):
     prefix = f"jobs/{job['job_id']}"
     await update(job, input_key=f"{prefix}/input.dwg", output_key=f"{prefix}/result.dxf")
@@ -90,11 +101,11 @@ async def prepare_and_submit(job, data):
         input_url = await storage.upload_input(job["input_key"], data)
         output = await storage.signed_upload(job["output_key"])
         await update(job, output_upload_key=output["uploadKey"], status="submitting")
-    except Exception:  # noqa: BLE001 - every preparation failure is definitively pre-submit.
-        await update(job, status="failed_before_submit", error_code="preparation_failed")
+    except Exception as cause:  # noqa: BLE001 - every preparation failure is definitively pre-submit.
+        await update(job, status="failed_before_submit", error_code="preparation_failed", cause=_causa(cause))
         cleaned = await storage.delete_objects(job.get("input_key"), job.get("output_key"))
         await update(job, cleanup_pending=not cleaned)
-        raise AutodeskError("preparation_failed", "Preparação Autodesk impossível. Nenhum trabalho AutoCAD foi lançado.", fallback_safe=True) from None
+        raise AutodeskError("preparation_failed", f"Preparação Autodesk impossível ({_causa(cause)}). Nenhum trabalho AutoCAD foi lançado.", fallback_safe=True) from None
     try:
         response = await request("POST", f"{api_base()}/workitems", json={
             "activityId": config("APS_ACTIVITY_QUALIFIED"),

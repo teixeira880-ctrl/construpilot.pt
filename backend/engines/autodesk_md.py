@@ -3,6 +3,7 @@
 One translation per (user, file hash): translations consume Autodesk cloud credits and are never resubmitted while a job is pending/unknown.
 """
 import asyncio
+import logging
 import base64
 import hashlib
 import secrets
@@ -20,6 +21,16 @@ SUPPORTED = {"dwg": "AutoCAD (2D: camadas, blocos, entidades)", "dxf": "DXF", "r
              "nwd": "Navisworks", "dgn": "MicroStation"}
 MAX_PROPERTIES = 20000
 POLL_SECONDS, POLL_MAX = 6, 40
+
+
+def _causa(exc) -> str:
+    """Causa legível (código + mensagem, nunca segredos) em vez de engolir o erro."""
+    if isinstance(exc, AutodeskError):
+        txt = f"{exc.code}" + (f" HTTP {exc.status}" if exc.status else "") + f": {exc}"
+    else:
+        txt = type(exc).__name__
+    logging.getLogger("autodesk").warning("preparação Autodesk falhou: %s", txt)
+    return txt[:200]
 
 
 def _now():
@@ -63,9 +74,9 @@ async def _submit(job, data):
         details = (await request("GET", f"{storage.object_url(object_key)}/details")).json()
         urn = urn_for(details["objectId"])
         await _update(job, object_key=object_key, urn=urn, status="submitting")
-    except Exception:  # noqa: BLE001
-        await _update(job, status="failed_before_submit", error_code="preparation_failed")
-        raise AutodeskError("preparation_failed", "Preparação Autodesk impossível. Nenhuma tradução foi lançada.", fallback_safe=True) from None
+    except Exception as cause:  # noqa: BLE001
+        await _update(job, status="failed_before_submit", error_code="preparation_failed", cause=_causa(cause))
+        raise AutodeskError("preparation_failed", f"Preparação Autodesk impossível ({_causa(cause)}). Nenhuma tradução foi lançada.", fallback_safe=True) from None
     try:
         response = await request("POST", f"{MD_BASE}/designdata/job", json={
             "input": {"urn": urn}, "output": {"formats": [{"type": "svf2", "views": ["2d", "3d"]}]}}, accepted=(201,))
