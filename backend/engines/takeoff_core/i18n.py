@@ -6,6 +6,19 @@ from __future__ import annotations
 
 # PT → (EN, UK, FR)
 T = {
+    # cross-check with what is written on the plans
+    "Cruzamento com o que está escrito nas plantas": ("Cross-check with what is written on the plans", "Звірка з написаним на кресленнях", "Recoupement avec ce qui est écrit sur les plans"),
+    "Elemento": ("Item", "Елемент", "Élément"),
+    "Escrito na planta": ("Written on the plan", "Написано на кресленні", "Écrit sur le plan"),
+    "Usado no cálculo": ("Used in the calculation", "Використано в розрахунку", "Utilisé dans le calcul"),
+    "confere": ("agrees", "збігається", "conforme"),
+    "NÃO confere": ("does NOT agree", "НЕ збігається", "NON conforme"),
+    "sem texto para conferir": ("nothing written to check", "немає тексту для звірки", "aucun texte à recouper"),
+    "Este estudo não tem texto das plantas para conferir (imagem, introdução manual ou planta sem cotas escritas): as quantidades "
+    "vêm só da geometria e não foram conferidas por texto.": (
+        "This study has no plan text to check against (image, manual entry or plan without written dimensions): the quantities come from the geometry alone and were not checked against text.",
+        "У цьому дослідженні немає тексту креслень для звірки (зображення, ручне введення або план без написаних розмірів): кількості взято лише з геометрії й не звірено з текстом.",
+        "Cette étude n'a pas de texte de plan à recouper (image, saisie manuelle ou plan sans cotes écrites) : les quantités viennent de la seule géométrie et n'ont pas été recoupées par le texte."),
     # headings and table columns
     "Dossier de medições e orçamento": ("Take-off and estimate dossier", "Досьє обмірів і кошторису", "Dossier de métrés et de chiffrage"),
     "métodos ConstruPilot comuns a todas as construções": ("ConstruPilot methods common to every building", "методи ConstruPilot, спільні для всіх будівель", "méthodes ConstruPilot communes à toutes les constructions"),
@@ -174,6 +187,32 @@ T = {
 }
 
 KEYED = {
+    "escrito.item.texto": ("Texto da folha", "Sheet text", "Текст аркуша", "Texte de la feuille"),
+    "escrito.item.altura": ("Altura (pé-direito)", "Height (ceiling)", "Висота (стелі)", "Hauteur (sous plafond)"),
+    "escrito.item.divisoes": ("Áreas das divisões", "Room areas", "Площі приміщень", "Surfaces des pièces"),
+    "escrito.item.espessuras": ("Espessuras das paredes", "Wall thicknesses", "Товщини стін", "Épaisseurs des murs"),
+    "escrito.sem_folha": ("folha sem texto legível (imagem)", "sheet without readable text (image)", "аркуш без читабельного тексту (зображення)", "feuille sans texte lisible (image)"),
+    "escrito.nao_escrito": ("não está escrito na planta", "not written on the plan", "не написано на кресленні", "non écrit sur le plan"),
+    "escrito.altura_fora": ("a parede do cálculo tem de ir do pé-direito escrito até 0,60 m acima (laje e pavimento): rever a altura",
+                            "the calculated wall must run from the written ceiling height to at most 0.60 m above (slab and floor): review the height",
+                            "стіна в розрахунку має бути від написаної висоти стелі до +0,60 м (плита й підлога): перевірити висоту",
+                            "le mur calculé doit aller de la hauteur sous plafond écrite à 0,60 m au-dessus au plus (dalle et sol) : revoir la hauteur"),
+    "escrito.divisoes_numero": ("o número de divisões medidas não é o das áreas escritas: rever as divisões",
+                                "the number of measured rooms differs from the written areas: review the rooms",
+                                "кількість виміряних приміщень не збігається з написаними площами: перевірити приміщення",
+                                "le nombre de pièces mesurées diffère des surfaces écrites : revoir les pièces"),
+    "escrito.divisoes_area": ("soma das áreas medidas fora de 3 % da soma escrita: rever a escala ou as divisões",
+                              "sum of measured areas more than 3 % from the written sum: review the scale or the rooms",
+                              "сума виміряних площ відрізняється більш ніж на 3 % від написаної: перевірити масштаб або приміщення",
+                              "somme des surfaces mesurées à plus de 3 % de la somme écrite : revoir l'échelle ou les pièces"),
+    "escrito.divisoes_nao_medidas": ("o estudo não tem divisões medidas: áreas escritas não conferidas",
+                                     "the study has no measured rooms: written areas not checked",
+                                     "у дослідженні немає виміряних приміщень: написані площі не звірено",
+                                     "l'étude n'a pas de pièces mesurées : surfaces écrites non recoupées"),
+    "escrito.espessura_fora": ("uma espessura usada não existe por escrito (± 30 mm): confirmar se inclui acabamentos",
+                               "a thickness used is not found in writing (± 30 mm): confirm whether finishes are included",
+                               "використаної товщини немає в тексті (± 30 мм): уточнити, чи включено оздоблення",
+                               "une épaisseur utilisée ne figure pas par écrit (± 30 mm) : confirmer si les finitions sont incluses"),
     "sistema.clt": ("CLT", "CLT", "CLT", "CLT"),
     "sistema.alvenaria_tijolo": ("Alvenaria de tijolo", "Brick masonry", "Цегляна кладка", "Maçonnerie de briques"),
     "sistema.alvenaria_bloco": ("Alvenaria de bloco", "Block masonry", "Блокова кладка", "Maçonnerie de blocs"),

@@ -492,6 +492,72 @@ def _verificar(medicao, estrutura):
 HIPOTESE_BASES = (("pavimento betuminoso", 0.20, "sob pavimento betuminoso"), ("pave", 0.15, "sob pavê drenante/permeável"))
 
 
+def _com_seguimento(out: dict, seg: dict | None) -> dict:
+    """Junta a folha de seguimento ao resultado de uma medição CAD (ficheiro, números dos artigos e controlos)."""
+    if not seg:
+        out["seguimento"] = {"estado": "não gerado", "motivo": "ficheiro CAD de origem indisponível ou ilegível: a medição não tem planta de controlo"}
+        return out
+    num = {a["camada"]: a["n"] for a in seg["artigos"]}
+    for l in out.get("linhas") or []:
+        if l.get("camada") in num:
+            l["n_seguimento"] = num[l["camada"]]
+    out["verificacao_cruzada"] = list(out.get("verificacao_cruzada") or []) + seg["verificacao"]
+    out["seguimento"] = {"estado": "gerado", "ficheiro": seg["artifact"]["filename"], "artigos_numerados": len(seg["artigos"]), "avisos": seg["avisos"]}
+    out["artifacts"] = list(out.get("artifacts") or []) + [seg["artifact"]]
+    out["instrucao"] = (out.get("instrucao") or "") + (" ENTREGA SEMPRE a folha de seguimento (planta com os artigos numerados e a tabela com os "
+                                                       "mesmos números) junto com as quantidades, e diz os controlos que não conferem.")
+    return out
+
+
+async def _seguimento_cad(plan_id: str, user: dict, conv: dict, p: dict, medicao: dict, estrutura: dict | None = None) -> dict | None:
+    """Folha de seguimento (planta com os artigos numerados + tabela + cruzamento com o que está escrito) de uma medição
+    CAD. Nunca bloqueia a medição: sem ficheiro CAD ou com erro de desenho devolve None e a medição segue."""
+    import hashlib
+    try:
+        from engines import cad_seguimento as CS
+        from engines.plan_sources import load_cad_source
+        uid = user["user_id"]
+        data = await load_cad_source(db, plan_id, uid, "converted_dxf") or await load_cad_source(db, plan_id, uid, "original")
+        if not data:
+            return None
+        if data[:4] == b"AC10":
+            from engines.dwg_convert import dwg_to_dxf
+            data = await dwg_to_dxf(data, p.get("filename") or "plan.dwg", user_id=uid)
+        nome = p.get("filename") or plan_id
+        seg = await asyncio.to_thread(CS.pdf_bytes, data, medicao, titulo=nome, estrutura=estrutura)
+        pdf = seg.pop("pdf")
+        chave = json.dumps({"l": medicao.get("linhas"), "e": (estrutura or {}).get("geometria") or (estrutura or {}).get("malha")},
+                           sort_keys=True, default=str)
+        aid = "file_" + hashlib.sha256(f"{uid}{plan_id}{CS.TOLERANCIA_PCT}{chave}".encode()).hexdigest()[:27] + "s"
+        art = {"artifact_id": aid, "user_id": uid, "conversation_id": conv.get("conversation_id"), "request_id": conv.get("_quote_request_id"),
+               "title": f"Seguimento das quantidades — {nome}"[:160], "body": "", "filename": "ConstruPilot_Seguimento_quantidades.pdf",
+               "format": "pdf", "kind": "calc_note", "mime": "application/pdf", "size": len(pdf), "data_b64": base64.b64encode(pdf).decode(),
+               "source_artifact_ids": [], "created_at": datetime.now(timezone.utc).isoformat(), "illustrative": False, "plan_id": plan_id,
+               "calc_note": "seguimento_cad", "download": f"/assistant/artifacts/{aid}/content"}
+        await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$set": art}, upsert=True)
+        pub = {k: art[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")}
+        verif = []
+        areas = [a for a in seg["artigos"] if a["confere"] is not None]
+        maus = [a for a in areas if not a["confere"]]
+        if areas:
+            verif.append({"verificacao": "seguimento: desenhado = medido", "estado": "aviso" if maus else "ok",
+                          "detalhe": ("NÃO confere: " + "; ".join(f"n.º {a['n']} {a['camada']}: medido {a['qty']} / desenhado {a['desenhado']} {a['unit']}" for a in maus))
+                          if maus else f"{len(areas)} artigo(s) redesenhados na planta com a mesma quantidade da medição"})
+        conf = [r for r in seg["escrito"] if r["ok"] is not None]
+        if conf:
+            mal = [r for r in conf if not r["ok"]]
+            verif.append({"verificacao": "áreas escritas no desenho", "estado": "aviso" if mal else "ok",
+                          "detalhe": ("NÃO confere: " + "; ".join(f"«{r['texto']}» escrito {r['escrito']} m² / medido {r['medido']} m² (n.º {r['n']})" for r in mal))
+                          if mal else f"{len(conf)} área(s) escrita(s) conferem com o elemento medido (≤ 2 %)"})
+        else:
+            verif.append({"verificacao": "áreas escritas no desenho", "estado": "aviso",
+                          "detalhe": "o desenho não tem áreas escritas dentro dos elementos medidos: medições não conferidas por texto"})
+        return {"artifact": pub, "verificacao": verif, "artigos": seg["artigos"], "avisos": seg["avisos"], "desenhado": seg["desenhado"]}
+    except Exception as exc:  # noqa: BLE001, o seguimento nunca bloqueia a medição
+        logging.getLogger(__name__).warning("seguimento CAD não gerado: %s", type(exc).__name__)
+        return None
+
+
 async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
     """Orçamento completo de um DWG/DXF num só passo (o percurso feito à mão para Valpaços, 14/11): medição por camadas
     + estrutura calculada + bases de pavimento (hipótese marcada) → orçamento gravado; os preços vêm da biblioteca da
@@ -561,6 +627,11 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
     area = float((med.get("edificio") or {}).get("area_m2") or 0) or None
     verif = list((est or {}).get("verificacao_cruzada") or med.get("verificacao_cruzada") or [])
     verif += VC.verificar_orcamento(rows, d.get("total_ht"), area, PR.coeficiente(E.merge(saved, "PT").get("params")))
+    seg_arts = (est or {}).get("artifacts") if (est or {}).get("ok") and (est or {}).get("artifacts") else med.get("artifacts")
+    if seg_arts:
+        res = {**res, "artifacts": list(res.get("artifacts") or []) + list(seg_arts)}
+    for k in ("verificacao_cruzada",):
+        verif += [v for v in (med.get(k) or []) if v.get("verificacao", "").startswith(("seguimento", "áreas escritas")) and v not in verif]
     return {**res, "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
                               "origem_dos_precos": origem, "sem_preco": sem_preco,
                               "hipoteses_estrutura": (est or {}).get("hipoteses"), "avisos": avisos,
@@ -572,7 +643,8 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
                          "referência CYPE PT = custo direto convertido em venda com os encargos e a margem da empresa, mercado online); "
                          "as linhas HIPÓTESE (bases de pavimento) e as hipóteses da estrutura (pé-direito, vento/sismo não verificados); "
                          "as linhas sem preço, se houver, como pontos a completar; a verificação cruzada (ok/avisos, com o detalhe dos avisos); e que o "
-                         "mesmo desenho dará sempre este resultado (dados novos só acrescentam). Anuncia TODOS os ficheiros (orçamento, medição, dossier económico)."}
+                         "mesmo desenho dará sempre este resultado (dados novos só acrescentam). Anuncia TODOS os ficheiros (orçamento, medição, dossier económico "
+                         "e a folha de seguimento: planta com os artigos numerados e tabela com os mesmos números)."}
 
 
 def _norm_txt(s) -> str:
@@ -874,7 +946,7 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 out["referencia"] = {**referencia, "estrutura": "congelada: mesmos dados → mesmo resultado (só muda se o utilizador der um dado novo)",
                                      "parametros": params, "revisoes": len(ant.get("revisoes") or [])}
                 out["verificacao_cruzada"] = _verificar(res, out)
-                return out
+                return _com_seguimento(out, await _seguimento_cad(args["plan_id"], user, conv, p, res, out))
             pts = [tuple(x) for x in ed["pontos"]]
             nome = f"Edifício — {p.get('filename') or args['plan_id']}"
             try:
@@ -900,15 +972,16 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                                  "primeiro cálculo — fica como referência deste desenho", "parametros": params,
                                  "diferencas": CB.diferencas((ant or {}).get("resultado", {}).get("linhas"), out["linhas"]) if ant else []}
             out["verificacao_cruzada"] = _verificar(res, out)
-            return out
+            return _com_seguimento(out, await _seguimento_cad(args["plan_id"], user, conv, p, res, r))
         mm = MM.mapa(res.get("linhas") or [])
-        return {"ok": True, **{k: v for k, v in res.items() if k not in ("versao", "edificio")},
+        return _com_seguimento({"ok": True, **{k: v for k, v in res.items() if k not in ("versao", "edificio")},
                 "edificio": {k: (res.get("edificio") or {}).get(k) for k in ("camada", "area_m2", "origem")} if res.get("edificio") else None,
                 "materiais_previstos": {"estado_dos_artigos": mm["contagem"], "totais": mm["totais"][:80],
                                         "perfis_tipo": [{"artigo": a["designacao"], "perfil": a.get("perfil_tipo")} for a in mm["artigos"] if a.get("perfil_tipo")]},
                 "referencia": referencia, "verificacao_cruzada": _verificar(res, None),
                 "instrucao": "Usa estas linhas como artigos do mapa (designação, unidade, quantidade e descrição tal como vêm). Diz ao utilizador "
-                             "os perfis-tipo aplicados (hipóteses de espessura) e as camadas excluídas/sem material, como pontos a confirmar."}
+                             "os perfis-tipo aplicados (hipóteses de espessura) e as camadas excluídas/sem material, como pontos a confirmar."},
+                              await _seguimento_cad(args["plan_id"], user, conv, p, res))
     if name == "orcamento_cad_completo":
         return await _orcamento_cad_completo(args, user, conv)
     if name == "get_plan_results":

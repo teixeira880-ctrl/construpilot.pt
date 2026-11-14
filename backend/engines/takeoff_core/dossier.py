@@ -181,6 +181,25 @@ def build(result, *, brand=None, lang="pt", title=None):
                      P(f"{n(c['a'], 3)} {c['unidade']}"), P(f"{n(c['b'], 3)} {c['unidade']}"),
                      P("—" if c.get("erro_pct") is None else f"{n(c['erro_pct'], 3)} %"), P(res)])
     story.append(table(rows, [22 * mm, 60 * mm, 25 * mm, 25 * mm, 18 * mm, 25 * mm]))
+    story.append(P(t("Cruzamento com o que está escrito nas plantas"), "h2"))
+    written = result.get("escrito")
+    if written:
+        rows = [hdr(t("Piso"), t("Elemento"), t("Escrito na planta"), t("Usado no cálculo"), t("Resultado"))]
+        wstyle = []
+        for i, w in enumerate(written, start=1):
+            res = t("confere") if w["ok"] is True else (t("NÃO confere") if w["ok"] is False else t("sem texto para conferir"))
+            note = t("escrito." + w["nota"]) if w.get("nota") else ""
+            rows.append([P(w["piso"]), P(t("escrito.item." + w["item"])), P(w["escrito"]), P(w["usado"]),
+                         P(res + (f"<br/><font size=6>{note}</font>" if note else ""))])
+            if w["ok"] is False:
+                wstyle.append(("BACKGROUND", (4, i), (4, i), colors.Color(.99, .87, .85)))
+        tb = table(rows, [22 * mm, 34 * mm, 42 * mm, 42 * mm, 35 * mm])
+        if wstyle:
+            tb.setStyle(TableStyle(wstyle))
+        story.append(tb)
+    else:
+        story.append(P(t("Este estudo não tem texto das plantas para conferir (imagem, introdução manual ou planta sem cotas escritas): as quantidades "
+                         "vêm só da geometria e não foram conferidas por texto."), "small"))
     # ------------------------------------------------------------------ 5 estimate
     story.append(P("5. " + t("Orçamento"), "h1"))
     if budget:
