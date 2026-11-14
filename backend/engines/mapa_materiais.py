@@ -360,16 +360,16 @@ def _r_pintura_rodov(q, txt):
 
 
 RECEITAS = [
-    ("perfis", ("kg", "t"), r"\b(ipe|hea|heb|upn|ipn|rhs|shs|chs)\s?\d|\bs(235|275|355)\b|perfis? metalic|estrutura metalica|chapas? de ligacao", _r_perfis),
-    ("fornecimento", ("un",), r"parafus|chumbadour|porca|bucha quimica|varao roscado", _r_fornecimento),
-    ("painel_sandwich", ("m2",), r"painel sandwich|painel sanduiche|panneau sandwich", _r_painel_sandwich),
-    ("remate", ("m",), r"remate|caleira|rufo|cumeeira|algeroz", _r_remate),
-    ("anticorrosiva", ("m2",), r"anticorros|primario epoxi|metalizac|galvaniz", _r_anticorrosiva),
-    ("cofragem", ("m2",), r"cofragem|coffrage|escoramento", _r_cofragem),
-    ("laje_terrea", ("m2",), r"laje terrea|massame|dallage|pavimento terreo|terre plein", _r_laje_terrea),
-    ("verde", ("m2",), r"espacos verdes|relvad|ajardinad|sementeira|zona verde", _r_verde),
-    ("pintura_rodov", ("m2", "m"), r"marcacao rodoviaria|marcas rodoviarias|sinalizacao horizontal|pintura rodoviaria", _r_pintura_rodov),
-    ("pave_drenante", ("m2",), r"pave.{0,20}(drenan|permeav)|(drenan|permeav).{0,20}pave", _r_pave),
+    ("perfis", ("kg", "t"), r"\b(ipe|hea|heb|upn|ipn|rhs|shs|chs)\s?\d|\bs(235|275|355)\b|perfis? metalic|estrutura metalica|chapas? de ligacao|profiles? metallique|charpente metallique|platines?|goussets?", _r_perfis),
+    ("fornecimento", ("un",), r"parafus|chumbadour|porca|bucha quimica|varao roscado|boulon|tiges? d.ancrage|cheville chimique|tige filetee", _r_fornecimento),
+    ("painel_sandwich", ("m2",), r"painel sandwich|painel sanduiche|panneau sandwich|panneaux sandwich|bac acier|bardage double peau", _r_painel_sandwich),
+    ("remate", ("m",), r"remate|caleira|rufo|cumeeira|algeroz|bavette|faitage|faitiere|cheneau|couvertine|habillage|\brives?\b", _r_remate),
+    ("anticorrosiva", ("m2",), r"anticorros|primario epoxi|metalizac|galvaniz|primaire epoxy|protection anticorrosion", _r_anticorrosiva),
+    ("cofragem", ("m2",), r"cofragem|coffrage|escoramento|etaiement", _r_cofragem),
+    ("laje_terrea", ("m2",), r"laje terrea|massame|dallage|pavimento terreo|terre plein|dalle sur (terre|sol)", _r_laje_terrea),
+    ("verde", ("m2",), r"espacos verdes|relvad|ajardinad|sementeira|zona verde|espaces? verts?|engazonn|gazon|terre vegetale", _r_verde),
+    ("pintura_rodov", ("m2", "m"), r"marcacao rodoviaria|marcas rodoviarias|sinalizacao horizontal|pintura rodoviaria|marquage (au sol|routier)|signalisation horizontale|peinture routiere", _r_pintura_rodov),
+    ("pave_drenante", ("m2",), r"pave.{0,20}(drenan|permeab|permeav)|(drenan|permeab|permeav).{0,20}pave", _r_pave),
     ("divisoria_gc", ("m2",), r"divisori|parede.*(gesso cartonado|pladur|placoplatre|plaque de platre)|cloison", _r_divisoria),
     ("teto_gc", ("m2",), r"teto falso|teto suspenso|tecto falso|faux plafond|plafond suspendu", _r_teto),
     ("etics", ("m2",), r"etics|capoto|isolamento (termico )?pelo exterior|ite\b", _r_etics),
@@ -386,7 +386,7 @@ RECEITAS = [
     ("betao", ("m3",), r"betao|beton", _r_betao),
     ("aco", ("kg", "t"), r"\baco\b|armadura|varao|acier|armature", _r_aco),
     ("caixilharia", ("un",), r"caixilh|janela|porta de sacada|vao envidra|fenetre|menuiserie", _r_caixilharia),
-    ("escavacao", ("m3",), r"escava|aterro|desaterro|terrassement|deblai", _r_escavacao),
+    ("escavacao", ("m3",), r"escava|aterro|desaterro|terrassement|deblai|fouilles?", _r_escavacao),
 ]
 
 

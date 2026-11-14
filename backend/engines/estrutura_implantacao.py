@@ -22,7 +22,7 @@ VAO_MAX = 7.5          # m — malha corrente de lajes maciças/vigas em betão 
 PE_DIREITO = 5.0       # m — hipótese para comércio de 1 piso sem corte (a confirmar)
 
 _CAMADA_EDIF = re.compile(r"limite.?constr|implant|edif(icio)?\b|construc|footprint|emprise", re.I)
-_AREA_IMPL = re.compile(r"implanta[cç][aã]o:?\s*(\d{2,6}(?:[.,]\d{1,2})?)\s*m", re.I)
+_AREA_IMPL = re.compile(r"(?:implanta[cç][aã]o|emprise(?: au sol)?|surface d.emprise):?\s*(\d{2,6}(?:[.,]\d{1,2})?)\s*m", re.I)
 
 
 def contornos(doc, entidades, fator_m: float = 1.0) -> list[dict]:
@@ -68,7 +68,7 @@ def area_implantacao_escrita(doc) -> float | None:
     return None
 
 
-_COTA_SOLEIRA = re.compile(r"cota\s*(?:de\s*)?soleira:?\s*(\d{1,4}(?:[.,]\d{1,2})?)", re.I)
+_COTA_SOLEIRA = re.compile(r"(?:cota\s*(?:de\s*)?soleira|cote\s*(?:du\s*|de\s*)?seuil|cote\s*(?:du\s*)?RDC)\s*:?\s*(?:NGF\s*)?(\d{1,4}(?:[.,]\d{1,2})?)", re.I)
 
 
 def cota_soleira(doc) -> float | None:
@@ -86,15 +86,18 @@ def cota_soleira(doc) -> float | None:
     return None
 
 
-def escolher(cands: list[dict], escrita: float | None) -> dict | None:
+def escolher(cands: list[dict], escrita: float | None, lang: str = "pt") -> dict | None:
     if not cands:
         return None
+    fr = lang == "fr"
     if escrita:
         ok = [c for c in cands if abs(c["area_m2"] - escrita) <= 0.01 * escrita]
         if ok:
-            return {**ok[0], "origem": f"polígono da camada «{ok[0]['camada']}» com {ok[0]['area_m2']} m² = área de implantação escrita ({escrita} m²)"}
+            return {**ok[0], "origem": (f"polygone du calque « {ok[0]['camada']} » de {ok[0]['area_m2']} m² = emprise écrite sur le plan ({escrita} m²)" if fr else
+                                        f"polígono da camada «{ok[0]['camada']}» com {ok[0]['area_m2']} m² = área de implantação escrita ({escrita} m²)")}
     c = max(cands, key=lambda c: c["area_m2"])
-    return {**c, "origem": f"maior polígono das camadas de construção («{c['camada']}», {c['area_m2']} m²) — sem área escrita para confirmar"}
+    return {**c, "origem": (f"plus grand polygone des calques de construction (« {c['camada']} », {c['area_m2']} m²) — aucune emprise écrite pour confirmer" if fr else
+                            f"maior polígono das camadas de construção («{c['camada']}», {c['area_m2']} m²) — sem área escrita para confirmar")}
 
 
 def _malha(a0: float, a1: float, vmax: float) -> list[float]:
@@ -135,16 +138,16 @@ def modelo_frame(pontos: list[tuple[float, float]], *, nome: str, pisos: int = 1
 
 
 def calcular(pontos, *, nome: str, pisos: int = 1, pe_direito: float = PE_DIREITO, uso: str = "commerce",
-             vao_max: float = VAO_MAX, lang: str = "pt") -> dict:
+             vao_max: float = VAO_MAX, lang: str = "pt", pais: str = "PT") -> dict:
     from engines.bet_frame.lang import use_lang
     with use_lang(lang):
-        return _calcular(pontos, nome=nome, pisos=pisos, pe_direito=pe_direito, uso=uso, vao_max=vao_max)
+        return _calcular(pontos, nome=nome, pisos=pisos, pe_direito=pe_direito, uso=uso, vao_max=vao_max, lang=lang, pais=pais)
 
 
-def _calcular(pontos, *, nome, pisos, pe_direito, uso, vao_max) -> dict:
+def _calcular(pontos, *, nome, pisos, pe_direito, uso, vao_max, lang="pt", pais="PT") -> dict:
     """Corre o bet_frame e devolve as linhas de medição da estrutura (com hipóteses) + resumo."""
     from engines.bet_frame import calc, devis, model
-    raw = modelo_frame(pontos, nome=nome, pisos=pisos, pe_direito=pe_direito, uso=uso, vao_max=vao_max)
+    raw = modelo_frame(pontos, nome=nome, pisos=pisos, pe_direito=pe_direito, uso=uso, vao_max=vao_max, pais=pais)
     m = model.from_dict(raw)
     bloq = [a for a in model.check(m) if a.get("level") == model.BLOCK]
     if bloq:
@@ -153,24 +156,32 @@ def _calcular(pontos, *, nome, pisos, pe_direito, uso, vao_max) -> dict:
     e = {"risers": [], "units": []}            # sem redes: só fundações e estrutura
     linhas_bf = devis.build_lines(m, r, e)
     gx, gy = raw["grid"]["x"], raw["grid"]["y"]
-    hip = (f"Pré-dimensionamento calculado (EN 1990/1991/1992, motor ConstruPilot) sobre o contorno medido no DWG. HIPÓTESES a "
-           f"confirmar: estrutura em betão armado {raw['structure']['concrete']} / {raw['structure']['steel']}, malha de pilares "
-           f"{gx[1]-gx[0]:.2f} × {gy[1]-gy[0]:.2f} m (vão máx. {vao_max} m), {pisos} piso(s), pé-direito {pe_direito} m, uso "
-           f"comércio (cat. D1), cobertura plana não acessível, fundações diretas em sapatas sem estudo geotécnico. "
-           f"A validar pelo projetista de estruturas.")
+    fr = lang == "fr"
+    hip = ((f"Prédimensionnement calculé (NF EN 1990/1991/1992, moteur ConstruPilot) sur le contour mesuré sur le DWG. HYPOTHÈSES à "
+            f"confirmer : ossature béton armé {raw['structure']['concrete']} / {raw['structure']['steel']}, trame de poteaux "
+            f"{gx[1]-gx[0]:.2f} × {gy[1]-gy[0]:.2f} m (portée max. {vao_max} m), {pisos} niveau(x), hauteur d'étage {pe_direito} m, usage "
+            f"commerce (cat. D1), toiture-terrasse non accessible, fondations superficielles sur semelles sans étude géotechnique G2. "
+            f"À valider par le bureau d'études structure.") if fr else
+           (f"Pré-dimensionamento calculado (EN 1990/1991/1992, motor ConstruPilot) sobre o contorno medido no DWG. HIPÓTESES a "
+            f"confirmar: estrutura em betão armado {raw['structure']['concrete']} / {raw['structure']['steel']}, malha de pilares "
+            f"{gx[1]-gx[0]:.2f} × {gy[1]-gy[0]:.2f} m (vão máx. {vao_max} m), {pisos} piso(s), pé-direito {pe_direito} m, uso "
+            f"comércio (cat. D1), cobertura plana não acessível, fundações diretas em sapatas sem estudo geotécnico. "
+            f"A validar pelo projetista de estruturas."))
     linhas = []
     for l in linhas_bf:
         if not str(l.get("lot", "")).startswith(("1.", "2.")) or not l.get("qty"):
             continue                                   # só fundações e estrutura (as redes vêm de outros motores)
         un = {"m³": "m3", "m²": "m2", "u": "un"}.get(l["unit"], l["unit"])
-        linhas.append({"kind": "item", "category": "Estrutura — " + str(l["lot"]).split(". ", 1)[-1], "designation": l["des"],
+        linhas.append({"kind": "item", "category": ("Structure — " if fr else "Estrutura — ") + str(l["lot"]).split(". ", 1)[-1], "designation": l["des"],
                        "unit": un, "qty": l["qty"], "description": hip, "classe": "estrutura"})
     n_pil = sum(1 for _ in r.get("columns") or [])
     from shapely.geometry import Polygon
     area_real = Polygon(pontos).buffer(0).area
     area_malha = m.footprint
-    hip_area = (f" Área coberta pela malha {area_malha:.2f} m² para um contorno real de {area_real:.2f} m² (células parcialmente "
-                f"fora do contorno arredondadas à malha).")
+    hip_area = ((f" Surface couverte par la trame {area_malha:.2f} m² pour un contour réel de {area_real:.2f} m² (cellules partiellement "
+                 f"hors contour arrondies à la trame).") if fr else
+                (f" Área coberta pela malha {area_malha:.2f} m² para um contorno real de {area_real:.2f} m² (células parcialmente "
+                 f"fora do contorno arredondadas à malha)."))
     for l in linhas:
         l["description"] += hip_area
     return {"linhas": linhas, "hipoteses": hip + hip_area, "pilares": n_pil, "malha": {"x": gx, "y": gy},
