@@ -23,7 +23,7 @@ from collections import defaultdict
 
 from engines.cad_geometry import hatch_area, polyline_length_area, walk_entities
 
-VERSAO = 1
+VERSAO = 2
 _FATORES = {"mm": 0.001, "cm": 0.01, "m": 1.0}
 _INSUNITS = {4: "mm", 5: "cm", 6: "m"}
 
@@ -173,11 +173,15 @@ def medir(doc, entidades=None) -> dict:
     fonte = entidades if entidades is not None else walk_entities(doc, explode_dimensions=False, diagnostics=diag)
     for e in doc.modelspace().query("INSERT"):             # contagens: blocos inseridos no espaço modelo
         por[e.dxf.get("layer", "0")]["blocos"] += 1
+    from engines.estrutura_implantacao import _CAMADA_EDIF
+    cand_edif = []
     for e in fonte:
         layer = e.dxf.get("layer", "0")
         if getattr(e, "_cp_role", None) == "dimension":
             continue
         t = e.dxftype()
+        if t in ("HATCH", "LWPOLYLINE") and _CAMADA_EDIF.search(layer):
+            cand_edif.append(e)
         if layer not in cls_cache:
             cls_cache[layer] = _classe(layer)
         if cls_cache[layer] is None and t != "HATCH" and not (t in ("LWPOLYLINE", "POLYLINE") and getattr(e, "closed", False)):
@@ -236,8 +240,18 @@ def medir(doc, entidades=None) -> dict:
         linhas.append({"kind": "item", "category": cap, "designation": f"{desig} — camada {layer}", "unit": un, "qty": round(q, 2),
                        "classe": cid, "camada": layer,
                        "description": f"{mat}. Medido no desenho CAD: camada «{layer}», {origem}. {nota_unidades}."})
+    edificio, altitude = None, None
+    try:
+        from engines import estrutura_implantacao as EI
+        ed = EI.escolher(EI.contornos(doc, cand_edif, u), EI.area_implantacao_escrita(doc))
+        if ed:
+            edificio = {"camada": ed["camada"], "area_m2": ed["area_m2"], "origem": ed["origem"],
+                        "pontos": [[round(x, 3), round(y, 3)] for x, y in ed["pontos"]][:2000]}
+        altitude = EI.cota_soleira(doc)
+    except Exception:  # noqa: BLE001 — a medição das camadas nunca falha por causa do contorno
+        pass
     sem_material = [k for k, v in por.items() if _classe(k) is None and (v["hatch_n"] or v["fechada_n"]) and _PREFIXO_PROJETO.match(k)]
-    return {"versao": VERSAO, "linhas": linhas, "excluidas": excluidas, "unidades": nota_unidades, "fator_m": u,
+    return {"versao": VERSAO, "linhas": linhas, "excluidas": excluidas, "edificio": edificio, "altitude_m": altitude, "unidades": nota_unidades, "fator_m": u,
             "camadas_area_sem_material": sorted(sem_material)[:40],
             "nota": ("Quantidades medidas na geometria do desenho, camada a camada. Espessuras, perfis e secções não estão no "
                      "desenho de implantação: o mapa de materiais usa o perfil-tipo declarado (hipótese) ou deixa o material «em falta».")}

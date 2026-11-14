@@ -55,3 +55,49 @@ def test_ferramenta_registada():
     from routes import assistant
     assert any(t.get("name") == "medir_camadas_cad" for t in assistant.TOOLS)
     assert "medir_camadas_cad" in assistant.INDIVIDUAL_TOOL_NAMES
+
+
+def _quadrado(a=40.0, b=30.0):
+    return [(0, 0), (a, 0), (a, b), (0, b)]
+
+
+def test_estrutura_metalica_calculada_e_decomposta_ate_aos_parafusos():
+    from engines import estrutura_metalica as EM
+    r = EM.calcular(_quadrado(60.0, 40.0), nome="teste", altitude=416.7)     # 40 m > 30 m → 2 vãos
+    assert all(v["util"] <= 1.0 for v in r["perfis"].values() if v)
+    assert r["geometria"]["vaos"] == 2 and r["geometria"]["afastamento"] <= 6.0
+    m = mapa(r["linhas"])
+    assert m["contagem"]["completo"] == len(r["linhas"])
+    mats = {t["material"] for t in m["totais"]}
+    assert any(x.startswith("Aço S275 — IPE") for x in mats) and any(x.startswith("Aço S275 — HEA") for x in mats)
+    assert any("Chumbadouros M24" in x for x in mats) and any("autoperfurante" in x for x in mats)
+    assert "Aço A500 em varão" in mats, "o varão das fundações não pode ser lido como perfil (descrição fala em S275)"
+    assert all("VENTO e SISMO não verificados" in l["description"] for l in r["linhas"])
+
+
+def test_estrutura_betao_armado_sobre_contorno_em_l():
+    from engines import estrutura_implantacao as EI
+    pts = [(0, 0), (30, 0), (30, 15), (15, 15), (15, 30), (0, 30)]
+    r = EI.calcular(pts, nome="teste")
+    assert r["celulas_sem_laje"] > 0, "o L respeita o contorno, não o retângulo"
+    assert mapa(r["linhas"])["contagem"]["completo"] == len(r["linhas"])
+
+
+def test_contorno_e_cota_soleira_lidos_do_desenho():
+    d = _doc()
+    m = d.modelspace()
+    h = m.add_hatch(dxfattribs={"layer": "SMC_LIMITE CONSTR P0"})
+    h.paths.add_polyline_path([(100, 0), (140, 0), (140, 30), (100, 30)], is_closed=True)
+    m.add_text("EDIFÍCIO área implantação: 1200.00m² cota soleira 416.70", dxfattribs={"layer": "SMC_TEXTO"})
+    r = medir(d)
+    assert r["edificio"]["area_m2"] == 1200.0 and "área de implantação escrita" in r["edificio"]["origem"]
+    assert r["altitude_m"] == 416.7
+
+
+def test_ferramenta_estrutura_registada():
+    import os
+    for k in ("MONGO_URL", "DB_NAME", "JWT_SECRET"):
+        os.environ.setdefault(k, "x" if k != "MONGO_URL" else "mongodb://localhost:27017")
+    from routes import assistant
+    t = next(t for t in assistant.TOOLS if t.get("name") == "calcular_estrutura_cad")
+    assert t["parameters"]["properties"]["sistema"]["enum"] == ["metalica", "betao_armado"]

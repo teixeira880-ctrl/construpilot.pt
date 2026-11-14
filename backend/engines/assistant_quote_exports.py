@@ -35,9 +35,12 @@ EXPORT_INSTRUCTIONS = (
     "Usa essas linhas TAL COMO VÊM (designação, unidade, quantidade, descrição) como artigos do mapa — são elas que dão "
     "a lista de materiais (blocos de pavê, t de betuminoso, ABGE, lancis, betão, terra vegetal, tinta…). Áreas escritas "
     "no desenho (lotes, área de implantação, domínio público), cadeias de cotas e lugares de estacionamento são "
-    "INFORMAÇÃO, não artigos de obra: não as orçamentes como artigos. Um edifício só com área bruta não é medido: "
-    "diz que faltam as plantas/cortes do edifício para o medir, em vez de o pôr a €/m². As camadas «excluidas» "
-    "(levantamento/existente) e «camadas_area_sem_material» são ditas ao utilizador como pontos a confirmar.\n"
+    "INFORMAÇÃO, não artigos de obra: não as orçamentes como artigos. O edifício nunca vai a €/m²: a estrutura e a "
+    "envolvente vêm de calcular_estrutura_cad (abaixo); acabamentos interiores só com as plantas do edifício. As camadas «excluidas» "
+    "(levantamento/existente) e «camadas_area_sem_material» são ditas ao utilizador como pontos a confirmar. "
+    "ESTRUTURA: um mapa de quantidades de obra INCLUI SEMPRE a estrutura — chama calcular_estrutura_cad(plan_id, sistema) "
+    "com o sistema dito pelo utilizador ('é em aço'/'metálica' → metalica; betão armado → betao_armado; se não disse, "
+    "pergunta numa linha qual é, sem parar o resto do mapa) e junta as linhas devolvidas. Nunca orçamentes o edifício a €/m².\n"
 )
 _LINE_KINDS_SKIP = ("section", "subsection", "text", "pagebreak")
 

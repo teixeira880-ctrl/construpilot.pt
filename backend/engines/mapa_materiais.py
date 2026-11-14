@@ -17,6 +17,7 @@ import math
 import re
 import unicodedata
 
+_ATUAL: dict = {}          # designação do artigo em decomposição (as receitas decidem pela designação)
 GLOBAL_UNITS = {"un", "u", "vg", "cj", "conj", "conjunto", "forfait", "ft", "global", "lote", "ens", "ensemble", "lot", "gl"}
 
 
@@ -42,7 +43,8 @@ def espessura_m(txt: str) -> float | None:
     m = re.search(r"(?:e\s*=|esp(?:essura)?\.?|ep\.?|epaisseur)\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)\b", t) \
         or re.search(r"\b(\d+(?:[.,]\d+)?)\s*(mm|cm)\b(?!\s*[x×])", t)
     if not m:
-        return None
+        m0 = re.search(r"\be\s*=\s*(0[.,]\d{1,3})\b(?!\s*(?:mm|cm|m\b))", t)   # «e=0,15» sem unidade = metros
+        return _num(m0.group(1)) if m0 else None
     v = _num(m.group(1))
     return v / 1000 if m.group(2) == "mm" else v / 100 if m.group(2) == "cm" else v
 
@@ -142,8 +144,11 @@ def _r_reboco(q, txt):
 
 
 def _r_betao(q, txt):
-    out = [_m("Betão (classe conforme projeto)", "m3", 1.0, 0.03, None, "Perda de colocação 3 % (NP EN 206 / prática corrente)")]
-    if re.search(r"armad|ba\b|beton arme", _norm(txt)):
+    nome = _ATUAL.get("nome") or txt
+    c = re.search(r"\bC(\d{2})/(\d{2})\b", nome) or re.search(r"\bC(\d{2})/(\d{2})\b", txt)
+    classe = f"C{c.group(1)}/{c.group(2)}" if c else "classe conforme projeto"
+    out = [_m(f"Betão {classe}", "m3", 1.0, 0.03, None, "Perda de colocação 3 % (NP EN 206 / prática corrente)")]
+    if re.search(r"armad|ba\b|beton arme", _norm(nome)):
         tx = taxa_aco(txt)
         if tx:
             out += [_m(f"Aço A500 em varão ({tx:g} kg/m³)", "kg", tx, 0.05, None, "Taxa de armadura indicada no artigo"),
@@ -281,6 +286,66 @@ def _r_escavacao(q, txt):
     return [_m("Terras a transportar (empolamento 25 %)", "m3", 1.25, 0.0, None, "Empolamento de terras correntes 20–30 %")]
 
 
+def _r_cofragem(q, txt):
+    n = _norm(txt)
+    out = [_m("Painel de cofragem (contraplacado 18 mm, 5 reutilizações)", "m2", 1.10 / 5, 0.05, None, F_PERFIL),
+           _m("Madeira de pinho (barrotes/tábuas, 6 reutilizações)", "m3", 0.03 / 6, 0.10, None, F_PERFIL),
+           _m("Pregos de cofragem (aço, 70–100 mm)", "kg", 0.15, 0.10, (5.0, "caixa 5 kg"), F_PERFIL),
+           _m("Óleo descofrante", "L", 0.10, 0.05, (25.0, "bidão 25 L"), F_PERFIL)]
+    if re.search(r"laje|lajes|escoram|dalle", n):
+        out.append(_m("Prumos metálicos de escoramento (1 un/m², aluguer)", "un", 1.0, 0.0, None, F_PERFIL))
+    if re.search(r"pilar|parede|poteau|voile", n):
+        out.append(_m("Varões roscados + porcas de aperto (tirantes)", "un", 0.8, 0.05, None, F_PERFIL))
+    return out
+
+
+def _r_laje_terrea(q, txt):
+    e = espessura_m(txt)
+    out = [_m(f"Betão C25/30 (e = {e*100:g} cm)", "m3", e, 0.03, None, F_GEOM) if e else
+           _m("Betão", "m3", None, falta="espessura da laje térrea")]
+    out += [_m("Malha eletrossoldada (sobreposição 20 %)", "m2", 1.20, 0.02, None, "Sobreposição de 1 malha: ≈ 20 %"),
+            _m("Espaçadores/cadeiras de malha (4 un/m²)", "un", 4.0, 0.05, (100, "saco 100"), F_PERFIL),
+            _m("Tela de polietileno 200 µm (sobreposição 15 %)", "m2", 1.15, 0.03, (100.0, "rolo 100 m²"), F_PERFIL),
+            _m("ABGE — caixa de base (e = 15 cm, compactado)", "m3", 0.15, 0.10, None, F_PERFIL),
+            _m("Corte de juntas de retração (malha 5 × 5 m ≈ 0,4 m/m²)", "m", 0.40, 0.0, None, F_PERFIL)]
+    return out
+
+
+def _r_perfis(q, txt):
+    m = re.search(r"\b(IPE|HEA|HEB|UPN|IPN|RHS|SHS|CHS)\s?(\d{2,4})", txt, re.I)
+    nome = f"{m.group(1).upper()}{m.group(2)}" if m else "perfis/chapa"
+    g = re.search(r"\bS(235|275|355)\b", txt)
+    cl = f"S{g.group(1)}" if g else "classe conforme projeto"
+    return [_m(f"Aço {cl} — {nome} (barras comerciais de 12 m)", "kg", 1.0, 0.03, None, "Desperdício de corte em barras de 12 m: 3 %")]
+
+
+def _r_fornecimento(q, txt):
+    nome = re.split(r" — | - ", (_ATUAL.get("nome") or txt).strip(), maxsplit=1)[0][:90]
+    return [_m(nome, "un", 1.0, 0.05, (50, "caixa 50"), "Peças contadas no cálculo; 5 % de reserva de obra")]
+
+
+def _r_painel_sandwich(q, txt):
+    fach = bool(re.search(r"fachad|parede|bardage", _norm(txt)))
+    return [_m("Painel sandwich (largura útil 1,0 m)", "m2", 1.0, 0.05, None, "Cortes e sobreposições 5 %"),
+            _m("Parafuso autoperfurante com anilha EPDM (fixação à madre)", "un", 2.5 if fach else 2.0, 0.05, (100, "caixa 100"),
+               "Ficha de montagem corrente: 3 fixações por painel de 1 m em cada madre/longarina (madres a 1,5 m)"),
+            _m("Parafuso de costura (cosido de juntas)", "un", 1.0, 0.05, (100, "caixa 100"), F_PERFIL),
+            _m("Fita/mastique de vedação de juntas", "m", 1.0, 0.05, None, F_PERFIL)]
+
+
+def _r_remate(q, txt):
+    return [_m("Chapa lacada quinada (remate/caleira)", "m", 1.0, 0.05, None, "Sobreposição de 10 cm por peça de 2 m: 5 %"),
+            _m("Rebite/parafuso de costura", "un", 4.0, 0.05, (100, "caixa 100"), F_PERFIL),
+            _m("Silicone/mastique (cartucho 300 ml ≈ 12 m)", "un", 1 / 12, 0.10, None, F_PERFIL)]
+
+
+def _r_anticorrosiva(q, txt):
+    n = demaos(txt) or 2
+    return [_m("Primário epóxi rico em zinco (80 µm secos ≈ 0,15 L/m²)", "L", 0.15, 0.15, (20.0, "lata 20 L"), F_PERFIL),
+            _m(f"Esmalte de acabamento ({max(n - 1, 1)} demão de 60 µm ≈ 0,12 L/m²)", "L", 0.12 * max(n - 1, 1), 0.15, (20.0, "lata 20 L"), F_PERFIL),
+            _m("Diluente (10 %)", "L", 0.10 * (0.15 + 0.12 * max(n - 1, 1)), 0.0, (5.0, "lata 5 L"), F_PERFIL)]
+
+
 def _r_verde(q, txt):
     e = espessura_m(txt)
     out = [_m(f"Terra vegetal (e = {e*100:g} cm)", "m3", e, 0.10, None, F_GEOM) if e else
@@ -295,6 +360,13 @@ def _r_pintura_rodov(q, txt):
 
 
 RECEITAS = [
+    ("perfis", ("kg", "t"), r"\b(ipe|hea|heb|upn|ipn|rhs|shs|chs)\s?\d|\bs(235|275|355)\b|perfis? metalic|estrutura metalica|chapas? de ligacao", _r_perfis),
+    ("fornecimento", ("un",), r"parafus|chumbadour|porca|bucha quimica|varao roscado", _r_fornecimento),
+    ("painel_sandwich", ("m2",), r"painel sandwich|painel sanduiche|panneau sandwich", _r_painel_sandwich),
+    ("remate", ("m",), r"remate|caleira|rufo|cumeeira|algeroz", _r_remate),
+    ("anticorrosiva", ("m2",), r"anticorros|primario epoxi|metalizac|galvaniz", _r_anticorrosiva),
+    ("cofragem", ("m2",), r"cofragem|coffrage|escoramento", _r_cofragem),
+    ("laje_terrea", ("m2",), r"laje terrea|massame|dallage|pavimento terreo|terre plein", _r_laje_terrea),
     ("verde", ("m2",), r"espacos verdes|relvad|ajardinad|sementeira|zona verde", _r_verde),
     ("pintura_rodov", ("m2", "m"), r"marcacao rodoviaria|marcas rodoviarias|sinalizacao horizontal|pintura rodoviaria", _r_pintura_rodov),
     ("pave_drenante", ("m2",), r"pave.{0,20}(drenan|permeav)|(drenan|permeav).{0,20}pave", _r_pave),
@@ -385,13 +457,16 @@ def decompor(linha: dict) -> dict:
         return {**base, "estado": "sem_medicao", "motivo": "quantidade a confirmar — medir nas plantas ou em obra", "materiais": []}
     qtd = float(qtd)
     t = _norm(txt)
-    rec = next(((rid, f) for rid, uns, rx, f in RECEITAS if re.search(rx, t) and (un in uns or (rid == "aco" and un in ("kg", "t")))), None)
+    def _acha(texto):
+        return next(((rid, f) for rid, uns, rx, f in RECEITAS if re.search(rx, texto) and (un in uns or (rid in ("aco", "perfis") and un in ("kg", "t")))), None)
+    rec = _acha(_norm(nome)) or _acha(t)          # a designação decide; a descrição só se a designação não chegar
+    _ATUAL["nome"] = nome
     if rec is None:
         if un in GLOBAL_UNITS and rec is None:
             return {**base, "estado": "global", "motivo": "artigo global (un/vg) sem medição: decompor em artigos medidos", "materiais": []}
         return {**base, "estado": "sem_receita", "motivo": "tipo de artigo ainda sem decomposição de materiais no ConstruPilot", "materiais": []}
     rid, fn = rec
-    mult = 1000.0 if (rid == "aco" and un == "t") else 1.0
+    mult = 1000.0 if (rid in ("aco", "perfis") and un == "t") else 1.0
     mats = []
     receita = fn(qtd, txt)
     perfil = None
