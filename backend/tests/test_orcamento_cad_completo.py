@@ -93,7 +93,7 @@ def test_ferramenta_orcamento_cad_junta_medicao_estrutura_bases_e_transporte(mon
     async def inner(name, args, user, conv):
         calls[name] = args
         if name == "medir_camadas_cad":
-            return {"ok": True, "excluidas": [], "linhas": [
+            return {"ok": True, "excluidas": [], "edificio": {"area_m2": 100.0}, "linhas": [
                 {"category": "Pavimentos", "designation": "Pavimento betuminoso — camada X", "unit": "m2", "qty": 100.0, "description": "d"},
                 {"category": "Pavimentos", "designation": "Pavimento em pavê drenante — camada Y", "unit": "m2", "qty": 40.0, "description": "d"}]}
         return {"ok": True, "hipoteses": ["pé-direito 7 m"], "linhas": [
@@ -109,13 +109,13 @@ def test_ferramenta_orcamento_cad_junta_medicao_estrutura_bases_e_transporte(mon
     async def exports(res, user, conv):
         return {**res, "artifacts": ["x"]}
 
-    class _Plans:
-        async def find_one(self, *a, **k):
-            return {"filename": "Valpacos.dwg"}
+    from mongomock_motor import AsyncMongoMockClient
+    mdb = AsyncMongoMockClient()["t"]
+    asyncio.run(mdb.plans_takeoff.insert_one({"plan_id": "p1", "user_id": "u1", "filename": "Valpacos.dwg"}))
     monkeypatch.setattr(assistant, "_exec_tool_inner", inner)
     monkeypatch.setattr(qs, "save_quote", save)
     monkeypatch.setattr(qe, "with_exports", exports)
-    monkeypatch.setattr(assistant, "db", NS(plans_takeoff=_Plans()))
+    monkeypatch.setattr(assistant, "db", mdb)
     out = asyncio.run(assistant._orcamento_cad_completo(
         {"plan_id": "p1", "sistema": "metalica", "pe_direito_m": None, "pisos": None, "titulo": None, "cliente": None,
          "incluir_bases_pavimento": True}, {"user_id": "u1"}, {}))
@@ -129,3 +129,4 @@ def test_ferramenta_orcamento_cad_junta_medicao_estrutura_bases_e_transporte(mon
     assert all(l["price_origin"] == "library" and l["unit_price"] is None for l in saved["args"]["lines"])
     assert out["resumo"]["total_com_iva"] == 1.23 and out["resumo"]["sem_preco"] == [] and out["artifacts"] == ["x"]
     assert saved["args"]["title"].endswith("Valpacos.dwg")
+    assert isinstance(out["resumo"]["verificacao_cruzada"], list) and out["resumo"]["referencia"]["precos"]

@@ -175,17 +175,17 @@ TOOLS = [
                     "required": ["plan_id", "page_index", "scope_text", "effort"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "calcular_estrutura_cad", "description": "Calcula (pré-dimensionamento NP EN 1990/1991/1992/1993) a ESTRUTURA de um edifício a partir do contorno medido num DWG/DXF de implantação: sistema 'metalica' (armazém/pavilhão: pórticos IPE/HEA verificados EC3, madres, contraventamentos, parafusos, chumbadouros, sapatas, painel sandwich) ou 'betao_armado' (pilares, vigas, lajes, sapatas, aço). Devolve os artigos com quantidades calculadas e as hipóteses. Usar quando pedem o mapa de quantidades/orçamento com estrutura e o desenho não tem as peças de estrutura. Se o utilizador disser o sistema (ex.: 'é em aço', 'estrutura metálica'), usa-o.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "sistema": {"type": "string", "enum": ["metalica", "betao_armado"]},
-                                                     "pe_direito_m": {"type": ["number", "null"]}, "pisos": {"type": ["integer", "null"]}},
-                    "required": ["plan_id", "sistema", "pe_direito_m", "pisos"], "additionalProperties": False}, "strict": True},
+                                                     "pe_direito_m": {"type": ["number", "null"], "description": "Só se o utilizador o disser; senão null (mantém o valor anterior deste desenho ou a hipótese)."}, "pisos": {"type": ["integer", "null"], "description": "Só se o utilizador o disser; senão null."}, "recalcular": {"type": "boolean", "description": "false por defeito. true SÓ se o utilizador pedir explicitamente para recalcular do zero: o mesmo desenho dá sempre o resultado de referência guardado."}},
+                    "required": ["plan_id", "sistema", "pe_direito_m", "pisos", "recalcular"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "orcamento_cad_completo", "description": "ORÇAMENTO COMPLETO de um desenho CAD (DWG/DXF) num só passo: mede o desenho camada a camada, calcula a estrutura (se o sistema for indicado), junta as bases de pavimento (hipótese marcada) e o transporte das terras, grava o orçamento com os preços da biblioteca da empresa, depois da referência CYPE Portugal (custo direto + encargos e margem da empresa), depois do mercado online — com a origem de cada preço — e devolve totais, PDF/Excel do orçamento e da medição e o dossier económico. Usar SEMPRE que pedem um orçamento/mapa de quantidades com preços de um DWG/DXF.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"},
                                                      "sistema": {"type": "string", "enum": ["metalica", "betao_armado", "nenhum"], "description": "Sistema estrutural do edifício ('é em aço' → metalica). 'nenhum' só se não houver edifício."},
-                                                     "pe_direito_m": {"type": ["number", "null"]}, "pisos": {"type": ["integer", "null"]},
+                                                     "pe_direito_m": {"type": ["number", "null"], "description": "Só se o utilizador o disser; senão null (mantém o valor anterior deste desenho ou a hipótese)."}, "pisos": {"type": ["integer", "null"], "description": "Só se o utilizador o disser; senão null."}, "recalcular": {"type": "boolean", "description": "false por defeito. true SÓ se o utilizador pedir explicitamente para recalcular do zero: o mesmo desenho dá sempre o resultado de referência guardado."},
                                                      "titulo": {"type": ["string", "null"]}, "cliente": {"type": ["string", "null"]},
                                                      "incluir_bases_pavimento": {"type": "boolean", "description": "true por defeito: bases granulares sob os pavimentos, marcadas HIPÓTESE (espessura não desenhada)."}},
-                    "required": ["plan_id", "sistema", "pe_direito_m", "pisos", "titulo", "cliente", "incluir_bases_pavimento"], "additionalProperties": False}, "strict": True},
+                    "required": ["plan_id", "sistema", "pe_direito_m", "pisos", "titulo", "cliente", "incluir_bases_pavimento", "recalcular"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "medir_camadas_cad", "description": "Mede um desenho CAD (DWG/DXF) camada a camada: áreas das tramas (pavimento betuminoso, pavê, espaços verdes, marcações), comprimentos (lancis, muros, vedações; linhas duplas face/tardoz contadas uma vez), contagens de blocos. Devolve os artigos MEDIDOS prontos para o mapa de quantidades, com a origem de cada quantidade, e os materiais previstos. Chamar SEMPRE antes de um mapa de quantidades/orçamento de um DWG/DXF.",
-     "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"], "additionalProperties": False}, "strict": True},
+     "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "recalcular": {"type": "boolean", "description": "false por defeito. true SÓ se o utilizador pedir explicitamente para recalcular do zero: o mesmo desenho dá sempre o resultado de referência guardado."}}, "required": ["plan_id", "recalcular"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "get_plan_results", "description": "Obtém os resultados existentes (cotas exatas, cadeias, fachadas, elementos, análise OpenAI) de uma página de planta para os explicar.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "page_index": {"type": "integer"}},
                     "required": ["plan_id", "page_index"], "additionalProperties": False}, "strict": True},
@@ -481,6 +481,14 @@ async def _empty_events():
     yield  # noqa: unreachable — torna a função um gerador assíncrono vazio
 
 
+def _verificar(medicao, estrutura):
+    from engines import verificacao_cruzada as VC
+    try:
+        return VC.verificar(medicao, estrutura)
+    except Exception as exc:  # noqa: BLE001 — a verificação nunca bloqueia o resultado
+        return [{"verificacao": "verificação cruzada", "estado": "aviso", "detalhe": f"não executada ({type(exc).__name__})"}]
+
+
 HIPOTESE_BASES = (("pavimento betuminoso", 0.20, "sob pavimento betuminoso"), ("pave", 0.15, "sob pavê drenante/permeável"))
 
 
@@ -491,7 +499,7 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
     com a origem escrita em cada linha; totais, PDF/Excel e dossier económico como em qualquer orçamento."""
     from engines.assistant_quote_exports import with_exports
     from engines.assistant_quote_service import append_quote_lines, save_quote
-    med = await _exec_tool_inner("medir_camadas_cad", {"plan_id": args["plan_id"]}, user, conv)
+    med = await _exec_tool_inner("medir_camadas_cad", {"plan_id": args["plan_id"], "recalcular": bool(args.get("recalcular"))}, user, conv)
     if not med.get("ok"):
         return med
     linhas = [dict(l) for l in med.get("linhas") or []]
@@ -499,7 +507,8 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
     sistema = args.get("sistema") or "nenhum"
     if sistema in ("metalica", "betao_armado"):
         est = await _exec_tool_inner("calcular_estrutura_cad", {"plan_id": args["plan_id"], "sistema": sistema,
-                                                                 "pe_direito_m": args.get("pe_direito_m"), "pisos": args.get("pisos")}, user, conv)
+                                                                 "pe_direito_m": args.get("pe_direito_m"), "pisos": args.get("pisos"),
+                                                                 "recalcular": bool(args.get("recalcular"))}, user, conv)
         if est.get("ok"):
             linhas += [dict(l) for l in est.get("linhas") or []]
         else:
@@ -524,12 +533,21 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
                "unit_price": None, "price_origin": "library", "vat_rate": None, "lot": str(l.get("category") or "Geral")[:80]} for l in linhas]
     if not qlines:
         return {"ok": False, "error": "O desenho não deu artigos medíveis (nenhuma trama, linha ou bloco nas camadas de obra)."}
+    from engines import cad_baseline as CB
     p = await db.plans_takeoff.find_one({"plan_id": args["plan_id"], "user_id": user["user_id"]}, {"_id": 0, "filename": 1})
     title = (args.get("titulo") or f"Orçamento — {(p or {}).get('filename') or args['plan_id']}")[:160]
-    res = await save_quote({"title": title, "client_name": (args.get("cliente") or "")[:200], "vat_rate": None, "lines": qlines[:150]}, user, conv)
-    conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
-    for i in range(150, len(qlines), 60):
-        res = await append_quote_lines({"vat_rate": None, "lines": qlines[i:i + 60]}, user, conv, doc_id=res["doc_id"])
+    sha = await CB.sha_do_desenho(db, args["plan_id"], user["user_id"])
+    ref = await CB.ler(db, user["user_id"], sha)
+    token = CB.PRECOS_FIXOS.set(CB.precos_fixos(ref))          # preços já fixados para este desenho → reutilizados tal e qual
+    try:
+        res = await save_quote({"title": title, "client_name": (args.get("cliente") or "")[:200], "vat_rate": None, "lines": qlines[:150]}, user, conv)
+        conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
+        for i in range(150, len(qlines), 60):
+            res = await append_quote_lines({"vat_rate": None, "lines": qlines[i:i + 60]}, user, conv, doc_id=res["doc_id"])
+    finally:
+        CB.PRECOS_FIXOS.reset(token)
+    rows0 = (res.get("draft") or {}).get("lines") or []
+    novos_precos = await CB.juntar_precos(db, user["user_id"], sha, rows0) if sha else 0
     res = await with_exports(res, user, conv)
     rows = (res.get("draft") or {}).get("lines") or []
     origem = {}
@@ -538,14 +556,23 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
         origem[k] = origem.get(k, 0) + 1
     sem_preco = [r["designation"] for r in rows if r.get("price_missing")]
     d = res.get("draft") or {}
+    from engines import economic_dossier as E, precos_referencia as PR, verificacao_cruzada as VC
+    saved = await db.company_cost_resources.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    area = float((med.get("edificio") or {}).get("area_m2") or 0) or None
+    verif = list((est or {}).get("verificacao_cruzada") or med.get("verificacao_cruzada") or [])
+    verif += VC.verificar_orcamento(rows, d.get("total_ht"), area, PR.coeficiente(E.merge(saved, "PT").get("params")))
     return {**res, "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
                               "origem_dos_precos": origem, "sem_preco": sem_preco,
                               "hipoteses_estrutura": (est or {}).get("hipoteses"), "avisos": avisos,
-                              "camadas_excluidas": med.get("excluidas") or med.get("camadas_excluidas")},
+                              "camadas_excluidas": med.get("excluidas") or med.get("camadas_excluidas"),
+                              "referencia": {**(med.get("referencia") or {}), **((est or {}).get("referencia") or {}),
+                                             "precos": "fixos deste desenho reutilizados" + (f"; {novos_precos} preço(s) novo(s) fixado(s)" if novos_precos else "")},
+                              "verificacao_cruzada": verif},
             "instrucao": "Apresenta: total sem IVA, IVA e total com IVA; o resumo por capítulo; a origem dos preços (biblioteca da empresa, "
                          "referência CYPE PT = custo direto convertido em venda com os encargos e a margem da empresa, mercado online); "
                          "as linhas HIPÓTESE (bases de pavimento) e as hipóteses da estrutura (pé-direito, vento/sismo não verificados); "
-                         "as linhas sem preço, se houver, como pontos a completar. Anuncia TODOS os ficheiros (orçamento, medição, dossier económico)."}
+                         "as linhas sem preço, se houver, como pontos a completar; a verificação cruzada (ok/avisos, com o detalhe dos avisos); e que o "
+                         "mesmo desenho dará sempre este resultado (dados novos só acrescentam). Anuncia TODOS os ficheiros (orçamento, medição, dossier económico)."}
 
 
 def _norm_txt(s) -> str:
@@ -810,8 +837,12 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
         p = await db.plans_takeoff.find_one({"plan_id": args["plan_id"], "user_id": uid}, {"_id": 0, "plan_id": 1, "kind": 1, "filename": 1, "cad_quantidades": 1})
         if not p:
             raise PermissionError("Documento inacessível para esta conta")
-        res = p.get("cad_quantidades") or {}
-        if res.get("versao") != CQ.VERSAO:
+        from engines import cad_baseline as CB
+        sha = await CB.sha_do_desenho(db, args["plan_id"], uid)
+        ref = await CB.ler(db, uid, sha)
+        congelado = bool(ref and ref.get("medicao") and not args.get("recalcular"))
+        res = ref["medicao"] if congelado else (p.get("cad_quantidades") or {})
+        if not congelado and res.get("versao") != CQ.VERSAO:
             if p.get("kind") != "dxf":
                 return {"ok": False, "error": "Esta planta não é um desenho CAD (DWG/DXF): a medição por camadas só existe para CAD. Use as cotas e áreas lidas na planta."}
             data = await load_cad_source(db, args["plan_id"], uid, "converted_dxf") or await load_cad_source(db, args["plan_id"], uid, "original")
@@ -822,36 +853,60 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 data = await dwg_to_dxf(data, p.get("filename") or "plan.dwg", user_id=uid)
             res = await asyncio.to_thread(CQ.medir_bytes, data)
             await db.plans_takeoff.update_one({"plan_id": args["plan_id"], "user_id": uid}, {"$set": {"cad_quantidades": res}})
+        if sha and not congelado:
+            if args.get("recalcular") and ref:
+                await db.cad_baselines.update_one({"user_id": uid, "sha256": sha}, {"$set": {"medicao": res}})
+            else:
+                await CB.guardar_medicao(db, uid, sha, res, args["plan_id"])
+        referencia = {"desenho_sha256": (sha or "")[:16], "medicao": "congelada (resultado de referência deste desenho)" if congelado else "primeira medição — fica como referência"}
         if name == "calcular_estrutura_cad":
             from engines import estrutura_implantacao as EI, estrutura_metalica as EM
             ed = res.get("edificio")
             if not ed or len(ed.get("pontos") or []) < 3:
                 return {"ok": False, "error": "Contorno do edifício não encontrado no desenho (nenhum polígono nas camadas de construção/implantação). "
                                               "Peça as plantas do edifício ou indique a camada do contorno."}
+            sistema = args["sistema"]
+            ant = ((ref or {}).get("estrutura") or {}).get(sistema) if sha else None
+            params, mudancas = CB.juntar_parametros((ant or {}).get("parametros"),
+                                                    {"pe_direito_m": args.get("pe_direito_m"), "pisos": args.get("pisos")})
+            if ant and not mudancas and not args.get("recalcular"):
+                out = dict(ant["resultado"])
+                out["referencia"] = {**referencia, "estrutura": "congelada: mesmos dados → mesmo resultado (só muda se o utilizador der um dado novo)",
+                                     "parametros": params, "revisoes": len(ant.get("revisoes") or [])}
+                out["verificacao_cruzada"] = _verificar(res, out)
+                return out
             pts = [tuple(x) for x in ed["pontos"]]
             nome = f"Edifício — {p.get('filename') or args['plan_id']}"
             try:
-                if args["sistema"] == "metalica":
-                    r = await asyncio.to_thread(EM.calcular, pts, nome=nome, pe_direito=args.get("pe_direito_m") or EM.PE_DIREITO,
+                if sistema == "metalica":
+                    r = await asyncio.to_thread(EM.calcular, pts, nome=nome, pe_direito=params.get("pe_direito_m") or EM.PE_DIREITO,
                                                 altitude=res.get("altitude_m") or 400.0)
                 else:
-                    r = await asyncio.to_thread(EI.calcular, pts, nome=nome, pisos=args.get("pisos") or 1,
-                                                pe_direito=args.get("pe_direito_m") or EI.PE_DIREITO)
+                    r = await asyncio.to_thread(EI.calcular, pts, nome=nome, pisos=params.get("pisos") or 1,
+                                                pe_direito=params.get("pe_direito_m") or EI.PE_DIREITO)
             except ValueError as exc:
                 return {"ok": False, "error": f"Pré-dimensionamento impossível: {exc}"}
             mm = MM.mapa(r["linhas"])
-            return {"ok": True, "sistema": args["sistema"], "contorno": {k: ed[k] for k in ("camada", "area_m2", "origem")},
-                    "hipoteses": r["hipoteses"], "geometria": r.get("geometria") or r.get("malha"), "perfis": r.get("perfis"),
-                    "linhas": [{**l, "description": l["description"][:400]} for l in r["linhas"]],
-                    "materiais_previstos": {"estado_dos_artigos": mm["contagem"], "totais": mm["totais"][:80]},
-                    "instrucao": "Junta estas linhas ao mapa de quantidades (capítulos Estrutura / Fundações / Envolvente), tal como vêm, "
-                                 "junto com as de medir_camadas_cad. Diz ao utilizador as hipóteses (pé-direito, malha/pórticos, "
-                                 "neve, σadm, vento/sismo não verificados) e que é um pré-dimensionamento a validar pelo projetista."}
+            out = {"ok": True, "sistema": sistema, "contorno": {k: ed[k] for k in ("camada", "area_m2", "origem")},
+                   "hipoteses": r["hipoteses"], "geometria": r.get("geometria") or r.get("malha"), "perfis": r.get("perfis"),
+                   "linhas": [{**l, "description": l["description"][:400]} for l in r["linhas"]],
+                   "materiais_previstos": {"estado_dos_artigos": mm["contagem"], "totais": mm["totais"][:80]},
+                   "instrucao": "Junta estas linhas ao mapa de quantidades (capítulos Estrutura / Fundações / Envolvente), tal como vêm, "
+                                "junto com as de medir_camadas_cad. Diz ao utilizador as hipóteses (pé-direito, malha/pórticos, "
+                                "neve, σadm, vento/sismo não verificados) e que é um pré-dimensionamento a validar pelo projetista."}
+            if sha:
+                await CB.guardar_estrutura(db, uid, sha, sistema, params, out, mudancas)
+            out["referencia"] = {**referencia, "estrutura": ("revista com os dados novos do utilizador: " + "; ".join(mudancas)) if ant else
+                                 "primeiro cálculo — fica como referência deste desenho", "parametros": params,
+                                 "diferencas": CB.diferencas((ant or {}).get("resultado", {}).get("linhas"), out["linhas"]) if ant else []}
+            out["verificacao_cruzada"] = _verificar(res, out)
+            return out
         mm = MM.mapa(res.get("linhas") or [])
         return {"ok": True, **{k: v for k, v in res.items() if k not in ("versao", "edificio")},
                 "edificio": {k: (res.get("edificio") or {}).get(k) for k in ("camada", "area_m2", "origem")} if res.get("edificio") else None,
                 "materiais_previstos": {"estado_dos_artigos": mm["contagem"], "totais": mm["totais"][:80],
                                         "perfis_tipo": [{"artigo": a["designacao"], "perfil": a.get("perfil_tipo")} for a in mm["artigos"] if a.get("perfil_tipo")]},
+                "referencia": referencia, "verificacao_cruzada": _verificar(res, None),
                 "instrucao": "Usa estas linhas como artigos do mapa (designação, unidade, quantidade e descrição tal como vêm). Diz ao utilizador "
                              "os perfis-tipo aplicados (hipóteses de espessura) e as camadas excluídas/sem material, como pontos a confirmar."}
     if name == "orcamento_cad_completo":

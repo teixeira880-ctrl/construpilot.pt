@@ -69,6 +69,8 @@ async def build_lines(body, user, previous=None):
     branding = await _resolve_branding(user["user_id"])
     default_vat = 20 if str((branding or {}).get("country") or "").upper() == "FR" else 23
     sources = await price_sources(user) if any(l.price_origin == "library" for l in body.lines) else []
+    from engines.cad_baseline import PRECOS_FIXOS, chave_fixa
+    fixos = PRECOS_FIXOS.get()
     old_lines = {(r.get("line_id") or f"legacy:{i}"): r for i, r in enumerate((previous or {}).get("lines", []))}
     seen = set()
     lines = []
@@ -89,6 +91,9 @@ async def build_lines(body, user, previous=None):
         elif item.price_origin == "estimate":
             row.update(unit_price_ht=item.unit_price, price_source="assistant_estimate", price_estimated=True,
                        price_reference_label="Preço médio estimado — a verificar")
+        elif item.price_origin == "library" and fixos and fixos.get(chave_fixa(item.designation, item.unit)):
+            # mesmo desenho CAD → o preço fixado na primeira vez (resultados idênticos a cada repetição do pedido)
+            row.update({k: v for k, v in fixos[chave_fixa(item.designation, item.unit)].items() if v is not None}, price_missing=False)
         else:
             keep = original and original.get("price_estimated") and all(original.get(k) == row[k] for k in ("designation", "unit", "description", "category"))
             if item.price_origin == "library" and keep:
