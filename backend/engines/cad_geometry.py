@@ -96,8 +96,13 @@ def walk_entities(doc, entities=None, *, explode_dimensions=True, keep_inserts=F
             clone.dxf.layer=effective
             clone._cp_role=source_kind
             clone._cp_linetype=linetype
-            if tuple(entity.dxf.get('extrusion',(0,0,1))) != (0,0,1) or (kind=='POLYLINE' and entity.is_3d_polyline):
-                issues.append({'code':'NON_PLANAR_GEOMETRY','entity':kind})
+            ext=tuple(entity.dxf.get('extrusion',(0,0,1)))
+            # (0,0,-1) = entidade em espelho, continua plana. Um só diagnóstico por tipo, com contador (como no .fr, lote 87):
+            # 14/11 Valpaços — 263 212 entradas iguais = 16 MB de diagnósticos e a planta não cabia no MongoDB.
+            if abs(ext[0])>1e-9 or abs(ext[1])>1e-9 or (kind=='POLYLINE' and entity.is_3d_polyline):
+                np87=next((i for i in issues if i.get('code')=='NON_PLANAR_GEOMETRY' and i.get('entity')==kind),None)
+                if np87 is None: issues.append({'code':'NON_PLANAR_GEOMETRY','entity':kind,'count':1})
+                else: np87['count']=np87.get('count',1)+1
             yield clone
     yield from walk(doc.modelspace() if entities is None else entities)
 
