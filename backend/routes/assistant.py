@@ -177,6 +177,13 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "sistema": {"type": "string", "enum": ["metalica", "betao_armado"]},
                                                      "pe_direito_m": {"type": ["number", "null"]}, "pisos": {"type": ["integer", "null"]}},
                     "required": ["plan_id", "sistema", "pe_direito_m", "pisos"], "additionalProperties": False}, "strict": True},
+    {"type": "function", "name": "orcamento_cad_completo", "description": "ORÇAMENTO COMPLETO de um desenho CAD (DWG/DXF) num só passo: mede o desenho camada a camada, calcula a estrutura (se o sistema for indicado), junta as bases de pavimento (hipótese marcada) e o transporte das terras, grava o orçamento com os preços da biblioteca da empresa, depois da referência CYPE Portugal (custo direto + encargos e margem da empresa), depois do mercado online — com a origem de cada preço — e devolve totais, PDF/Excel do orçamento e da medição e o dossier económico. Usar SEMPRE que pedem um orçamento/mapa de quantidades com preços de um DWG/DXF.",
+     "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"},
+                                                     "sistema": {"type": "string", "enum": ["metalica", "betao_armado", "nenhum"], "description": "Sistema estrutural do edifício ('é em aço' → metalica). 'nenhum' só se não houver edifício."},
+                                                     "pe_direito_m": {"type": ["number", "null"]}, "pisos": {"type": ["integer", "null"]},
+                                                     "titulo": {"type": ["string", "null"]}, "cliente": {"type": ["string", "null"]},
+                                                     "incluir_bases_pavimento": {"type": "boolean", "description": "true por defeito: bases granulares sob os pavimentos, marcadas HIPÓTESE (espessura não desenhada)."}},
+                    "required": ["plan_id", "sistema", "pe_direito_m", "pisos", "titulo", "cliente", "incluir_bases_pavimento"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "medir_camadas_cad", "description": "Mede um desenho CAD (DWG/DXF) camada a camada: áreas das tramas (pavimento betuminoso, pavê, espaços verdes, marcações), comprimentos (lancis, muros, vedações; linhas duplas face/tardoz contadas uma vez), contagens de blocos. Devolve os artigos MEDIDOS prontos para o mapa de quantidades, com a origem de cada quantidade, e os materiais previstos. Chamar SEMPRE antes de um mapa de quantidades/orçamento de um DWG/DXF.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}}, "required": ["plan_id"], "additionalProperties": False}, "strict": True},
     {"type": "function", "name": "get_plan_results", "description": "Obtém os resultados existentes (cotas exatas, cadeias, fachadas, elementos, análise OpenAI) de uma página de planta para os explicar.",
@@ -281,7 +288,7 @@ def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
-    quote_names = {t["name"] for t in QUOTE_TOOLS}
+    quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamento_cad_completo"}
     out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
@@ -467,6 +474,83 @@ async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
         res = await _exec_tool_inner(name, args, user, conv)
         await calc_live.resultado_ferramenta(name, res)
         return res
+
+
+async def _empty_events():
+    return
+    yield  # noqa: unreachable — torna a função um gerador assíncrono vazio
+
+
+HIPOTESE_BASES = (("pavimento betuminoso", 0.20, "sob pavimento betuminoso"), ("pave", 0.15, "sob pavê drenante/permeável"))
+
+
+async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
+    """Orçamento completo de um DWG/DXF num só passo (o percurso feito à mão para Valpaços, 14/11): medição por camadas
+    + estrutura calculada + bases de pavimento (hipótese marcada) → orçamento gravado; os preços vêm da biblioteca da
+    empresa, depois da tabela de referência CYPE PT (engines/precos_referencia), depois da pesquisa de mercado online,
+    com a origem escrita em cada linha; totais, PDF/Excel e dossier económico como em qualquer orçamento."""
+    from engines.assistant_quote_exports import with_exports
+    from engines.assistant_quote_service import append_quote_lines, save_quote
+    med = await _exec_tool_inner("medir_camadas_cad", {"plan_id": args["plan_id"]}, user, conv)
+    if not med.get("ok"):
+        return med
+    linhas = [dict(l) for l in med.get("linhas") or []]
+    est, avisos = None, []
+    sistema = args.get("sistema") or "nenhum"
+    if sistema in ("metalica", "betao_armado"):
+        est = await _exec_tool_inner("calcular_estrutura_cad", {"plan_id": args["plan_id"], "sistema": sistema,
+                                                                 "pe_direito_m": args.get("pe_direito_m"), "pisos": args.get("pisos")}, user, conv)
+        if est.get("ok"):
+            linhas += [dict(l) for l in est.get("linhas") or []]
+        else:
+            avisos.append(f"Estrutura não calculada: {est.get('error')}")
+    else:
+        avisos.append("Estrutura não incluída: sistema estrutural não indicado (metálica ou betão armado).")
+    if args.get("incluir_bases_pavimento", True):
+        for chave, e, onde in HIPOTESE_BASES:
+            area = sum(float(l.get("qty") or 0) for l in linhas if l.get("unit") == "m2" and chave in _norm_txt(l.get("designation")))
+            if area > 0:
+                linhas.append({"category": "Pavimentos", "unit": "m3", "qty": round(area * e, 2),
+                               "designation": f"HIPÓTESE — Base em agregado britado de granulometria extensa {onde}, e={e:.2f} m",
+                               "description": f"Área medida no desenho ({area:.2f} m²) × {e:.2f} m. A ESPESSURA NÃO CONSTA DO DESENHO: "
+                                              "hipótese corrente a confirmar no projeto de pavimentação."})
+        esc = sum(float(l.get("qty") or 0) for l in linhas if l.get("unit") == "m3" and _norm_txt(l.get("designation")).startswith("escavacao"))
+        if esc > 0:
+            linhas.append({"category": "Fundações", "unit": "m3", "qty": round(esc, 2),
+                           "designation": "Carga, transporte e deposição das terras escavadas em operador licenciado",
+                           "description": "Volume = escavação das fundações medida acima."})
+    qlines = [{"line_id": None, "designation": str(l.get("designation") or "Artigo")[:500], "description": str(l.get("description") or "")[:2000],
+               "quantity": float(l["qty"]) if l.get("qty") is not None else None, "unit": str(l.get("unit") or "u")[:12],
+               "unit_price": None, "price_origin": "library", "vat_rate": None, "lot": str(l.get("category") or "Geral")[:80]} for l in linhas]
+    if not qlines:
+        return {"ok": False, "error": "O desenho não deu artigos medíveis (nenhuma trama, linha ou bloco nas camadas de obra)."}
+    p = await db.plans_takeoff.find_one({"plan_id": args["plan_id"], "user_id": user["user_id"]}, {"_id": 0, "filename": 1})
+    title = (args.get("titulo") or f"Orçamento — {(p or {}).get('filename') or args['plan_id']}")[:160]
+    res = await save_quote({"title": title, "client_name": (args.get("cliente") or "")[:200], "vat_rate": None, "lines": qlines[:150]}, user, conv)
+    conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
+    for i in range(150, len(qlines), 60):
+        res = await append_quote_lines({"vat_rate": None, "lines": qlines[i:i + 60]}, user, conv, doc_id=res["doc_id"])
+    res = await with_exports(res, user, conv)
+    rows = (res.get("draft") or {}).get("lines") or []
+    origem = {}
+    for r in rows:
+        k = r.get("price_source") or "unpriced"
+        origem[k] = origem.get(k, 0) + 1
+    sem_preco = [r["designation"] for r in rows if r.get("price_missing")]
+    d = res.get("draft") or {}
+    return {**res, "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
+                              "origem_dos_precos": origem, "sem_preco": sem_preco,
+                              "hipoteses_estrutura": (est or {}).get("hipoteses"), "avisos": avisos,
+                              "camadas_excluidas": med.get("excluidas") or med.get("camadas_excluidas")},
+            "instrucao": "Apresenta: total sem IVA, IVA e total com IVA; o resumo por capítulo; a origem dos preços (biblioteca da empresa, "
+                         "referência CYPE PT = custo direto convertido em venda com os encargos e a margem da empresa, mercado online); "
+                         "as linhas HIPÓTESE (bases de pavimento) e as hipóteses da estrutura (pé-direito, vento/sismo não verificados); "
+                         "as linhas sem preço, se houver, como pontos a completar. Anuncia TODOS os ficheiros (orçamento, medição, dossier económico)."}
+
+
+def _norm_txt(s) -> str:
+    import unicodedata as _u
+    return _u.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
 
 
 async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dict:
@@ -770,6 +854,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                                         "perfis_tipo": [{"artigo": a["designacao"], "perfil": a.get("perfil_tipo")} for a in mm["artigos"] if a.get("perfil_tipo")]},
                 "instrucao": "Usa estas linhas como artigos do mapa (designação, unidade, quantidade e descrição tal como vêm). Diz ao utilizador "
                              "os perfis-tipo aplicados (hipóteses de espessura) e as camadas excluídas/sem material, como pontos a confirmar."}
+    if name == "orcamento_cad_completo":
+        return await _orcamento_cad_completo(args, user, conv)
     if name == "get_plan_results":
         p = await _allowed_plan(args["plan_id"], uid)
         rep = (p.get("cotes_checks") or {}).get(str(args["page_index"])) or {}
@@ -1794,15 +1880,33 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
     use_fb, fb_reason = await use_fallback_now()
     if use_fb:
         conv["_fallback_reason"] = fb_reason
-        async for ev in run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now, account_type):
+        from engines.assistant_fallback import openai_failover_available
+        # Cascata (Martinho, 14/11): Claude (chave direta) → OpenAI → Emergent (chave universal, Claude) → Gemini só como
+        # última rede. Mesmas instruções, mesmas ferramentas e raciocínio ligado em todos.
+        to_openai = openai_failover_available()
+        produced, failed = False, False
+        if to_openai and not os.environ.get("ANTHROPIC_API_KEY"):
+            failed = True                      # sem chave Claude direta: o 1.º degrau é o OpenAI; a universal fica para depois
+        claude_steps = [] if failed else [run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now,
+                                                         account_type, openai_failover=to_openai, allow_emergent=not to_openai)]
+        async for ev in (claude_steps[0] if claude_steps else _empty_events()):
+            # Claude principal em baixo sem nada produzido → o mesmo turno segue no OpenAI (recurso), em vez de um erro.
+            if to_openai and not produced and ev.get("type") == "error":
+                failed = True
+                break
+            if ev.get("type") in ("delta", "action", "done"):
+                produced = True
             yield ev
-        return
+        if not failed:
+            return
+        conv["_fallback_reason"] = "Claude indisponível — recurso ao OpenAI" if claude_steps else "1.º degrau OpenAI (sem chave Claude direta); Emergent a seguir"
+        conv["_claude_failed"] = True
     conv["_web_allowed"] = settings["web_enabled"] and body.web_enabled is not False
     if not settings["web_enabled"] or body.web_enabled is False:
         available = [t for t in available if t.get("type") != "web_search" and t.get("name") not in WEB_TOOL_NAMES]
         instructions += "\nPesquisa na Internet desativada: não afirmes ter verificado fontes online."
     model = os.environ["ASSISTANT_MODEL_THOROUGH"] if body.response_mode == "thorough" else os.environ["ASSISTANT_MODEL_FAST"]
-    effort = "high" if body.response_mode == "thorough" else body.effort
+    effort = "high" if body.response_mode == "thorough" else ("medium" if body.effort == "low" else body.effort)
     max_steps = int(os.environ.get("ASSISTANT_OPENAI_STEPS", "24"))
     max_out = int(os.environ.get("ASSISTANT_OPENAI_MAX_TOKENS", "16000"))
     actions, sources, cache = [], [], {}
@@ -1921,6 +2025,23 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
                 conv["_fallback_reason"] = rec["reason"]
             else:
                 conv["_fallback_reason"] = f"OpenAI indisponível ({type(exc).__name__}) — recurso ao Claude"
+            if conv.get("_claude_failed"):                 # Claude direto e OpenAI falharam → Emergent (universal), depois Gemini
+                from engines.assistant_fallback import gemini_fallback_available
+                if os.environ.get("EMERGENT_LLM_KEY") and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST") and not conv.get("_emergent_tried"):
+                    conv["_emergent_tried"] = True
+                    conv["_fallback_reason"] = "Claude direto e OpenAI indisponíveis — chave universal Emergent"
+                    async for ev in run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now,
+                                                    account_type, force_emergent=True):
+                        yield ev
+                    return
+                if gemini_fallback_available():
+                    from engines.assistant_gemini import run_chat_gemini
+                    conv["_fallback_reason"] = "Claude e OpenAI indisponíveis — recurso ao Gemini"
+                    async for ev in run_chat_gemini(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now, account_type):
+                        yield ev
+                    return
+                yield {"type": "error", "error": friendly_error(exc)}
+                return
             async for ev in run_chat_claude(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now, account_type):
                 yield ev
             return
@@ -1936,7 +2057,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…",
+TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -1952,7 +2073,7 @@ TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor 
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
 TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
-               "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…", "generate_branded_pdf": "Preparação do relatório PDF…",
+               "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",
                "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "Leitura do orçamento atual…", "update_quote_draft": "Atualização do rascunho de orçamento…", "add_quote_lines": "Adição das linhas ao orçamento…", "find_quote_drafts": "Pesquisa dos seus orçamentos existentes…", "save_user_preference": "Memorização da preferência…",
                "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…", "estimate_budget_range": "Cálculo do intervalo orçamental…",

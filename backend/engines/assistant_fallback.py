@@ -46,8 +46,24 @@ def friendly_error(exc: Exception) -> str:
     return "O assistente está momentaneamente indisponível. Tente novamente dentro de instantes."
 
 
+def claude_available() -> bool:
+    """Chave Claude (direta ou universal) e modelos configurados."""
+    return bool((os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
+                and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST") and os.environ.get("ASSISTANT_CLAUDE_MODEL_THOROUGH"))
+
+
 def primary_provider() -> str:
-    return os.environ.get("ASSISTANT_PROVIDER", "openai")
+    """14/11 (Martinho): o Claude passa a motor principal do Assistente sempre que está configurado; o OpenAI fica como
+    recurso. ASSISTANT_PROVIDER, quando definido, continua a mandar (openai | anthropic | gemini)."""
+    explicit = (os.environ.get("ASSISTANT_PROVIDER") or "").strip().lower()
+    if explicit:
+        return explicit
+    return "anthropic" if claude_available() else "openai"
+
+
+def openai_failover_available() -> bool:
+    """O OpenAI pode servir de recurso quando o Claude é o principal e falha."""
+    return primary_provider() == "anthropic" and bool(os.environ.get("OPENAI_API_KEY"))
 
 
 def fallback_available() -> bool:
@@ -85,7 +101,7 @@ async def clear_openai_degraded() -> None:
 async def use_fallback_now() -> tuple[bool, str | None]:
     """(fallback?, reason) for a new turn."""
     if primary_provider() == "anthropic":
-        return True, "fornecedor principal: chave universal"
+        return True, "fornecedor principal: Claude"
     if not fallback_available():
         return False, None
     rec = await openai_degraded()

@@ -97,8 +97,24 @@ async def build_lines(body, user, previous=None):
                 match = find_price(item.designation, item.unit, sources) if item.price_origin == "library" else None
             row.update(match or {"price_source": "unpriced", "price_missing": True})
         lines.append(row)
+    await _fill_reference_prices(lines, branding, user)
     await _fill_market_prices(lines, branding, db)
     return lines
+
+
+async def _fill_reference_prices(lines, branding, user):
+    """Entre a biblioteca e a pesquisa online: preços de referência CYPE PT dos artigos dos motores CAD (custo direto
+    convertido em preço de venda com os encargos e a margem da empresa). Só obras em Portugal."""
+    from engines import economic_dossier as E, precos_referencia as PR
+    if str((branding or {}).get("country") or "PT").upper() != "PT" or not any(
+            r.get("price_missing") and PR.procurar(r.get("designation", ""), r.get("unit", "")) for r in lines):
+        return
+    try:
+        saved = await db.company_cost_resources.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        PR.preencher(lines, E.merge(saved, "PT").get("params"))
+    except Exception:  # noqa: BLE001 — nunca bloqueia a criação do orçamento
+        import logging
+        logging.getLogger(__name__).warning("reference prices failed", exc_info=True)
 
 
 MARKET_LABEL = {"PT": "Preço de mercado online — a verificar", "FR": "Prix du marché trouvé en ligne — à vérifier"}
