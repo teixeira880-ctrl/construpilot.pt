@@ -24,6 +24,33 @@ CALC_INSTRUCTIONS = ("\n\nMOTORES DE CÁLCULO (notas PDF determinísticas): " + 
                      " A nota PDF e a pré-visualização aparecem AUTOMATICAMENTE como ficheiros descarregáveis por baixo da tua resposta: não "
                      "escrevas ligações nem caminhos. Restitui os resultados-chave, as não conformidades e as hipóteses a validar; não recalcules.")
 MIME = {"pdf": "application/pdf", "png": "image/png"}
+MIME_EXTRA = {"xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "html": "text/html"}
+
+
+async def _lsf_contexto(args: dict, uid: str, db) -> dict:
+    """Injeta na chamada LSF a planta lida (plan_id), a marca da empresa e a biblioteca de preços (sem alterar o modelo de IA)."""
+    pid = args.get("plan_id")
+    if pid:
+        plan = await db.plans_takeoff.find_one({"plan_id": pid, "user_id": uid},
+                                               {"_id": 0, "plan_id": 1, "filename": 1, "rooms": 1, "calibrations": 1, "structure": 1})
+        if not plan:
+            raise ValueError(f"planta {pid} não encontrada para este utilizador")
+        args["_plan"] = plan
+    try:
+        u = await db.users.find_one({"user_id": uid}, {"_id": 0, "brand_company_name": 1, "brand_logo_b64": 1, "brand_contact_line": 1,
+                                                       "brand_address": 1, "brand_city": 1, "brand_postal": 1, "brand_nif": 1, "brand_accent_color": 1})
+        if u and (u.get("brand_company_name") or u.get("brand_logo_b64")):
+            args["_branding"] = {"company_name": u.get("brand_company_name"), "logo_b64": u.get("brand_logo_b64"),
+                                 "contact_line": u.get("brand_contact_line"), "address": u.get("brand_address"), "city": u.get("brand_city"),
+                                 "postal": u.get("brand_postal"), "nif": u.get("brand_nif"), "accent_color": u.get("brand_accent_color")}
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from routes.company_library import get_user_library
+        args["_biblioteca"] = await get_user_library(uid)
+    except Exception:  # noqa: BLE001
+        pass
+    return args
 
 
 def _slug(s: str) -> str:
@@ -49,6 +76,8 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
     try:
         from . import ucrania as _ua
         _ua.LOOP = asyncio.get_running_loop()               # renders realistas: as chamadas IA correm no loop do servidor
+        if name == "calcul_lsf":                            # LSF: planta lida, marca e biblioteca de preços da empresa
+            args = await _lsf_contexto(dict(args or {}), uid, db)
         out = await asyncio.to_thread(run, name, args)
     except (ValueError, KeyError, TypeError) as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}
@@ -64,6 +93,14 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
         await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
         docs.append({k: doc[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")})
     extra = []
+    for j, (lab, titre_x, data, fmt_x) in enumerate(out.get("files_extra") or []):       # outros formatos (Excel, visualizador 3D HTML)
+        aid = "file_" + digest + f"x{j + 1}"
+        doc = {"artifact_id": aid, "user_id": uid, "conversation_id": cid, "request_id": rid, "title": titre_x, "body": out["resume"],
+               "filename": f"ConstruPilot_{lab}_{_slug(out['titre'])}_{day}.{fmt_x}", "format": fmt_x, "kind": "calc_note",
+               "mime": MIME_EXTRA.get(fmt_x, "application/octet-stream"), "size": len(data), "data_b64": base64.b64encode(data).decode(),
+               "source_artifact_ids": [], "created_at": now, "illustrative": False, "calc_note": name, "download": f"/assistant/artifacts/{aid}/content"}
+        await db.assistant_artifacts.update_one({"artifact_id": aid, "user_id": uid}, {"$setOnInsert": doc}, upsert=True)
+        extra.append({k: doc[k] for k in ("artifact_id", "title", "filename", "format", "kind", "mime", "size", "download")})
     for j, (lab, titre_x, data) in enumerate(out.get("pdf_extra") or []):          # dossiers adicionais (p.ex. versão inglesa)
         aid = "file_" + digest + f"e{j + 1}"
         doc = {"artifact_id": aid, "user_id": uid, "conversation_id": cid, "request_id": rid, "title": titre_x, "body": out["resume"],
