@@ -1,85 +1,19 @@
 import { Link } from "react-router-dom";
-import {
-  Footprints, Ruler, Receipt, FileCheck2, HardHat, Calculator, Hammer, Camera, Mountain, MapPinned, Building2
-} from "lucide-react";
+import { Camera } from "lucide-react";
+import { APP_SUITES, suiteLabel, suiteDesc } from "@/components/workspace/suites";
+import { useI18n } from "@/context/I18nContext";
 import { useState } from "react";
 import CameraCapture from "@/components/CameraCapture";
 import BottomSheet from "@/components/mobile/BottomSheet";
 
-const APPS = [
-  {
-    to: "/escaliers",
-    icon: Footprints,
-    title: "Escadas",
-    desc: "Calcular escada em betão armado — RGEU, Blondel.",
-    testId: "apps-escadas",
-  },
-  {
-    to: "/medicao-rapida",
-    icon: Ruler,
-    title: "Medição rápida",
-    desc: "Áreas, perímetro e volume de uma divisão — por prompt ou à mão.",
-    testId: "apps-medicao-rapida",
-  },
-  {
-    to: "/plan",
-    icon: Ruler,
-    title: "Medições",
-    desc: "Medir divisões, áreas e perímetros a partir de plantas.",
-    testId: "apps-medicoes",
-  },
-  {
-    to: "/devis",
-    icon: Receipt,
-    title: "Orçamentos",
-    desc: "Preparar orçamentos profissionais com IVA PT.",
-    testId: "apps-orcamentos",
-  },
-  {
-    to: "/particulares/autorizacao-obras",
-    icon: FileCheck2,
-    title: "Autorização de Obras",
-    desc: "Diagnóstico e dossier RJUE para a Câmara Municipal.",
-    testId: "apps-autorizacao",
-  },
-  {
-    to: "/terrenos",
-    icon: MapPinned,
-    title: "Terrenos",
-    desc: "Identificar o prédio sobre o OrtoSat 2023: RGG do BUPi, cadastro, PDM, RAN, REN e KML para o BUPi.",
-    testId: "apps-terrenos",
-  },
-  {
-    to: "/maquete-3d",
-    icon: Building2,
-    title: "Maquete 3D Braga",
-    desc: "Distrito de Braga em 3D: 787 mil edifícios, ruas, rios, relevo e PDM de Braga e Guimarães.",
-    testId: "apps-maquete3d",
-  },
-  {
-    to: "/mdt",
-    icon: Mountain,
-    title: "MDT Portugal",
-    desc: "Terreno LiDAR DGT: declives, curvas de nível, linhas de água e 3D.",
-    testId: "apps-mdt",
-  },
-  {
-    to: "/estudo-moradia",
-    icon: HardHat,
-    title: "Estudo de Moradia",
-    desc: "Análise estrutural, fundações e escadas.",
-    testId: "apps-estudo-moradia",
-  },
-  {
-    to: "/calculadoras",
-    icon: Calculator,
-    title: "Calculadoras",
-    desc: "Cálculos rápidos de construção (betão, armaduras, cargas).",
-    testId: "apps-calculadoras",
-  },
-];
+// Uma app por função: as ferramentas idênticas estão fusionadas em suites.
+const APPS_FOR = (lang) => APP_SUITES.map(f => ({
+  to: f.to, icon: f.icon, title: suiteLabel(f, lang), desc: suiteDesc(f, lang), testId: `apps-${f.id}`,
+}));
 
 export default function AppsHub() {
+  const { lang } = useI18n();
+  const APPS = APPS_FOR(lang);
   const [showCam, setShowCam] = useState(false);
   const [preview, setPreview] = useState(null);
   const onFile = (f) => {

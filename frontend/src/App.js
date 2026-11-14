@@ -8,6 +8,8 @@ import WorkspaceNavigation from "@/components/workspace/WorkspaceNavigation";
 import { PermissionNotice } from "@/components/workspace/PermissionNotice";
 import { usePermissions } from "@/context/PermissionContext";
 import { routePermission, meetsLevel } from "@/components/workspace/navigation";
+import SuiteTabs from "@/components/workspace/SuiteTabs";
+import { APP_SUITES } from "@/components/workspace/suites";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BillingProvider, useBilling } from "@/context/BillingContext";
@@ -132,6 +134,7 @@ const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 const BimViewerLazy = lazy(() => import("@/pages/BimViewer"));
+const AppSuiteHubLazy = lazy(() => import("@/pages/AppSuiteHub"));
 const AppsHub = lazy(() => import("@/pages/AppsHub"));
 const MedicaoRapida = lazy(() => import("@/pages/MedicaoRapida"));
 const BtpSolver = lazy(() => import("@/pages/BtpSolver"));
@@ -260,11 +263,11 @@ const Shell = ({ children }) => {
   const { pathname } = useLocation();
   const assistant = pathname === "/assistant";
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10"><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main><Footer /><HelpChatbot /></>;
+  if (!user) return <><Nav /><SuiteTabs /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10"><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main><Footer /><HelpChatbot /></>;
   return <div className={`workspace${assistant ? " workspace-chat" : ""}`}>
     <WorkspaceNavigation />
     <div className="workspace-content">
-      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main"><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main>
+      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main"><SuiteTabs /><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main>
       {!assistant && <WorkspaceFooter />}
     </div>
     {!assistant && <HelpChatbot />}
@@ -289,6 +292,9 @@ function AppRouter() {
       <Route path="/experience" element={<Navigate to="/experiencia" replace />} />
       <Route path="/demo-entrar" element={<DemoPage />} />
       <Route path="/apps" element={<Shell><AppsHub /></Shell>} />
+      {APP_SUITES.map(suite => (
+        <Route key={`suite-${suite.id}`} path={suite.to} element={<Shell><AppSuiteHubLazy /></Shell>} />
+      ))}
       <Route path="/medicao-rapida" element={<Shell><MedicaoRapida /></Shell>} />
       <Route path="/particulares" element={<LandingParticuliers />} />
       <Route path="/particuliers" element={<Navigate to="/particulares" replace />} />
