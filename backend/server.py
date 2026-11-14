@@ -804,6 +804,12 @@ async def _seed_impl():
     except Exception as e:
         logger.warning(f"login_attempts TTL index skipped: {e}")
     await db.plans.create_index("plan_id", unique=True)
+    # Terrenos (14/11): lista por utilizador ordenada por data, e acesso por id do terreno
+    try:
+        await db.terrenos.create_index([("user_id", 1), ("atualizado", -1)])
+        await db.terrenos.create_index([("terreno_id", 1), ("user_id", 1)])
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"terrenos indexes skipped: {e}")
     # Organizations (team branding)
     await db.organizations.create_index("org_id", unique=True)
     await db.organizations.create_index("org_code", unique=True)

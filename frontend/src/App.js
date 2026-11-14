@@ -21,78 +21,94 @@ import HelpChatbot from "@/components/HelpChatbot";
 import { StudyRunning } from "@/components/StudyRunning";
 import { AgentsRunning } from "@/components/AgentsRunning";
 import LandingPro from "@/pages/LandingPro";
-import LandingParticuliers from "@/pages/LandingParticuliers";
-import LandingMetre from "@/pages/LandingMetre";
-import LandingPortugal from "@/pages/LandingPortugal";
 import { RouteSkeleton } from "@/components/Skeleton";
 import { initTheme } from "@/components/ThemeToggle";
-import AutorizacaoObras from "@/pages/AutorizacaoObras";
-import SubscrevePublic from "@/pages/SubscrevePublic";
-import RadarChantiers from "@/pages/RadarChantiers";
-import Investors from "@/pages/Investors";
-import About from "@/pages/About";
-import Features from "@/pages/Features";
 import Login from "@/pages/Login";
-import ResetPassword from "@/pages/ResetPassword";
-import DashboardHome from "@/pages/DashboardHome";
-import Estimator from "@/pages/Estimator";
-import SmartProject from "@/pages/SmartProject";
-import ProjectDetail from "@/pages/ProjectDetail";
-import Calculators from "@/pages/Calculators";
-import PriceSearch from "@/pages/PriceSearch";
-import Diy from "@/pages/Diy";
-import Coach from "@/pages/Coach";
-import PhotoAnalyse from "@/pages/PhotoAnalyse";
-import AgentsHub from "@/pages/AgentsHub";
-import QuoteScanner from "@/pages/QuoteScanner";
-import Admin from "@/pages/Admin";
-import AdminBetAgent from "@/pages/AdminBetAgent";
-import PedidosHub from "@/pages/admin/PedidosHub";
-import {
-  PedidosContactos, PedidosOrcamentos, PedidosIA,
-  PedidosAutorizacoes, PedidosDownloads, PedidosCalculos,
-} from "@/pages/admin/PedidosByKind";
-import SavingsCalculator from "@/pages/SavingsCalculator";
 import { ExpenseAdminPanel } from "@/components/admin/ExpenseAdminPanel";
 import NotFound from "@/pages/NotFound";
-import { MentionsLegales, Confidentialite, CGV } from "@/pages/LegalPages";
-import AppPrivacy from "@/pages/AppPrivacy";
-import DeleteAccountPage from "@/pages/DeleteAccountPage";
-import RfqPublic from "@/pages/RfqPublic";
-import DpgfPage from "@/pages/DpgfPage";
-import DocIntelPage from "@/pages/DocIntelPage";
-import Welcome from "@/pages/Welcome";
-import Pricing from "@/pages/Pricing";
-import ProOffer from "@/pages/ProOffer";
-import Help from "@/pages/Help";
-import Referral from "@/pages/Referral";
-import Marketplace from "@/pages/Marketplace";
-import ProPortal from "@/pages/ProPortal";
-import ApiKeys from "@/pages/ApiKeys";
-import Docs from "@/pages/Docs";
-import Enterprise from "@/pages/Enterprise";
-import SupplierPortal from "@/pages/SupplierPortal";
-import Invite from "@/pages/Invite";
-import Team from "@/pages/Team";
-import SignQuote from "@/pages/SignQuote";
-import ProspectionLanding from "@/pages/ProspectionLanding";
-import PcSignPage from "@/pages/PcSignPage";
-import PcDashboard from "@/pages/PcDashboard";
-import CotesControl from "@/pages/CotesControl";
-import Preferences from "@/pages/Preferences";
-import SharedEstimate from "@/pages/SharedEstimate";
-import Account from "@/pages/Account";
-import QuoteTracking from "@/pages/QuoteTracking";
-import PublicEstimation from "@/pages/PublicEstimation";
-import Renovation from "@/pages/Renovation";
-import Structuro from "@/pages/Structuro";
-import StructureCalc from "@/pages/StructureCalc";
-import BetDossier from "@/pages/BetDossier";
-import PlanReader from "@/pages/PlanReader";
-import StairCalculator from "@/pages/StairCalculator";
-import Demo from "@/pages/Demo";
-import DemoPage from "@/pages/DemoPage";
 // Rotas pesadas via lazy loading para code-splitting
+import BottomTabBar from "@/components/mobile/BottomTabBar";
+import MicFab from "@/components/mobile/MicFab";
+import { CITY_LIST } from "@/lib/cities";
+import { useAppConfig } from "@/hooks/useAppConfig";
+import { I18nProvider } from "@/context/I18nContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { MobileTabBar } from "@/components/pwa/MobileTabBar";
+import CookieConsent from "@/components/CookieConsent";
+import StandBar from "@/components/StandBar";
+import { DomTranslator } from "@/components/DomTranslator";
+
+const LandingParticuliers = lazy(() => import("@/pages/LandingParticuliers"));
+const LandingMetre = lazy(() => import("@/pages/LandingMetre"));
+const LandingPortugal = lazy(() => import("@/pages/LandingPortugal"));
+const AutorizacaoObras = lazy(() => import("@/pages/AutorizacaoObras"));
+const SubscrevePublic = lazy(() => import("@/pages/SubscrevePublic"));
+const RadarChantiers = lazy(() => import("@/pages/RadarChantiers"));
+const Investors = lazy(() => import("@/pages/Investors"));
+const About = lazy(() => import("@/pages/About"));
+const Features = lazy(() => import("@/pages/Features"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const DashboardHome = lazy(() => import("@/pages/DashboardHome"));
+const Estimator = lazy(() => import("@/pages/Estimator"));
+const SmartProject = lazy(() => import("@/pages/SmartProject"));
+const ProjectDetail = lazy(() => import("@/pages/ProjectDetail"));
+const Calculators = lazy(() => import("@/pages/Calculators"));
+const PriceSearch = lazy(() => import("@/pages/PriceSearch"));
+const Diy = lazy(() => import("@/pages/Diy"));
+const Coach = lazy(() => import("@/pages/Coach"));
+const PhotoAnalyse = lazy(() => import("@/pages/PhotoAnalyse"));
+const AgentsHub = lazy(() => import("@/pages/AgentsHub"));
+const QuoteScanner = lazy(() => import("@/pages/QuoteScanner"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const AdminBetAgent = lazy(() => import("@/pages/AdminBetAgent"));
+const PedidosHub = lazy(() => import("@/pages/admin/PedidosHub"));
+const PedidosContactos = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosContactos })));
+const PedidosOrcamentos = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosOrcamentos })));
+const PedidosIA = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosIA })));
+const PedidosAutorizacoes = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosAutorizacoes })));
+const PedidosDownloads = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosDownloads })));
+const PedidosCalculos = lazy(() => import("@/pages/admin/PedidosByKind").then((m) => ({ default: m.PedidosCalculos })));
+const SavingsCalculator = lazy(() => import("@/pages/SavingsCalculator"));
+const MentionsLegales = lazy(() => import("@/pages/LegalPages").then((m) => ({ default: m.MentionsLegales })));
+const Confidentialite = lazy(() => import("@/pages/LegalPages").then((m) => ({ default: m.Confidentialite })));
+const CGV = lazy(() => import("@/pages/LegalPages").then((m) => ({ default: m.CGV })));
+const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));
+const DeleteAccountPage = lazy(() => import("@/pages/DeleteAccountPage"));
+const RfqPublic = lazy(() => import("@/pages/RfqPublic"));
+const DpgfPage = lazy(() => import("@/pages/DpgfPage"));
+const DocIntelPage = lazy(() => import("@/pages/DocIntelPage"));
+const Welcome = lazy(() => import("@/pages/Welcome"));
+const Pricing = lazy(() => import("@/pages/Pricing"));
+const ProOffer = lazy(() => import("@/pages/ProOffer"));
+const Help = lazy(() => import("@/pages/Help"));
+const Referral = lazy(() => import("@/pages/Referral"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
+const ProPortal = lazy(() => import("@/pages/ProPortal"));
+const ApiKeys = lazy(() => import("@/pages/ApiKeys"));
+const Docs = lazy(() => import("@/pages/Docs"));
+const Enterprise = lazy(() => import("@/pages/Enterprise"));
+const SupplierPortal = lazy(() => import("@/pages/SupplierPortal"));
+const Invite = lazy(() => import("@/pages/Invite"));
+const Team = lazy(() => import("@/pages/Team"));
+const SignQuote = lazy(() => import("@/pages/SignQuote"));
+const ProspectionLanding = lazy(() => import("@/pages/ProspectionLanding"));
+const PcSignPage = lazy(() => import("@/pages/PcSignPage"));
+const PcDashboard = lazy(() => import("@/pages/PcDashboard"));
+const CotesControl = lazy(() => import("@/pages/CotesControl"));
+const Preferences = lazy(() => import("@/pages/Preferences"));
+const SharedEstimate = lazy(() => import("@/pages/SharedEstimate"));
+const Account = lazy(() => import("@/pages/Account"));
+const QuoteTracking = lazy(() => import("@/pages/QuoteTracking"));
+const PublicEstimation = lazy(() => import("@/pages/PublicEstimation"));
+const Renovation = lazy(() => import("@/pages/Renovation"));
+const Structuro = lazy(() => import("@/pages/Structuro"));
+const StructureCalc = lazy(() => import("@/pages/StructureCalc"));
+const BetDossier = lazy(() => import("@/pages/BetDossier"));
+const PlanReader = lazy(() => import("@/pages/PlanReader"));
+const StairCalculator = lazy(() => import("@/pages/StairCalculator"));
+const Demo = lazy(() => import("@/pages/Demo"));
+const DemoPage = lazy(() => import("@/pages/DemoPage"));
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const Missions = lazy(() => import("@/pages/Missions"));
@@ -116,64 +132,56 @@ const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 const BimViewerLazy = lazy(() => import("@/pages/BimViewer"));
-import AppsHub from "@/pages/AppsHub";
-import MedicaoRapida from "@/pages/MedicaoRapida";
-import BottomTabBar from "@/components/mobile/BottomTabBar";
-import MicFab from "@/components/mobile/MicFab";
-import BtpSolver from "@/pages/BtpSolver";
-import PlansPro from "@/pages/PlansPro";
-import CompanyPage from "@/pages/CompanyPage";
-import CompanyPublic from "@/pages/CompanyPublic";
-import { PortalLogin, PortalAccept, PortalChantier } from "@/pages/Portal";
-import PhotoMeasure from "@/pages/PhotoMeasure";
-import ProVerified from "@/pages/ProVerified";
-import ProUpsell from "@/pages/ProUpsell";
-import VerifyEmail from "@/pages/VerifyEmail";
-import TechAnalysis from "@/pages/TechAnalysis";
-import Profitability from "@/pages/Profitability";
-import PlanCompare from "@/pages/PlanCompare";
-import Blog from "@/pages/Blog";
-import BlogPost from "@/pages/BlogPost";
-import LocalLanding from "@/pages/LocalLanding";
-import Referrals from "@/pages/Referrals";
-import ReviewCollect from "@/pages/ReviewCollect";
-import MyReviews from "@/pages/MyReviews";
-import Clients from "@/pages/Clients";
-import ClientDetail from "@/pages/ClientDetail";
-import Chantiers from "@/pages/Chantiers";
-import ChantierDetail from "@/pages/ChantierDetail";
-import Library from "@/pages/Library";
-import QuoteEditor from "@/pages/QuoteEditor";
-import Invoices from "@/pages/Invoices";
-import Trash from "@/pages/Trash";
-import GrowthPage from "@/growth/GrowthPage";
-import PlanAnalysis from "@/pages/PlanAnalysis";
-import EInvoicing from "@/pages/EInvoicing";
-import HR from "@/pages/HR";
-import WorkerApp from "@/pages/WorkerApp";
-import SharedCalc from "@/pages/SharedCalc";
-import PriceCatalog from "@/pages/PriceCatalog";
-import SiteTracking from "@/pages/SiteTracking";
-import Planning from "@/pages/Planning";
-import RenderStudio from "@/pages/RenderStudio";
-import MyLeads from "@/pages/MyLeads";
-import RenderShare from "@/pages/RenderShare";
-import Comparatif from "@/pages/Comparatif";
-import Situations from "@/pages/Situations";
-import Entreprise from "@/pages/Entreprise";
-import { CITY_LIST } from "@/lib/cities";
-import { PaymentSuccess, PaymentCancel } from "@/pages/Payment";
-import PostalPaymentReturn from "@/pages/PostalPaymentReturn";
-import { useAppConfig } from "@/hooks/useAppConfig";
-import { I18nProvider } from "@/context/I18nContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
-import { MobileTabBar } from "@/components/pwa/MobileTabBar";
-import CookieConsent from "@/components/CookieConsent";
-import StandBar from "@/components/StandBar";
-import StandMode from "@/pages/StandMode";
-import Experience from "@/pages/Experience";
-import { DomTranslator } from "@/components/DomTranslator";
+const AppsHub = lazy(() => import("@/pages/AppsHub"));
+const MedicaoRapida = lazy(() => import("@/pages/MedicaoRapida"));
+const BtpSolver = lazy(() => import("@/pages/BtpSolver"));
+const PlansPro = lazy(() => import("@/pages/PlansPro"));
+const CompanyPage = lazy(() => import("@/pages/CompanyPage"));
+const CompanyPublic = lazy(() => import("@/pages/CompanyPublic"));
+const PortalLogin = lazy(() => import("@/pages/Portal").then((m) => ({ default: m.PortalLogin })));
+const PortalAccept = lazy(() => import("@/pages/Portal").then((m) => ({ default: m.PortalAccept })));
+const PortalChantier = lazy(() => import("@/pages/Portal").then((m) => ({ default: m.PortalChantier })));
+const PhotoMeasure = lazy(() => import("@/pages/PhotoMeasure"));
+const ProVerified = lazy(() => import("@/pages/ProVerified"));
+const ProUpsell = lazy(() => import("@/pages/ProUpsell"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const TechAnalysis = lazy(() => import("@/pages/TechAnalysis"));
+const Profitability = lazy(() => import("@/pages/Profitability"));
+const PlanCompare = lazy(() => import("@/pages/PlanCompare"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const BlogPost = lazy(() => import("@/pages/BlogPost"));
+const LocalLanding = lazy(() => import("@/pages/LocalLanding"));
+const Referrals = lazy(() => import("@/pages/Referrals"));
+const ReviewCollect = lazy(() => import("@/pages/ReviewCollect"));
+const MyReviews = lazy(() => import("@/pages/MyReviews"));
+const Clients = lazy(() => import("@/pages/Clients"));
+const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
+const Chantiers = lazy(() => import("@/pages/Chantiers"));
+const ChantierDetail = lazy(() => import("@/pages/ChantierDetail"));
+const Library = lazy(() => import("@/pages/Library"));
+const QuoteEditor = lazy(() => import("@/pages/QuoteEditor"));
+const Invoices = lazy(() => import("@/pages/Invoices"));
+const Trash = lazy(() => import("@/pages/Trash"));
+const GrowthPage = lazy(() => import("@/growth/GrowthPage"));
+const PlanAnalysis = lazy(() => import("@/pages/PlanAnalysis"));
+const EInvoicing = lazy(() => import("@/pages/EInvoicing"));
+const HR = lazy(() => import("@/pages/HR"));
+const WorkerApp = lazy(() => import("@/pages/WorkerApp"));
+const SharedCalc = lazy(() => import("@/pages/SharedCalc"));
+const PriceCatalog = lazy(() => import("@/pages/PriceCatalog"));
+const SiteTracking = lazy(() => import("@/pages/SiteTracking"));
+const Planning = lazy(() => import("@/pages/Planning"));
+const RenderStudio = lazy(() => import("@/pages/RenderStudio"));
+const MyLeads = lazy(() => import("@/pages/MyLeads"));
+const RenderShare = lazy(() => import("@/pages/RenderShare"));
+const Comparatif = lazy(() => import("@/pages/Comparatif"));
+const Situations = lazy(() => import("@/pages/Situations"));
+const Entreprise = lazy(() => import("@/pages/Entreprise"));
+const PaymentSuccess = lazy(() => import("@/pages/Payment").then((m) => ({ default: m.PaymentSuccess })));
+const PaymentCancel = lazy(() => import("@/pages/Payment").then((m) => ({ default: m.PaymentCancel })));
+const PostalPaymentReturn = lazy(() => import("@/pages/PostalPaymentReturn"));
+const StandMode = lazy(() => import("@/pages/StandMode"));
+const Experience = lazy(() => import("@/pages/Experience"));
 
 const PostalFeature = ({ children }) => {
   const { config, ready } = useAppConfig();
@@ -252,11 +260,11 @@ const Shell = ({ children }) => {
   const { pathname } = useLocation();
   const assistant = pathname === "/assistant";
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10">{children}</main><Footer /><HelpChatbot /></>;
+  if (!user) return <><Nav /><main className="mx-auto max-w-[1500px] px-5 lg:px-8 py-10 pb-28 md:pb-10"><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main><Footer /><HelpChatbot /></>;
   return <div className={`workspace${assistant ? " workspace-chat" : ""}`}>
     <WorkspaceNavigation />
     <div className="workspace-content">
-      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main">{children}</main>
+      <main key={user.user_id} id="workspace-main" tabIndex={-1} className="workspace-main"><Suspense fallback={<RouteSkeleton />}>{children}</Suspense></main>
       {!assistant && <WorkspaceFooter />}
     </div>
     {!assistant && <HelpChatbot />}
@@ -271,6 +279,7 @@ function AppRouter() {
   return (
     <>
     <DefaultSEO />
+    <Suspense fallback={<RouteSkeleton />}>
     <Routes>
       <Route path="/" element={<LandingPro />} />
       <Route path="/demo" element={<Demo />} />
@@ -468,6 +477,7 @@ function AppRouter() {
       <Route path="/cgv" element={<Shell><CGV /></Shell>} />
       <Route path="*" element={<Shell><NotFound /></Shell>} />
     </Routes>
+    </Suspense>
     </>
   );
 }
