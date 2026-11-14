@@ -406,19 +406,107 @@ def _bson_size_mb(doc: dict) -> float:
     return len(bson.BSON.encode(doc)) / 1024 / 1024
 
 
+def _png_para_jpeg(b64: str, qualidade: int) -> str | None:
+    """Recomprime a imagem de uma página (PNG pesado de um DWG/DXF denso) em JPEG, sem mudar as dimensões em píxeis:
+    as coordenadas de toda a geometria (image_px) continuam válidas."""
+    import base64
+    import io
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(base64.b64decode(b64)))
+        im.load()
+        if im.mode in ("RGBA", "LA", "P"):
+            im = im.convert("RGBA")
+            fundo = Image.new("RGB", im.size, (255, 255, 255))
+            fundo.paste(im, mask=im.split()[-1])
+            im = fundo
+        elif im.mode != "RGB":
+            im = im.convert("RGB")
+        out = io.BytesIO()
+        im.save(out, "JPEG", quality=qualidade, optimize=True, progressive=True)
+        return base64.b64encode(out.getvalue()).decode("ascii")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _cortar_listas(obj, limite: int, marca: list) -> object:
+    """Corta listas muito longas (inventários, paredes, cotas) mantendo os primeiros elementos e assinalando o corte."""
+    if isinstance(obj, list):
+        if len(obj) > limite:
+            marca.append(len(obj))
+            obj = obj[:limite]
+        return [_cortar_listas(v, limite, marca) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _cortar_listas(v, limite, marca) for k, v in obj.items()}
+    return obj
+
+
+def _maiores_campos(doc: dict) -> list:
+    tam = []
+    for k, v in doc.items():
+        if k == "pages":
+            for pg in v or []:
+                for pk, pv in pg.items():
+                    try:
+                        tam.append((f"pages[{pg.get('index')}].{pk}", round(_bson_size_mb({"v": pv}), 2)))
+                    except Exception:  # noqa: BLE001
+                        pass
+        else:
+            try:
+                tam.append((k, round(_bson_size_mb({"v": v}), 2)))
+            except Exception:  # noqa: BLE001
+                pass
+    return sorted(tam, key=lambda t: -t[1])[:6]
+
+
 async def _insert_plan_safe(doc: dict) -> None:
     """Insère le plan en garantissant de rester sous la limite BSON de 16 Mo.
-    Si le document est trop lourd (PDF multi-pages avec beaucoup d'images), on
-    dégrade progressivement : d'abord les vecteurs, puis les textes.
+    Si le document est trop lourd (PDF multi-pages, DWG/DXF denso), dégrade progressivement, du moins utile au plus
+    utile, sans jamais changer la géométrie : vecteurs → textes → images en JPEG → listes très longues → JPEG plus
+    comprimé. La source originale reste intacte dans plan_sources.
     """
-    if _bson_size_mb(doc) > 15:
+    LIM = 15
+    if _bson_size_mb(doc) > LIM:
+        logger.warning("plan %s: %.1f Mo, maiores campos %s", doc.get("plan_id"), _bson_size_mb(doc), _maiores_campos(doc))
         for pg in doc.get("pages", []):
+            if pg.get("vectors"):
+                pg["vectors_truncated"] = True
             pg["vectors"] = []
         logger.warning("plan %s: vecteurs supprimés pour tenir sous 16 Mo", doc.get("plan_id"))
-    if _bson_size_mb(doc) > 15:
+    if _bson_size_mb(doc) > LIM:
         for pg in doc.get("pages", []):
             pg["text_blocks"] = []
-    if _bson_size_mb(doc) > 15:
+    if _bson_size_mb(doc) > LIM:
+        for pg in doc.get("pages", []):
+            b64 = pg.get("image_png_b64")
+            if b64 and len(b64) > 1_500_000 and (pg.get("img_mime") or "image/png") == "image/png":
+                j = await asyncio.to_thread(_png_para_jpeg, b64, 85)
+                if j and len(j) < len(b64):
+                    pg["image_png_b64"], pg["img_mime"] = j, "image/jpeg"
+                    pg["image_recompressed"] = "jpeg85"
+    if _bson_size_mb(doc) > LIM:
+        marca: list = []
+        for pg in doc.get("pages", []):
+            for k in ("walls_analysis", "dxf_dimensions", "cad_import"):
+                if pg.get(k) is not None:
+                    pg[k] = _cortar_listas(pg[k], 2000, marca)
+        if doc.get("cad_import") is not None:
+            doc["cad_import"] = _cortar_listas(doc["cad_import"], 2000, marca)
+        if doc.get("structural_metre") is not None:
+            doc["structural_metre"] = _cortar_listas(doc["structural_metre"], 5000, marca)
+        if marca:
+            doc["listas_cortadas"] = {"maior": max(marca), "n": len(marca)}
+            logger.warning("plan %s: listas longas cortadas %s", doc.get("plan_id"), doc["listas_cortadas"])
+    if _bson_size_mb(doc) > LIM:
+        for pg in doc.get("pages", []):
+            b64 = pg.get("image_png_b64")
+            if b64 and len(b64) > 1_000_000:
+                j = await asyncio.to_thread(_png_para_jpeg, b64, 60)
+                if j and len(j) < len(b64):
+                    pg["image_png_b64"], pg["img_mime"] = j, "image/jpeg"
+                    pg["image_recompressed"] = "jpeg60"
+    if _bson_size_mb(doc) > LIM:
+        logger.error("plan %s ainda com %.1f Mo; maiores campos %s", doc.get("plan_id"), _bson_size_mb(doc), _maiores_campos(doc))
         raise HTTPException(
             413,
             "Planta demasiado volumosa para guardar (demasiadas páginas ou imagens muito pesadas). Tente importar apenas as páginas úteis ou uma planta com menor resolução.",
