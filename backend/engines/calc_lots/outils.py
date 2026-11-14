@@ -486,8 +486,28 @@ CLT_SO_TOOL = _tool(
      "lingua": _enum(["pt", "en"], "língua do PDF (null = pt)"),
      "pisos_json": _NS("JSON {floors:[…]} no formato da página CLT, só se o utilizador o der")})
 
+# --------------------------------------------------------------------------------------------------------------------------------
+# Estrutura em aço leve (LSF) — engines/lsf
+_VAO_LSF = {"piso": _n("0 = R/C"), "fachada": _enum(["frente", "direita", "tras", "esquerda"]), "tipo": _enum(["janela", "porta"]),
+            "x_m": {"type": "number", "description": "distância ao canto esquerdo da fachada (m)"}, "largura_m": {"type": "number"},
+            "altura_m": _n(), "peitoril_m": _n()}
+LSF_TOOL = _tool(
+    "calcul_lsf",
+    "Estudo completo de uma construção em AÇO LEVE / LIGHT STEEL FRAMING (LSF): estrutura perfil a perfil (montantes, guias, vergas, "
+    "peitoris, bloqueadores, vigas de piso, asnas), placas com plano de corte (OSB, gesso cartonado), parafusos contados um a um, ancoragens, "
+    "isolamento, ETICS; mapa de quantidades com preços da biblioteca da empresa; dossier PDF com plantas e alçados de fabrico numerados, Excel e "
+    "visualizador 3D. Use plan_id quando o utilizador já tem a planta lida no ConstruPilot (geometria real); senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto LSF completo em JSON (formato engines.lsf), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos (1 ou 2)"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]), "espacamento_mm": _n("modulação dos montantes; null = 600"),
+     "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
+
 CALC_TOOLS = [CLT_SO_TOOL, REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, ESTUDO_CLT_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, ESTUDO_CLT_TOOL, LSF_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -508,6 +528,7 @@ PROGRESS_LABELS = {
     "estudo_clt_completo": "A preparar o estudo CLT completo (quantidades, preços, plano e rentabilidade)…",
     "clt_so_quantidades": "A medir só o CLT: peças, vãos, perdas de corte e custo de produção…",
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
+    "calcul_lsf": "A calcular a estrutura em aço leve (LSF) perfil a perfil, as placas e os parafusos…",
 }
 
 PROTOCOL_PT = (
@@ -543,6 +564,8 @@ PROTOCOL_PT = (
     "estudo_clt_completo para esse pedido; "
     "estudo completo de uma casa em CLT (quantidades CLT e de todos os materiais, preços, plano da fabricação à montagem, "
     "rentabilidade; sem cálculos de cargas nem projetos de especialidade): estudo_clt_completo "
+    "; construção em aço leve / Light Steel Framing / LSF (estrutura metálica leve, perfis C e U, montantes, quantidades de perfis, placas e "
+    "parafusos, lista de corte): calcul_lsf, com plan_id se a planta já foi lida "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -1005,4 +1028,12 @@ def run(name: str, args: dict) -> dict:
         else:
             o["resumo"].append("Sem o PDF dos planos, o cruzamento com o que está escrito nos planos não foi feito: pede o document_id.")
         return _ret(o, o["resumo"], o["data"])
+    if name == "calcul_lsf":
+        from engines.lsf import note as lsf_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}       # planta / marca / biblioteca injetadas pela ponte
+        o = lsf_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
+        if o.get("files_extra"):
+            out_["files_extra"] = o["files_extra"]
+        return out_
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")
