@@ -96,7 +96,7 @@ function compor(base, vol, estilo, vaos) {
   };
 }
 
-export default function EstudioProjeto({ processoId, processo, vol, setVol, gravarVolume, inicialGrande = false }) {
+export default function EstudioProjeto({ processoId, processo, vol, setVol, gravarVolume, recarregar, inicialGrande = false }) {
   const temAuto = !!processo?.auto;
   const [base, setBase] = useState(null);
   const [estilo, setEstilo] = useState({});
@@ -109,6 +109,11 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const [ocupado, setOcupado] = useState("");
   const [render, setRender] = useState(null);
   const casa = useRef(null);
+  const [estilosCat, setEstilosCat] = useState([]);
+  const [escolhidos, setEscolhidos] = useState([]);
+  const [descricao, setDescricao] = useState("");
+  const [imagem, setImagem] = useState(null);
+  const [modelos, setModelos] = useState(null);
 
   useEffect(() => {
     const e0 = processo?.estudio || {};
@@ -116,6 +121,7 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
     setEstilo({ telhado: vol.roof_type === "plana" ? "plana" : "duas_aguas", fachada: mats.fachada, cobertura: mats.cobertura, caixilharia: mats.caixilharia, ...e0, vaos: undefined });
     if (temAuto) {
       api.get(`/urbanismo-auto/processos/${processoId}/modelo3d`).then((r) => { setBase(r.data); setVaos(e0.vaos || r.data.vaos || []); }).catch(() => setVaos(e0.vaos || []));
+      api.get("/urbanismo-auto/estilos").then((r) => setEstilosCat(r.data.estilos || [])).catch(() => {});
     } else setVaos(e0.vaos || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [processoId, temAuto]);
@@ -151,6 +157,35 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
     setOcupado("");
   };
 
+  const lerImagem = (f) => {
+    if (!f) return;
+    if (f.size > 8 * 1024 * 1024) { toast.error("Imagem demasiado grande (máx. 8 MB)."); return; }
+    const r = new FileReader(); r.onload = () => setImagem(r.result); r.readAsDataURL(f);
+  };
+  const gerarModelos = async () => {
+    setOcupado("modelos"); setModelos(null);
+    try {
+      const { data } = await api.post(`/urbanismo-auto/processos/${processoId}/variantes`,
+        { estilos: escolhidos, descricao: descricao || null, imagem_b64: imagem, n: 4 }, { timeout: 180000 });
+      setModelos(data);
+      if (!data.variantes.length) toast.error("Nenhum modelo cabe neste terreno com os afastamentos e índices — veja os motivos.");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível gerar os modelos."); }
+    setOcupado("");
+  };
+  const usarModelo = async (v) => {
+    setOcupado(`aplicar-${v.id}`);
+    try {
+      await api.post(`/urbanismo-auto/processos/${processoId}/variantes/${v.id}/aplicar`);
+      const r = await api.get(`/urbanismo-auto/processos/${processoId}/modelo3d`);
+      setBase(r.data); setVaos(r.data.vaos || []);
+      setEstilo((e) => ({ ...e, ...v.estudio, cor_fachada: null, cor_cobertura: null, cor_caixilharia: null }));
+      if (recarregar) await recarregar();
+      setModelos(null); setTab("casa");
+      toast.success(`Modelo aplicado: ${v.titulo}. Pode continuar a editar.`);
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível aplicar o modelo."); }
+    setOcupado("");
+  };
+
   const fotorrealista = async () => {
     const img = casa.current?.snapshot();
     if (!img) return;
@@ -165,7 +200,7 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
   const painel = (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex border-b text-xs">
-        {[["assistente", "Assistente"], ["casa", "Casa"], ["materiais", "Materiais e cores"], ["vaos", "Janelas e portas"]].map(([k, l]) => (
+        {[["assistente", "Assistente"], ["modelos", "Modelos"], ["casa", "Casa"], ["materiais", "Materiais"], ["vaos", "Vãos"]].map(([k, l]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`flex-1 py-2 ${tab === k ? "border-b-2 border-primary font-medium" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
@@ -186,6 +221,51 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
             </div>
           </>
         )}
+        {tab === "modelos" && (!temAuto ? (
+          <p className="text-xs text-muted-foreground">Os modelos adaptados precisam do terreno real: crie o processo pelo Assistente ou pelo licenciamento automático (morada ou terreno).</p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">Escolha estilos e/ou descreva a casa (ou junte uma foto de referência). O ConstruPilot gera modelos já adaptados ao terreno: afastamentos, índices, sol e declive.</p>
+            <div className="flex flex-wrap gap-1" data-testid="estudio-estilos">
+              {estilosCat.map((e) => {
+                const on = escolhidos.includes(e.id);
+                return <button key={e.id} type="button" title={e.descricao} onClick={() => setEscolhidos((x) => (on ? x.filter((y) => y !== e.id) : [...x, e.id].slice(-4)))}
+                  className={`text-[11px] border rounded-full px-2 py-0.5 ${on ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}>{e.nome}</button>;
+              })}
+            </div>
+            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} placeholder="Ex.: moradia moderna T4 térrea com cobertura plana, grandes envidraçados e garagem"
+              className="w-full border rounded p-2 text-sm bg-background" data-testid="estudio-descricao" />
+            <label className="inline-flex items-center gap-2 text-xs border rounded px-3 py-2 cursor-pointer hover:bg-muted w-fit" data-testid="estudio-imagem">
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { lerImagem(e.target.files?.[0]); e.target.value = ""; }} />
+              Juntar foto ou imagem de uma casa de referência
+            </label>
+            {imagem && <div className="flex items-center gap-2"><img src={imagem} alt="Referência" className="h-16 rounded border" /><button type="button" className="text-xs underline" onClick={() => setImagem(null)}>remover</button></div>}
+            <Button size="sm" onClick={gerarModelos} disabled={!!ocupado} data-testid="estudio-gerar-modelos">
+              {ocupado === "modelos" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}Gerar modelos para este terreno
+            </Button>
+            {modelos?.leitura?.imagem?.erro && <p className="text-xs text-amber-700">{modelos.leitura.imagem.erro}</p>}
+            <div className="grid gap-3" data-testid="estudio-modelos">
+              {(modelos?.variantes || []).map((v) => (
+                <div key={v.id} className="border rounded-lg overflow-hidden">
+                  {v.modelo3d && <Casa3D modelo={v.modelo3d} altura={190} />}
+                  <div className="p-2 space-y-1">
+                    <div className="font-medium text-sm">{v.titulo}</div>
+                    <div className="text-xs text-muted-foreground">{v.area_bruta_m2} m² de área bruta · {v.area_implantacao_m2} m² de implantação</div>
+                    <div className="text-xs">{v.descricao}</div>
+                    <Button size="sm" className="w-full" onClick={() => usarModelo(v)} disabled={!!ocupado}>
+                      {ocupado === `aplicar-${v.id}` ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}Usar este modelo
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {modelos?.nao_couberam?.length > 0 && (
+              <details className="text-xs text-muted-foreground"><summary>Não couberam neste terreno ({modelos.nao_couberam.length})</summary>
+                <ul className="list-disc pl-4">{modelos.nao_couberam.map((m, i) => <li key={i}>{m}</li>)}</ul></details>
+            )}
+            {modelos?.nota && <p className="text-[11px] text-muted-foreground">{modelos.nota}</p>}
+          </>
+        ))}
         {tab === "casa" && (
           <>
             <Num label="Frente da casa" unit="m" value={vol.footprint_l_m} min={4} max={40} onChange={(x) => mudaVol("footprint_l_m", x)} />

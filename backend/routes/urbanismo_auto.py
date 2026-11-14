@@ -255,6 +255,116 @@ def modelo3d(d: Dict[str, Any]) -> Dict[str, Any]:
             "nota": "Medidas exatas do processo (mesmos dados das peças desenhadas)."}
 
 
+class VariantesIn(BaseModel):
+    estilos: List[str] = Field(default_factory=list, max_length=10)
+    tipo: str = Field(default="moradia_isolada", pattern="^(moradia_isolada)$")
+    descricao: Optional[str] = Field(default=None, max_length=1500)
+    imagem_b64: Optional[str] = Field(default=None, max_length=12_000_000)
+    n: int = Field(default=4, ge=1, le=6)
+
+
+def _afim_m_para_ll(d: Dict[str, Any]):
+    """Transformação afim (mínimos quadrados) metros do terreno → lat/lon, a partir do polígono do próprio terreno."""
+    import numpy as np
+    t = d["auto"]["terreno"]
+    pm, pl = t.get("poligono_m") or [], t.get("poligono_latlon") or []
+    if len(pm) < 3 or len(pm) != len(pl):
+        return None
+    A = np.array([[x, y, 1.0] for x, y in pm])
+    B = np.array(pl, dtype=float)
+    M, *_ = np.linalg.lstsq(A, B, rcond=None)
+    return lambda pts: [[float(v) for v in (np.array([x, y, 1.0]) @ M)] for x, y in pts]
+
+
+@router.get("/estilos")
+async def estilos_lista(user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import estilos as E, variantes as VA
+    return {"estilos": E.lista(), "tipos": VA.TIPOS}
+
+
+@router.post("/processos/{pid}/variantes")
+async def variantes(pid: str, body: VariantesIn, user=Depends(current_user)) -> dict:
+    """Modelos de casa por estilo adaptados ao terreno (opção 1) ou a partir de uma descrição / imagem (opção 2)."""
+    from engines.urbanismo_pt.auto import estilos as E, variantes as VA
+    d = await _owned(pid, user["user_id"])
+    pedido, leitura = {}, {}
+    estilos = list(body.estilos)
+    if body.descricao:
+        r = VA.ler_descricao(body.descricao)
+        pedido.update(r["pedido"])
+        leitura["descricao"] = r
+        if r["estilo"] and r["estilo"] not in estilos:
+            estilos.insert(0, r["estilo"])
+    img = {}
+    if body.imagem_b64:
+        img = await VA.ler_imagem(body.imagem_b64)
+        leitura["imagem"] = img
+        if img.get("estilo") and img["estilo"] not in estilos:
+            estilos.insert(0, img["estilo"])
+        for k in ("pisos", "garagem"):
+            if k in img:
+                pedido[k] = img[k]
+    if not estilos:
+        estilos = ["contemporaneo", "tradicional_portugues", "minhoto_granito", "mediterranico"]
+    try:
+        out = await run_in_threadpool(VA.gerar, d, estilos, pedido, body.n)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    # a imagem / descrição também decide materiais e telhado (sem mexer na geometria)
+    for v in out["variantes"]:
+        for k in ("fachada", "caixilharia"):
+            if img.get(k):
+                v["materiais"][k] = img[k]
+                v["estudio"][k] = img[k]
+        if img.get("telhado"):
+            v["estudio"]["telhado"] = img["telhado"]
+            v["volume"]["roof_type"] = "plana" if img["telhado"] == "plana" else "duas_aguas"
+        if pedido.get("fachada"):
+            f = PA.material_fachada(pedido["fachada"])
+            v["materiais"]["fachada"] = v["estudio"]["fachada"] = f
+    await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]},
+                                            {"$set": {"auto.variantes": out["variantes"], "updated_at": _now()}})
+    pre = []
+    for v in out["variantes"]:
+        tmp = {**d, "volume": v["volume"], "auto": {**d["auto"], "plantas": v["plantas"], "vaos": v["vaos"], "materiais": v["materiais"],
+                                                  "implantacao": {**(d["auto"].get("implantacao") or {}), **v["implantacao"]}}}
+        try:
+            m3 = modelo3d(tmp)
+            m3["estilo"] = v["estudio"]
+        except Exception:  # noqa: BLE001
+            m3 = None
+        pre.append({k: v[k] for k in ("id", "titulo", "estilo", "estilo_nome", "descricao", "elementos", "tipologia", "pisos",
+                                      "garagem", "area_bruta_m2", "area_implantacao_m2", "materiais", "estudio")} | {"modelo3d": m3})
+    return {"variantes": pre, "nao_couberam": out["nao_couberam"], "nota": out["nota"], "leitura": leitura,
+            "estilos_disponiveis": [e["id"] for e in E.lista()]}
+
+
+@router.post("/processos/{pid}/variantes/{vid}/aplicar")
+async def aplicar_variante(pid: str, vid: str, user=Depends(current_user)) -> dict:
+    """A variante escolhida passa a ser o projeto do processo (volume, plantas, vãos, materiais, estilo)."""
+    d = await _owned(pid, user["user_id"])
+    v = next((x for x in d["auto"].get("variantes") or [] if x.get("id") == vid), None)
+    if not v:
+        raise HTTPException(404, "Variante não encontrada — gere de novo os modelos.")
+    d["volume"] = v["volume"]
+    a = d["auto"]
+    a.update({"plantas": v["plantas"], "vaos": v["vaos"], "materiais": v["materiais"], "programa": v["programa"],
+              "implantacao": {**(a.get("implantacao") or {}), **v["implantacao"]}, "estilo": v["estilo"]})
+    to_ll = _afim_m_para_ll(d)
+    if to_ll:
+        from engines.urbanismo_pt import volumes as V
+        a["casa_latlon"] = [to_ll(pp["pts"]) for pp in V.building_polygons(v["volume"])]
+    verif = R.verificar(d)
+    mem = PA.memoria_descritiva(d, verif)
+    s = {"volume": v["volume"], "auto.plantas": a["plantas"], "auto.vaos": a["vaos"], "auto.materiais": a["materiais"],
+         "auto.programa": a["programa"], "auto.implantacao": a["implantacao"], "auto.estilo": v["estilo"],
+         "estudio": v["estudio"], "memoria_texto": mem, "updated_at": _now()}
+    if to_ll:
+        s["auto.casa_latlon"] = a["casa_latlon"]
+    await db.urbanismo_processos.update_one({"processo_id": pid, "user_id": user["user_id"]}, {"$set": s})
+    return {"ok": True, "variante": vid, "titulo": v["titulo"], "verificacao": {"procedimento": verif["rjue"]["procedimento"]}}
+
+
 @router.get("/processos/{pid}/modelo3d")
 async def get_modelo3d(pid: str, user=Depends(current_user)) -> dict:
     return modelo3d(await _owned(pid, user["user_id"]))

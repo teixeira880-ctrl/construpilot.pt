@@ -164,7 +164,7 @@ export default function UrbanismoProcesso() {
     <>
     {isEdif && (
       <div className="max-w-[1500px] mx-auto px-4 pt-6" data-testid="urb-estudio">
-        <EstudioProjeto processoId={id} processo={d} vol={vol} setVol={setVol} gravarVolume={saveVolume} inicialGrande={sp.get("estudio") === "1"} />
+        <EstudioProjeto processoId={id} processo={d} vol={vol} setVol={setVol} gravarVolume={saveVolume} recarregar={load} inicialGrande={sp.get("estudio") === "1"} />
       </div>
     )}
     <div className="max-w-4xl mx-auto px-4 py-6 grid gap-5" data-testid="urb-processo-page">
