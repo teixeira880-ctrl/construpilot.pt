@@ -97,7 +97,11 @@ export default function UrbanismoProcesso() {
     const body = { ...v0, levels: Number(v0.levels) || 1, n_fogos: numOrNull(v0.n_fogos), lugares_previstos: numOrNull(v0.lugares_previstos),
       area_construcao_m2: numOrNull(v0.area_construcao_m2), distancia_alinhamento_fronteiro_m: numOrNull(v0.distancia_alinhamento_fronteiro_m),
       blocks: (v0.blocks || []).map((b) => ({ name: b.name || "Anexo", l_m: Number(b.l_m) || 1, w_m: Number(b.w_m) || 1, x_m: Number(b.x_m) || 0, y_m: Number(b.y_m) || 0, h_m: numOrNull(b.h_m) })) };
-    try { const { data } = await api.post(`/urbanismo/processos/${id}/volume`, body); apply(data); setTs(Date.now()); toast.success("Volumes gravados — peças desenhadas e verificação atualizadas."); }
+    try {
+      const { data } = await api.post(`/urbanismo/processos/${id}/volume`, body); apply(data); setTs(Date.now());
+      if (data.aviso_plantas) toast.warning(data.aviso_plantas, { duration: 9000 });
+      else toast.success("Volumes gravados — plantas, peças desenhadas e verificação atualizadas.");
+    }
     catch (e) { const det = e?.response?.data?.detail; toast.error(Array.isArray(det) ? "Valores fora dos limites — verifique as dimensões." : det || "Gravação impossível."); }
     finally { setBusy(""); }
   };

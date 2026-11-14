@@ -20,6 +20,16 @@ function cor(t) {
   return nome ? CORES[nome] : null;
 }
 
+/** Anexo novo encostado ao lado livre da casa (direita, senão esquerda, senão tardoz), dentro do lote. */
+export function novoAnexo(vol, nome = "Garagem", l = 6, w = 5.5) {
+  const L = Number(vol.footprint_l_m) || 10, W = Number(vol.footprint_w_m) || 8;
+  const ss = Number(vol.setback_side_m) || 3, sf = Number(vol.setback_front_m) || 5;
+  const pl = Number(vol.plot_l_m) || 0, pw = Number(vol.plot_w_m) || 0;
+  if (!pl || ss + L + 1 + l <= pl) return { name: nome, l_m: l, w_m: w, h_m: 3, x_m: ss + L + 1, y_m: sf };
+  if (ss - 1 - l >= 0) return { name: nome, l_m: l, w_m: w, h_m: 3, x_m: ss - 1 - l, y_m: sf };
+  return { name: nome, l_m: l, w_m: w, h_m: 3, x_m: ss, y_m: Math.min(sf + W + 1, Math.max(0, (pw || sf + W + 1 + w) - w)) };
+}
+
 /** Devolve { vol, estilo, vaos, feito: [frases], falhou: bool } a partir do estado atual. */
 export function aplicarComando(texto, { vol, estilo, vaos }) {
   const t = norm(texto);
@@ -36,6 +46,20 @@ export function aplicarComando(texto, { vol, estilo, vaos }) {
   if (pisos) { const n = { um: 1, dois: 2, tres: 3 }[pisos[1]] || Number(pisos[1]); v.levels = n; feito.push(`${n} piso${n > 1 ? "s" : ""}`); }
   const pd = t.match(/(?:pe[- ]?direito|piso a piso)\D{0,6}(\d+(?:[.,]\d+)?)/);
   if (pd) { v.storey_h_m = num(pd[1]); feito.push(`Piso a piso ${pd[1]} m`); }
+
+  // forma da casa e anexos
+  if (/\bem l\b|forma de l|formato l|casa em l/.test(t)) { v.shape = "l"; feito.push("Casa em L"); }
+  else if (/\bem t\b|forma de t|casa em t/.test(t)) { v.shape = "t"; feito.push("Casa em T"); }
+  else if (/retangular|rectangular/.test(t)) { v.shape = "rectangle"; feito.push("Casa retangular"); }
+  const anexoM = t.match(/(garagem|anexo|arrumos|telheiro|alpendre)/);
+  if (anexoM && /(acrescent|adicion|poe|mete|nov|quero|com)/.test(t) && !/(remove|retira|tira|sem)/.test(t)) {
+    const nome = { garagem: "Garagem", anexo: "Anexo", arrumos: "Arrumos", telheiro: "Telheiro", alpendre: "Alpendre" }[anexoM[1]];
+    const dimA = t.match(/(\d+(?:[.,]\d+)?)\s*(?:m\s*)?x\s*(\d+(?:[.,]\d+)?)/);
+    v.blocks = [...(v.blocks || []), novoAnexo(v, nome, dimA ? num(dimA[1]) : (nome === "Garagem" ? 6 : 4), dimA ? num(dimA[2]) : (nome === "Garagem" ? 5.5 : 3))];
+    feito.push(`${nome} acrescentad${nome === "Garagem" ? "a" : "o"}`);
+  } else if (anexoM && /(remove|retira|tira|sem)/.test(t) && (v.blocks || []).length) {
+    v.blocks = []; feito.push("Anexos removidos");
+  }
 
   // cobertura
   if (/(4|quatro)\s*aguas/.test(t)) { e.telhado = "quatro_aguas"; feito.push("Telhado de 4 águas"); }
@@ -99,4 +123,5 @@ export function aplicarComando(texto, { vol, estilo, vaos }) {
 export const EXEMPLOS = [
   "fachada em granito", "telhado de 4 águas com beiral de 0,8 m", "2 pisos", "casa com 12 x 9 m", "telha preta",
   "cor da fachada bege", "caixilharia antracite", "janela da sala com 3,5 m", "acrescenta uma janela na fachada esquerda",
+  "casa em L", "acrescenta uma garagem",
 ];

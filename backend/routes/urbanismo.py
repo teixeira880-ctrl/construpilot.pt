@@ -99,7 +99,7 @@ class BlockIn(BaseModel):
 
 
 class VolumeIn(BaseModel):
-    shape: str = Field(default="rectangle", pattern="^(rectangle|L|T)$")
+    shape: str = Field(default="rectangle", pattern="^(rectangle|L|T|l|t)$")   # o Estúdio e a IA enviam l/t
     plot_l_m: float = Field(default=20, ge=1, le=1000)
     plot_w_m: float = Field(default=15, ge=1, le=1000)
     footprint_l_m: float = Field(default=8, ge=1, le=500)
@@ -375,8 +375,32 @@ async def gravar_volume(pid: str, body: VolumeIn, user=Depends(current_user)) ->
         vol["total_h_m"] = round(vol["levels"] * vol["storey_h_m"] + (0 if vol["roof_type"] == "plana" else 2.0), 2)
     if vol["total_h_m"] < vol["levels"] * vol["storey_h_m"]:
         raise HTTPException(422, "A altura total não pode ser inferior à altura da fachada (pisos × altura piso a piso).")
-    await _set(pid, user["user_id"], {"volume": vol})
-    return _public(await _owned(pid, user["user_id"]))
+    patch, aviso = {"volume": vol}, None
+    a = d.get("auto") or {}
+    if a.get("plantas") and vol != d.get("volume"):
+        # 14/11: a casa mudou (Estúdio ou editor): as plantas dos pisos são redistribuídas com as MESMAS divisões,
+        # escaladas à nova área — senão as peças desenhadas ficavam com as medidas antigas
+        from engines.urbanismo_pt import volumes as V
+        from engines.urbanismo_pt.auto import plantas as PL
+        imp = a.get("implantacao") or {}
+        sol, lado = imp.get("fachada_sol") or "frente", imp.get("lado_garagem") or "esquerda"
+        cx0, cy0, cx1, cy1 = a["plantas"]["casa_rect"]
+        nova = V.union_area([q for q in V.building_polygons(vol) if not q["annexe"]])
+        fator = nova / max((cx1 - cx0) * (cy1 - cy0), 1e-6)
+        prog = PL.programa_das_plantas(a["plantas"], sol, fator)
+        prog["compartimentos"] = [c for c in prog["compartimentos"] if c["piso"] < int(vol.get("levels") or 1)]
+        pl = PL.distribuir(vol, prog, sol, lado)
+        if pl.get("ok"):
+            patch["auto.plantas"] = {"pisos": pl["pisos"], "casa_rect": list(pl["casa_rect"])}
+            if pl["nao_conformes"]:
+                aviso = "Plantas redistribuídas, mas abaixo dos mínimos: " + "; ".join(pl["nao_conformes"][:3])
+        else:
+            aviso = f"Volume gravado, mas as divisões não cabem na nova forma ({pl.get('motivo')}). As plantas dos pisos mantêm-se as anteriores."
+    await _set(pid, user["user_id"], patch)
+    out = _public(await _owned(pid, user["user_id"]))
+    if aviso:
+        out["aviso_plantas"] = aviso
+    return out
 
 
 # ------------------------------------------------------------------ desenhos e PDFs ----

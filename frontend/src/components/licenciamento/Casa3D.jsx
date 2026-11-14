@@ -226,6 +226,15 @@ function construirInterior(group, m, casaV, piso, cache, fach) {
   }
 }
 
+/** Contorno envolvente de todos os corpos da casa (L/T = vários retângulos), como um volume único. */
+function casaUniao(m) {
+  const pts = (m.volumes || []).filter(v => !v.anexo).flatMap(v => v.pts);
+  if (!pts.length) return null;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { anexo: false, pts: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] };
+}
+
 function buildScene(scene, m, cache) {
   const group = new THREE.Group();
   const mats = m.materiais || {};
@@ -274,8 +283,9 @@ function buildScene(scene, m, cache) {
 
   // volumes
   const corte = Number.isInteger(m.corte_piso) ? m.corte_piso : null;
+  if (corte !== null && casaUniao(m)) construirInterior(group, m, casaUniao(m), Math.min(corte, (m.pisos || 1) - 1), cache, fach);
   for (const v of m.volumes || []) {
-    if (corte !== null && !v.anexo) { construirInterior(group, m, v, Math.min(corte, (m.pisos || 1) - 1), cache, fach); continue; }
+    if (corte !== null && !v.anexo) continue;
     const vx = v.pts.map(p => p[0]), vy = v.pts.map(p => p[1]);
     const x0 = Math.min(...vx), x1 = Math.max(...vx), y0 = Math.min(...vy), y1 = Math.max(...vy);
     const L = x1 - x0, W = y1 - y0;
@@ -296,7 +306,7 @@ function buildScene(scene, m, cache) {
         fr.position.set(x0 + L / 2, p * hPiso, -(y0 + W / 2)); group.add(fr);
       }
     }
-    if (fach === "misto_madeira_reboco" && !v.anexo) {   // painel ripado na fachada do sol
+    if (fach === "misto_madeira_reboco" && !v.anexo && v === (m.volumes || []).find(q => !q.anexo)) {   // painel ripado na fachada principal
       // o painel ocupa o maior troço LIVRE da frente (nunca tapa um vão), até 35 % da fachada
       const ocup = (m.vaos || []).filter(o => o.fachada === "frente").map(o => [o.x0 - 0.25, o.x1 + 0.25]).sort((a, b) => a[0] - b[0]);
       let livre = [], cur = x0 + 0.3;
@@ -391,7 +401,7 @@ function buildScene(scene, m, cache) {
   if (porta && casaV) { const cy0 = Math.min(...casaV.pts.map(p => p[1])); pave(porta.x0 - 0.3, porta.x1 + 0.3, 0, cy0); }
 
   // vãos (as mesmas posições das plantas)
-  const casa = (m.volumes || []).find(v => !v.anexo);
+  const casa = casaUniao(m);
   if (casa && corte === null) {
     const vy = casa.pts.map(p => p[1]); const y0 = Math.min(...vy), y1 = Math.max(...vy);
     const vx_ = casa.pts.map(p => p[0]); const cx0 = Math.min(...vx_), cx1 = Math.max(...vx_);

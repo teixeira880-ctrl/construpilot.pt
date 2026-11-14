@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Casa3D from "@/components/licenciamento/Casa3D";
-import { aplicarComando, EXEMPLOS } from "./comandos";
+import { aplicarComando, EXEMPLOS, novoAnexo } from "./comandos";
 
 /**
  * Estúdio de Projeto (14/11): a casa do processo em 3D, editável ao vivo — dimensões, pisos, telhado, materiais, cores e vãos —
@@ -18,6 +18,8 @@ const COBERTURA = { telha_ceramica: "Telha cerâmica vermelha", telha_preta: "Te
 const CAIXILHARIA = { aluminio_antracite: "Alumínio antracite", aluminio_branco: "Alumínio branco", madeira: "Madeira", pvc_branco: "PVC branco" };
 const TELHADO = { duas_aguas: "2 águas", quatro_aguas: "4 águas", uma_agua: "1 água", plana: "Plana" };
 const FACHADAS_V = ["frente", "tardoz", "esquerda", "direita"];
+const FORMA = { rectangle: "Retangular", l: "Em L", t: "Em T" };
+
 
 function Num({ label, value, onChange, step = 0.1, min = 0, max = 100, unit }) {
   return (
@@ -52,32 +54,40 @@ function Cor({ label, value, onChange }) {
   );
 }
 
-// volumes do modelo a partir do volume editado (mantendo a posição da implantação do processo)
-function compor(base, vol, estilo, vaos) {
-  const L = Number(vol.footprint_l_m) || 8, W = Number(vol.footprint_w_m) || 6;
-  let terreno, volumes;
-  if (base?.volumes?.length) {
-    terreno = base.terreno;
-    volumes = base.volumes.map((v) => {
-      if (v.anexo) return v;
-      const xs = v.pts.map((p) => p[0]), ys = v.pts.map((p) => p[1]);
-      const x0 = Math.min(...xs), y0 = Math.min(...ys);
-      return { ...v, pts: [[x0, y0], [x0 + L, y0], [x0 + L, y0 + W], [x0, y0 + W]],
-        cobertura: estilo.telhado === "plana" ? "plana" : "duas_aguas", altura_cobertura_m: estilo.telhado === "plana" ? 0 : (v.altura_cobertura_m || 2) };
-    });
-  } else {
-    const pl = Number(vol.plot_l_m) || 20, pw = Number(vol.plot_w_m) || 15;
-    const x0 = Number(vol.setback_side_m) || 0, y0 = Number(vol.setback_front_m) || 0;
-    terreno = [[0, 0], [pl, 0], [pl, pw], [0, pw]];
-    volumes = [{ nome: "Casa", anexo: false, pts: [[x0, y0], [x0 + L, y0], [x0 + L, y0 + W], [x0, y0 + W]], altura_m: (vol.levels || 1) * (vol.storey_h_m || 2.8),
-      cobertura: estilo.telhado === "plana" ? "plana" : "duas_aguas", altura_cobertura_m: estilo.telhado === "plana" ? 0 : 2 }];
-    for (const b of vol.blocks || []) {
-      volumes.push({ nome: b.name || "Anexo", anexo: true, pts: [[b.x_m, b.y_m], [b.x_m + b.l_m, b.y_m], [b.x_m + b.l_m, b.y_m + b.w_m], [b.x_m, b.y_m + b.w_m]],
-        altura_m: b.h_m || 3, cobertura: "plana", altura_cobertura_m: 0 });
-    }
+// Volumes do modelo a partir do volume editado — MESMAS regras que o servidor (volumes.building_polygons): retângulo,
+// L (corpo à frente + ala no tardoz) ou T (barra no tardoz + corpo central), e anexos (blocks) em coordenadas do terreno.
+export function retangulosCasa(vol) {
+  const L = Math.max(1, Number(vol.footprint_l_m) || 8), W = Math.max(1, Number(vol.footprint_w_m) || 6);
+  const nv = (v, d) => (v === undefined || v === null || v === "" || Number.isNaN(Number(v)) ? d : Number(v));
+  const x0 = Math.max(0, nv(vol.setback_side_m, 3)), y0 = Math.max(0, nv(vol.setback_front_m, 5));
+  const forma = String(vol.shape || "rectangle").toLowerCase();
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  if (forma === "l") {
+    const wl = clamp(Number(vol.wing_l_m) || L * 0.45, 0.5, L - 0.5), wh = clamp(Number(vol.wing_w_m) || W * 0.45, 0.5, W - 0.5);
+    return [[x0, y0, x0 + L, y0 + W - wh], [x0, y0 + W - wh, x0 + L - wl, y0 + W]];
   }
-  const casa = volumes.find((v) => !v.anexo);
-  const cx0 = casa ? Math.min(...casa.pts.map((p) => p[0])) : 0;
+  if (forma === "t") {
+    const td = clamp(Number(vol.wing_w_m) || W * 0.45, 0.5, W - 0.5), sw = clamp(Number(vol.wing_l_m) || L * 0.4, 0.5, L - 0.5);
+    const sx = x0 + (L - sw) / 2;
+    return [[x0, y0 + W - td, x0 + L, y0 + W], [sx, y0, sx + sw, y0 + W - td]];
+  }
+  return [[x0, y0, x0 + L, y0 + W]];
+}
+
+function compor(base, vol, estilo, vaos) {
+  const pl = Number(vol.plot_l_m) || 20, pw = Number(vol.plot_w_m) || 15;
+  const terreno = base?.terreno || [[0, 0], [pl, 0], [pl, pw], [0, pw]];
+  const plana = estilo.telhado === "plana";
+  const hCob = plana ? 0 : ((base?.volumes || []).find((v) => !v.anexo)?.altura_cobertura_m || 2);
+  const rect = (r) => [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]];
+  const volumes = retangulosCasa(vol).map((r, i) => ({ nome: i ? "" : "Casa", anexo: false, pts: rect(r),
+    altura_m: (vol.levels || 1) * (vol.storey_h_m || 2.8), cobertura: plana ? "plana" : "duas_aguas", altura_cobertura_m: hCob }));
+  for (const b of (vol.blocks || []).slice(0, 6)) {
+    const bl = Math.max(0.5, Number(b.l_m) || 4), bw = Math.max(0.5, Number(b.w_m) || 3), bx = Number(b.x_m) || 0, by = Number(b.y_m) || 0;
+    volumes.push({ nome: b.name || "Anexo", anexo: true, pts: rect([bx, by, bx + bl, by + bw]), altura_m: Number(b.h_m) || 3, cobertura: "plana", altura_cobertura_m: 0 });
+  }
+  const corpo = volumes.filter((v) => !v.anexo).flatMap((v) => v.pts);
+  const cx0 = corpo.length ? Math.min(...corpo.map((p) => p[0])) : 0;
   const sh = Number(vol.storey_h_m) || 2.8, n = Number(vol.levels) || 1;
   // vãos: frente/tardoz em coordenadas do terreno; os acrescentados no Estúdio (_rel) são relativos à casa
   const vs = vaos.map((o) => (o._rel && ["frente", "tardoz"].includes(o.fachada) ? { ...o, x0: o.x0 + cx0, x1: o.x1 + cx0 } : o))
@@ -322,13 +332,41 @@ export default function EstudioProjeto({ processoId, processo, vol, setVol, grav
         ))}
         {tab === "casa" && (
           <>
+            <Sel label="Forma" value={String(vol.shape || "rectangle").toLowerCase()} options={FORMA} onChange={(x) => mudaVol("shape", x)} />
             <Num label="Frente da casa" unit="m" value={vol.footprint_l_m} min={4} max={40} onChange={(x) => mudaVol("footprint_l_m", x)} />
             <Num label="Profundidade" unit="m" value={vol.footprint_w_m} min={4} max={40} onChange={(x) => mudaVol("footprint_w_m", x)} />
+            {["l", "t"].includes(String(vol.shape || "").toLowerCase()) && (<>
+              <Num label={String(vol.shape).toLowerCase() === "l" ? "Recorte da ala — largura" : "Corpo central — largura"} unit="m"
+                value={vol.wing_l_m || Math.round((Number(vol.footprint_l_m) || 10) * (String(vol.shape).toLowerCase() === "l" ? 0.45 : 0.4) * 10) / 10}
+                min={1} max={(Number(vol.footprint_l_m) || 10) - 0.5} onChange={(x) => mudaVol("wing_l_m", x)} />
+              <Num label={String(vol.shape).toLowerCase() === "l" ? "Recorte da ala — profundidade" : "Barra do tardoz — profundidade"} unit="m"
+                value={vol.wing_w_m || Math.round((Number(vol.footprint_w_m) || 8) * 0.45 * 10) / 10}
+                min={1} max={(Number(vol.footprint_w_m) || 8) - 0.5} onChange={(x) => mudaVol("wing_w_m", x)} />
+            </>)}
             <Num label="Pisos" value={vol.levels} step={1} min={1} max={4} onChange={(x) => mudaVol("levels", x)} />
             <Num label="Piso a piso" unit="m" value={vol.storey_h_m} step={0.05} min={2.4} max={4.5} onChange={(x) => mudaVol("storey_h_m", x)} />
             <Sel label="Telhado" value={estilo.telhado} options={TELHADO} onChange={(x) => mudaEst("telhado", x)} />
             {estilo.telhado !== "plana" && <Num label="Inclinação" unit="%" value={estilo.inclinacao_pct ?? 30} step={1} min={5} max={100} onChange={(x) => mudaEst("inclinacao_pct", x)} />}
             <Num label="Beiral" unit="m" value={estilo.beiral_m ?? 0.5} step={0.05} min={0} max={1.5} onChange={(x) => mudaEst("beiral_m", x)} />
+            <div className="pt-2 border-t space-y-2" data-testid="estudio-anexos">
+              <div className="flex items-center justify-between"><span className="text-xs font-medium">Anexos (garagem, arrumos…)</span>
+                <Button size="sm" variant="outline" className="h-7" onClick={() => mudaVol("blocks", [...(vol.blocks || []), novoAnexo(vol)])}>+ Anexo</Button></div>
+              {(vol.blocks || []).map((b, i) => {
+                const muda = (k, x) => mudaVol("blocks", (vol.blocks || []).map((q, j) => (j === i ? { ...q, [k]: x } : q)));
+                return (
+                  <div key={i} className="rounded border p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <input value={b.name || ""} onChange={(e) => muda("name", e.target.value)} className="text-xs border rounded px-1 py-0.5 w-32 bg-background" />
+                      <button type="button" className="text-xs underline text-muted-foreground" onClick={() => mudaVol("blocks", (vol.blocks || []).filter((_, j) => j !== i))}>remover</button>
+                    </div>
+                    <Num label="Frente" unit="m" value={b.l_m} min={1} max={20} onChange={(x) => muda("l_m", x)} />
+                    <Num label="Profundidade" unit="m" value={b.w_m} min={1} max={20} onChange={(x) => muda("w_m", x)} />
+                    <Num label="Posição x" unit="m" value={b.x_m} min={0} max={Number(vol.plot_l_m) || 100} onChange={(x) => muda("x_m", x)} />
+                    <Num label="Posição y" unit="m" value={b.y_m} min={0} max={Number(vol.plot_w_m) || 100} onChange={(x) => muda("y_m", x)} />
+                  </div>
+                );
+              })}
+            </div>
           </>
         )}
         {tab === "materiais" && (

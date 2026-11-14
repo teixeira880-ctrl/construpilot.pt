@@ -27,3 +27,14 @@ def test_recusa_o_que_nao_existe_ou_nao_cabe():
 def test_so_resposta_quando_e_pergunta():
     r = validar({"resposta": "A casa tem 216 m² de área bruta."}, EST)
     assert not r["alterou"] and r["resposta"].startswith("A casa")
+
+
+def test_forma_em_l_e_garagem_dentro_do_lote():
+    r = validar({"vol": {"shape": "l", "wing_l_m": 5}, "anexos": {"acrescentar": [{"nome": "Garagem", "l_m": 6, "w_m": 5.5, "lado": "direita"},
+                                                                                  {"nome": "Arrumos", "l_m": 9, "w_m": 3, "lado": "esquerda"}]}}, EST)
+    assert r["vol"]["shape"] == "l" and r["vol"]["wing_l_m"] == 5.0
+    assert r["vol"]["blocks"] == [{"name": "Garagem", "l_m": 6.0, "w_m": 5.5, "h_m": 3.0, "x_m": 18.0, "y_m": 6.0}]
+    assert any("Arrumos" in x and "não cabe" in x for x in r["recusas"])      # 5 − 1 − 9 < 0
+    assert validar({"vol": {"shape": "oval"}}, EST)["recusas"]
+    r2 = validar({"anexos": {"remover_todos": True}}, {**EST, "vol": {**EST["vol"], "blocks": [{"name": "G"}]}})
+    assert r2["vol"]["blocks"] == [] and r2["alterou"]

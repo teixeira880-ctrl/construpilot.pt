@@ -94,6 +94,7 @@ def distribuir(volume: dict, prog: dict, fachada_sol: str, lado_garagem: str) ->
     polys = [p for p in V.building_polygons(volume) if not p["annexe"]]
     x0, y0, x1, y1 = V.bbox(polys)
     W = y1 - y0
+    rects = V.main_rects(volume)
     pisos = []
     escada_x = None
     for piso in range(int(volume.get("levels") or 1)):
@@ -114,12 +115,23 @@ def distribuir(volume: dict, prog: dict, fachada_sol: str, lado_garagem: str) ->
         if lado_garagem == "direita":     # serviços do lado da garagem
             srv.reverse()
             sol.reverse()
-        if fachada_sol == "tardoz":
+        xs_sol = xs_srv = (x0, x1)
+        if len(rects) == 2:
+            # casa em L ou T: uma faixa por corpo — o corpo da frente e o do tardoz (nunca no recorte, fora da casa)
+            frente, tardoz = sorted(rects, key=lambda r: r[1])
+            f_band, t_band = ((frente[1], frente[3]), (frente[0], frente[2])), ((tardoz[1], tardoz[3]), (tardoz[0], tardoz[2]))
+            (ys_sol, xs_sol), (ys_srv, xs_srv) = (t_band, f_band) if fachada_sol == "tardoz" else (f_band, t_band)
+        elif fachada_sol == "tardoz":
             ys_sol, ys_srv = (y1 - d_sol, y1), (y0, y1 - d_sol)
         else:
             ys_sol, ys_srv = (y0, y0 + d_sol), (y0 + d_sol, y1)
-        row_srv = _row(srv, x0, x1, *ys_srv, fixa=escada_x if any(r["tipo"] == "escada" for r in srv) else None)
-        row_sol = _row(sol, x0, x1, *ys_sol)
+        def _linhas(xs_a, ys_a, xs_b, ys_b):
+            fx = escada_x if escada_x and xs_b[0] <= escada_x[0] and escada_x[1] <= xs_b[1] else None
+            return (_row(srv, *xs_b, *ys_b, fixa=fx if any(r["tipo"] == "escada" for r in srv) else None), _row(sol, *xs_a, *ys_a))
+        row_srv, row_sol = _linhas(xs_sol, ys_sol, xs_srv, ys_srv)
+        if (row_srv is None or row_sol is None) and len(rects) == 2:
+            # L/T com um corpo estreito: troca as faixas (os compartimentos principais vão para o corpo maior)
+            row_srv, row_sol = _linhas(xs_srv, ys_srv, xs_sol, ys_sol)
         if row_srv is None or row_sol is None:
             return {"ok": False, "motivo": f"Os compartimentos do {('rés-do-chão' if piso == 0 else str(piso) + '.º andar')} "
                                            "não cabem com as larguras mínimas nesta implantação."}
@@ -227,3 +239,20 @@ def _norte(dr, cx, cy, az_tardoz):
     dr.line([tail, tip], fill=V.INK, width=3)
     V._arrow_head(dr, tip, tail, V.INK, size=12)
     dr.text((tip[0] + 10 * math.sin(ang), tip[1] - 22 * math.cos(ang)), "N", fill=V.INK, font=V._font(22), anchor="mm")
+
+
+def programa_das_plantas(plantas: Dict[str, Any], fachada_sol: str, fator_area: float = 1.0) -> Dict[str, Any]:
+    """Programa (compartimentos por piso, com a faixa sol/serviço) reconstruído a partir de plantas já desenhadas —
+    para redistribuir as MESMAS divisões quando a casa muda de dimensões ou de forma no Estúdio."""
+    x0, y0, x1, y1 = plantas["casa_rect"]
+    comps = []
+    for p in plantas.get("pisos") or []:
+        for c in p.get("compartimentos") or []:
+            if c.get("tipo") == "circulacao" and c.get("minimo_m2") is None and not c.get("nome", "").strip():
+                continue
+            na_frente = abs(c["y0"] - y0) < 0.05
+            fila = "sol" if (na_frente if fachada_sol != "tardoz" else abs(c["y1"] - y1) < 0.05) else "servico"
+            comps.append({"nome": c["nome"], "tipo": c["tipo"], "piso": p["piso"], "fila": fila,
+                          "area_projeto_m2": round(float(c.get("area_m2") or (c["x1"] - c["x0"]) * (c["y1"] - c["y0"])) * fator_area, 2),
+                          "minimo_m2": c.get("minimo_m2")})
+    return {"compartimentos": comps}

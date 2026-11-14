@@ -17,7 +17,9 @@ TELHADO = ["duas_aguas", "quatro_aguas", "uma_agua", "plana"]
 FACHADAS_V = ["frente", "tardoz", "esquerda", "direita"]
 TIPOS_VAO = ["janela", "envidracado", "porta"]
 LIM_VOL = {"footprint_l_m": (4.0, 60.0), "footprint_w_m": (4.0, 60.0), "levels": (1, 4), "storey_h_m": (2.4, 4.5),
-           "setback_front_m": (0.0, 60.0), "setback_side_m": (0.0, 60.0)}
+           "setback_front_m": (0.0, 60.0), "setback_side_m": (0.0, 60.0), "wing_l_m": (1.0, 40.0), "wing_w_m": (1.0, 40.0)}
+FORMAS = ["rectangle", "l", "t"]
+LADOS = ["direita", "esquerda", "tardoz"]
 LIM_EST = {"inclinacao_pct": (0.0, 70.0), "beiral_m": (0.0, 1.5)}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -25,7 +27,10 @@ SISTEMA = (
     "És o arquiteto do Estúdio de Projeto ConstruPilot (Portugal). O utilizador pede alterações à casa em linguagem livre. "
     "Responde SÓ com um objeto JSON, sem texto à volta, com esta forma:\n"
     '{"vol": {"footprint_l_m": número (frente da casa, m), "footprint_w_m": número (profundidade, m), "levels": inteiro 1-4, '
-    '"storey_h_m": número (piso a piso), "setback_front_m": número, "setback_side_m": número},\n'
+    '"storey_h_m": número (piso a piso), "setback_front_m": número, "setback_side_m": número, '
+    '"shape": "rectangle"|"l"|"t" (casa retangular, em L = corpo à frente + ala no tardoz, em T), '
+    '"wing_l_m": número (L: largura do recorte; T: largura do corpo central), "wing_w_m": número (L: profundidade do recorte; T: profundidade da barra do tardoz)},\n'
+    ' "anexos": {"acrescentar": [{"nome": "Garagem"|"Arrumos"|"Telheiro"|..., "l_m": número, "w_m": número, "h_m": número, "lado": "direita"|"esquerda"|"tardoz"}], "remover_todos": true|false},\n'
     ' "estilo": {"telhado": ' + json.dumps(TELHADO) + ', "inclinacao_pct": número, "beiral_m": número, "fachada": ' + json.dumps(FACHADA)
     + ', "cobertura": ' + json.dumps(COBERTURA) + ', "caixilharia": ' + json.dumps(CAIXILHARIA)
     + ', "cor_fachada": "#rrggbb", "cor_cobertura": "#rrggbb", "cor_caixilharia": "#rrggbb"},\n'
@@ -55,6 +60,9 @@ def validar(prop: Dict[str, Any], estado: Dict[str, Any]) -> Dict[str, Any]:
     vaos0 = estado.get("vaos") or []
     ok_vol, ok_est, recusas = {}, {}, []
     for k, v in (prop.get("vol") or {}).items():
+        if k == "shape":
+            (ok_vol.__setitem__("shape", v) if v in FORMAS else recusas.append(f"forma {v}: só retangular, L ou T"))
+            continue
         if k not in LIM_VOL:
             recusas.append(f"{k}: campo desconhecido")
             continue
@@ -73,6 +81,32 @@ def validar(prop: Dict[str, Any], estado: Dict[str, Any]) -> Dict[str, Any]:
             for k in ("footprint_l_m", "footprint_w_m", "setback_front_m", "setback_side_m"):
                 ok_vol.pop(k, None)
             recusas.append(f"a casa não cabe no lote ({pl:g} × {pw:g} m) com esses afastamentos — dimensões mantidas")
+    # anexos: posição calculada aqui (encostado ao lado pedido, a 1 m da casa) e dentro do lote
+    an = prop.get("anexos") or {}
+    blocos = [] if an.get("remover_todos") else list(vol0.get("blocks") or [])
+    mudou_anexos = bool(an.get("remover_todos")) and bool(vol0.get("blocks"))
+    nv = {**vol0, **ok_vol}
+    L, W = float(nv.get("footprint_l_m") or 10), float(nv.get("footprint_w_m") or 8)
+    ss, sf = float(nv.get("setback_side_m") or 0), float(nv.get("setback_front_m") or 0)
+    for a in (an.get("acrescentar") or [])[:4]:
+        if not isinstance(a, dict):
+            continue
+        l, w, h = _num(a.get("l_m", 6), 1.5, 20), _num(a.get("w_m", 5), 1.5, 20), _num(a.get("h_m", 3), 2.2, 4.5)
+        if None in (l, w, h):
+            recusas.append(f"anexo {a.get('nome')}: dimensões fora dos limites")
+            continue
+        lado = a.get("lado") if a.get("lado") in LADOS else "direita"
+        x, y = {"direita": (ss + L + 1, sf), "esquerda": (ss - 1 - l, sf), "tardoz": (ss, sf + W + 1)}[lado]
+        if x < 0 or (pl and x + l > pl + 1e-6) or (pw and y + w > pw + 1e-6):
+            recusas.append(f"{a.get('nome') or 'anexo'} de {l:g} × {w:g} m à {lado}: não cabe no lote")
+            continue
+        if len(blocos) >= 6:
+            recusas.append("máximo de 6 anexos")
+            break
+        blocos.append({"name": str(a.get("nome") or "Anexo")[:30], "l_m": l, "w_m": w, "h_m": h, "x_m": round(x, 2), "y_m": round(y, 2)})
+        mudou_anexos = True
+    if mudou_anexos:
+        ok_vol["blocks"] = blocos
     for k, v in (prop.get("estilo") or {}).items():
         tab = {"telhado": TELHADO, "fachada": FACHADA, "cobertura": COBERTURA, "caixilharia": CAIXILHARIA}.get(k)
         if tab is not None:
@@ -128,7 +162,7 @@ def validar(prop: Dict[str, Any], estado: Dict[str, Any]) -> Dict[str, Any]:
 
 def _resumo_estado(estado: Dict[str, Any]) -> str:
     vol = {k: (estado.get("vol") or {}).get(k) for k in ("plot_l_m", "plot_w_m", "footprint_l_m", "footprint_w_m", "levels", "storey_h_m",
-                                                      "setback_front_m", "setback_side_m", "uso")}
+                                                      "setback_front_m", "setback_side_m", "uso", "shape", "wing_l_m", "wing_w_m", "blocks")}
     vaos = [{"indice": i, **{k: o.get(k) for k in ("fachada", "piso", "tipo", "compartimento")},
              "largura_m": round(float(o.get("x1", 0)) - float(o.get("x0", 0)), 2)} for i, o in enumerate(estado.get("vaos") or [])][:60]
     return json.dumps({"lote_e_casa": vol, "estilo": estado.get("estilo") or {}, "vaos_atuais": vaos}, ensure_ascii=False)
