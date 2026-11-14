@@ -19,8 +19,30 @@ class AutodeskError(RuntimeError):
         self.code, self.fallback_safe, self.status = code, fallback_safe, status
 
 
+# 14/11: as chaves da conta Autodesk do .pt estão como AUTODESK_CLIENT_ID / AUTODESK_CLIENT_SECRET (módulo Plantas Pro);
+# este cliente lia só APS_* e dizia «não configurada» com a conta ligada. Aceita os dois nomes, e os endereços públicos
+# da APS têm valor por omissão (não são segredos). A atividade Design Automation (APS_ACTIVITY_*, APS_ENGINE) continua
+# a ter de ser definida explicitamente.
+_ALIASES = {"APS_CLIENT_ID": "AUTODESK_CLIENT_ID", "APS_CLIENT_SECRET": "AUTODESK_CLIENT_SECRET", "APS_BUCKET_KEY": "AUTODESK_BUCKET_KEY"}
+_DEFAULTS = {"APS_TOKEN_URL": "https://developer.api.autodesk.com/authentication/v2/token",
+             "APS_OSS_BASE_URL": "https://developer.api.autodesk.com/oss/v2",
+             "APS_AUTOMATION_BASE_URL": "https://developer.api.autodesk.com/da",
+             "APS_AUTOMATION_REGION": "us-east", "APS_DWG_TIMEOUT_SECONDS": "240"}
+
+
+def _bucket_derivado() -> str:
+    cid = os.environ.get("APS_CLIENT_ID", "").strip() or os.environ.get("AUTODESK_CLIENT_ID", "").strip()
+    return f"construpilot-plans-{hashlib.sha1(cid.encode()).hexdigest()[:12]}" if cid else ""
+
+
 def config(name):
     value = os.environ.get(name, "").strip()
+    if not value and name in _ALIASES:
+        value = os.environ.get(_ALIASES[name], "").strip()
+    if not value and name == "APS_BUCKET_KEY":
+        value = _bucket_derivado()           # o mesmo bucket que o módulo Plantas Pro usa
+    if not value:
+        value = _DEFAULTS.get(name, "")
     if not value:
         raise AutodeskError("not_configured", "Conversão Autodesk não configurada.", fallback_safe=True)
     return value
