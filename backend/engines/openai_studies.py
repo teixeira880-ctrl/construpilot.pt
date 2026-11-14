@@ -52,9 +52,19 @@ def _client():
 
 async def check_quota(user_id: str) -> None:
     since = datetime.now(timezone.utc) - timedelta(hours=1)
-    n = await db.ai_usage.count_documents({"user_id": user_id, "engine": "openai_studies", "created": {"$gte": since}})
-    if n >= MAX_PER_HOUR:
-        raise QuotaError(f'Limite atingido: {MAX_PER_HOUR} análises OpenAI por hora e por conta')
+    # 14/11: conta ANÁLISES, não chamadas — cada análise regista 5 chamadas (análise, verificação e 3 passes interiores),
+    # e o limite de 10 «análises» bloqueava ao fim de 2. Administradores: limite ×5 (testes e demonstrações).
+    n = await db.ai_usage.count_documents({"user_id": user_id, "engine": "openai_studies", "kind": "plan_analysis",
+                                           "created": {"$gte": since}})
+    limite = MAX_PER_HOUR
+    try:
+        u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "role": 1})
+        if (u or {}).get("role") == "admin":
+            limite = MAX_PER_HOUR * 5
+    except Exception:  # noqa: BLE001
+        pass
+    if n >= limite:
+        raise QuotaError(f'Limite atingido: {limite} análises OpenAI por hora e por conta')
     from engines import usage_meter
     try:
         await usage_meter.check_ai_budget(user_id)

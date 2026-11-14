@@ -187,19 +187,33 @@ def _make_pt_doc_loader(allowed_doc_fn: AllowedDocFn) -> Callable[..., Awaitable
     """
 
     async def loader(_db, ids: list[str], user_id: str) -> list:
+        # 14/11 (DWG de Valpaços): uma planta DWG/DXF metida no Assistente fica no módulo Plantas (plan_…) ou como
+        # anexo CAD — o estudo lê as folhas desenhadas, como no .fr, em vez de «Documento inacessível» / «não é PDF».
+        from engines.bet_core.assistant_tool import _plan_as_doc, _cad_to_pdf
         docs: list = []
         for did in ids:
-            d = await allowed_doc_fn(did, user_id, True)
+            try:
+                d = await allowed_doc_fn(did, user_id, True)
+            except PermissionError:
+                d = await _plan_as_doc(_db, did, user_id) if str(did).startswith("plan_") else None
+                if not d:
+                    raise PermissionError("Documento inacessível para esta conta") from None
             mime = (d.get("mime") or "").lower()
             name = d.get("filename") or did
-            if mime != "application/pdf" and not name.lower().endswith(".pdf"):
+            cad = name.lower().endswith((".dwg", ".dxf"))
+            if mime != "application/pdf" and not name.lower().endswith(".pdf") and not cad:
                 raise ValueError(
-                    f"{name} não é PDF — apenas PDFs de plantas são lidos pelo estudo BET."
+                    f"{name} não é PDF nem DWG/DXF — apenas plantas em PDF, DWG ou DXF são lidas pelo estudo BET."
                 )
             data_b64 = d.get("data_b64")
             if not data_b64:
                 raise ValueError(f"Documento {name} sem dados utilizáveis.")
             data = base64.b64decode(data_b64)
+            if cad and not data.startswith(b"%PDF"):
+                try:
+                    data, name = await _cad_to_pdf(data, name, user_id)
+                except ValueError:
+                    raise ValueError(f"{name}: desenho DWG/DXF ilegível — exporte a planta em PDF ou DXF.") from None
             if not data.startswith(b"%PDF"):
                 raise ValueError(f"{name} não é um PDF legível — reimporte o ficheiro.")
             docs.append((name, data))

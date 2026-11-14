@@ -119,3 +119,37 @@ def test_handles_chunked_pdf_via_allowed_doc():
     assert len(out) == 1
     assert out[0][1].startswith(b"%PDF")
     assert len(out[0][1]) == len(big)
+
+
+def test_planta_dwg_do_modulo_plantas_entra_no_estudo(monkeypatch):
+    """14/11 Valpaços: DWG metido no Assistente fica como plan_… no módulo Plantas → o estudo lê as folhas (antes:
+    «Documento inacessível para esta conta»)."""
+    from engines import assistant_bet_core_tool as T
+    from engines.bet_core import assistant_tool as BC
+
+    async def allowed(did, uid, with_data):
+        raise PermissionError("Documento inacessível para esta conta")
+
+    async def plan_as_doc(_db, did, uid):
+        assert did == "plan_abc" and uid == "u1"
+        return {"filename": "Valpacos.pdf", "mime": "application/pdf", "data_b64": base64.b64encode(_PDF_MIN).decode()}
+
+    monkeypatch.setattr(BC, "_plan_as_doc", plan_as_doc)
+    out = _run(T._make_pt_doc_loader(allowed)(None, ["plan_abc"], "u1"))
+    assert out == [("Valpacos.pdf", _PDF_MIN)]
+    with pytest.raises(PermissionError):
+        _run(T._make_pt_doc_loader(allowed)(None, ["doc_de_outro"], "u1"))
+
+
+def test_anexo_dxf_convertido_em_prancha(monkeypatch):
+    from engines import assistant_bet_core_tool as T
+    from engines.bet_core import assistant_tool as BC
+
+    async def allowed(did, uid, with_data):
+        return {"filename": "planta.dxf", "mime": "application/dxf", "data_b64": base64.b64encode(b"0\nSECTION").decode()}
+
+    async def cad_to_pdf(data, name, uid):
+        return _PDF_OTHER, "planta.pdf"
+
+    monkeypatch.setattr(BC, "_cad_to_pdf", cad_to_pdf)
+    assert _run(T._make_pt_doc_loader(allowed)(None, ["doc_1"], "u1")) == [("planta.pdf", _PDF_OTHER)]
