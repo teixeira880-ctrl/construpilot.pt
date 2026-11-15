@@ -988,7 +988,16 @@ def run(name: str, args: dict) -> dict:
         # complementos aproximados + vistas 3D do CLT montado (14/11, Martinho: «os motores e o assistente trabalham assim»)
         from bim_studio import clt_complements, clt_only
         extra = a.get("_extra") or {}
-        comp = clt_complements.lines(entrada, terrace_m2=extra.get("terrace_m2") or 0.0, roof_edge_m=extra.get("roof_edge_m") or 0.0)
+        # ligações contadas peça a peça (cada cantoneira, ancoragem, parafuso e metro de fita) quando há eixos de parede medidos;
+        # sem geometria medida ficam os rácios, e a regra de cada linha diz qual dos dois métodos foi usado
+        ligacoes = None
+        if any(sg.get("rect_m") for fl in entrada["floors"] for sg in fl.get("segments") or []):
+            from bim_studio import clt_ligacoes
+            pisos_lig = clt_ligacoes.pisos_do_calculo(clt_only.compute(entrada, par, lib, extra.get("geometria")))
+            if any(p["paredes"] for p in pisos_lig):
+                ligacoes = clt_ligacoes.linhas(clt_ligacoes.calcular(pisos_lig))
+        comp = clt_complements.lines(entrada, terrace_m2=extra.get("terrace_m2") or 0.0, roof_edge_m=extra.get("roof_edge_m") or 0.0,
+                                     ligacoes=ligacoes)
         anexos = []
         if any(sg.get("rect_m") for fl in entrada["floors"] for sg in fl.get("segments") or []):
             from bim_studio import clt_render

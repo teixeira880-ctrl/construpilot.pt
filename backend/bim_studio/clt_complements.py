@@ -19,9 +19,12 @@ def _f(v):
     return float(v or 0)
 
 
-def lines(entrada: dict, *, terrace_m2: float = 0.0, roof_edge_m: float = 0.0, storeys_above_ground: int | None = None) -> list[dict]:
+def lines(entrada: dict, *, terrace_m2: float = 0.0, roof_edge_m: float = 0.0, storeys_above_ground: int | None = None,
+          ligacoes: list[dict] | None = None) -> list[dict]:
     """entrada: the EstimateInput JSON of the study. Returns [{capitulo, nome{pt,en}, quantidade, unidade, custo_un, regra{pt,en}, so_quantidade}].
-    so_quantidade: a layer already priced inside a combined line of the study (shown for the material list, cost 0)."""
+    so_quantidade: a layer already priced inside a combined line of the study (shown for the material list, cost 0).
+    ligacoes: the connector lines counted piece by piece (clt_ligacoes.linhas) when the wall axes and the slab strips are
+    measured; they then replace the ratio lines of the connectors chapter."""
     floors = entrada["floors"]
     rooms = [r for fl in floors for r in fl.get("rooms") or []]
     wet = sum(1 for r in rooms if r["tipo"] in WET) + sum(1 for r in rooms if r["tipo"] == "sala" and "lava_loica" in (r.get("aparelhos") or []))
@@ -80,12 +83,15 @@ def lines(entrada: dict, *, terrace_m2: float = 0.0, roof_edge_m: float = 0.0, s
     add("interior", "Isolamento acústico em lã de rocha nas contra-paredes", "Rock-wool acoustic insulation in the wall linings", board, "m²", 6.5, "faces forradas", "lined faces")
     add("interior", "Membrana de base das paredes (corte de capilaridade)", "Wall-base membrane (capillary break)", wall_m, "m", 4.5, "comprimento das paredes CLT", "length of the CLT walls")
     # connectors (section: angle brackets for shear and tension, perforated plates, M16 bars, wood screws)
-    add("ligacoes", "Cantoneiras de corte parede–base e parede–laje", "Shear angle brackets wall–base and wall–slab", wall_m * 1.0, "un", 9, "1 por metro de parede", "1 per metre of wall")
-    add("ligacoes", "Ancoragens de tração (hold-down) com varão M16", "Hold-downs with M16 rod", wall_m / 3.0, "un", 28, "1 por 3 m de parede", "1 per 3 m of wall")
-    add("ligacoes", "Parafusos de madeira estruturais", "Structural wood screws", (roof + slab) * 4 + wall_m * 6, "un", 0.45,
-        "4 por m² de laje e cobertura + 6 por metro de parede", "4 per m² of slab and roof + 6 per metre of wall")
-    add("ligacoes", "Fita de estanquidade ao ar nas juntas", "Air-tightness tape on the joints", wall_m * 2 + (roof + slab) / 2.4, "m", 1.6,
-        "2 × comprimento das paredes + juntas das faixas", "2 × wall length + strip joints")
+    if ligacoes:                                              # counted connector by connector from the measured geometry
+        out.extend(ligacoes)
+    else:                                                     # no wall axes measured: stated ratios
+        add("ligacoes", "Cantoneiras de corte parede–base e parede–laje", "Shear angle brackets wall–base and wall–slab", wall_m * 1.0, "un", 9, "1 por metro de parede", "1 per metre of wall")
+        add("ligacoes", "Ancoragens de tração (hold-down) com varão M16", "Hold-downs with M16 rod", wall_m / 3.0, "un", 28, "1 por 3 m de parede", "1 per 3 m of wall")
+        add("ligacoes", "Parafusos de madeira estruturais", "Structural wood screws", (roof + slab) * 4 + wall_m * 6, "un", 0.45,
+            "4 por m² de laje e cobertura + 6 por metro de parede", "4 per m² of slab and roof + 6 per metre of wall")
+        add("ligacoes", "Fita de estanquidade ao ar nas juntas", "Air-tightness tape on the joints", wall_m * 2 + (roof + slab) / 2.4, "m", 1.6,
+            "2 × comprimento das paredes + juntas das faixas", "2 × wall length + strip joints")
     # covered terrace and stair
     add("terraco", "Deck de madeira do terraço coberto, com estrutura", "Timber deck of the covered terrace, with substructure", terrace_m2, "m²", 95, "área medida do terraço", "measured terrace area")
     add("terraco", "Impermeabilização sob o deck do terraço", "Waterproofing under the terrace deck", terrace_m2 * 1.10, "m²", 24, "área + 10 % de remates", "area + 10 % upstands")
