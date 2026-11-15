@@ -7,10 +7,12 @@ gerações, para que cálculos, orçamentos e comentários fiquem ligados aos me
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
@@ -50,6 +52,11 @@ async def _load_model(plan_id: str, page_index: int, user: dict, params: dict):
                                  storey_name=f"Piso {page_index}", params=params)
     except bim.ModelError as e:
         raise HTTPException(422, str(e)) from e
+    # Cópia editada no editor BIM (opções ou prompt): passa a ser o modelo deste piso até ser reposta a planta lida.
+    saved = await db.bim_models.find_one({"plan_id": plan_id, "page_index": page_index, "user_id": user["user_id"]}, {"_id": 0, "model": 1})
+    if saved and saved.get("model"):
+        from engines.bim_core import edicao
+        model = edicao.de_dict(saved["model"])
     return bim, model, p
 
 
@@ -136,6 +143,73 @@ async def bim_analysis(plan_id: str, page_index: int,
     except ImportError as e:
         raise HTTPException(503, "Solver estrutural indisponível neste servidor (PyNiteFEA não instalado).") from e
     return {"plan_id": plan_id, "page_index": page_index, **result}
+
+
+# ------------------------------------------------------------------------------------------------ editor do modelo
+class ModelOps(BaseModel):
+    ops: list[dict] = Field(default_factory=list, max_length=200)
+    texto: str = Field(default="", max_length=4000)
+
+
+def _edit_key(plan_id: str, page_index: int, user: dict) -> dict:
+    return {"plan_id": plan_id, "page_index": page_index, "user_id": user["user_id"]}
+
+
+@router.get("/takeoffs/{plan_id}/{page_index}/modelo")
+async def bim_model(plan_id: str, page_index: int, user=Depends(current_user)) -> dict:
+    """Modelo editável do piso (paredes, vãos, lajes…) em JSON: o da planta lida, ou a cópia já editada."""
+    from engines.bim_core import edicao
+
+    _, model, _ = await _load_model(plan_id, page_index, user, _params(None, None, None, None, None, None))
+    doc = await db.bim_models.find_one(_edit_key(plan_id, page_index, user), {"_id": 0, "historico": 1, "anteriores": 1}) or {}
+    return {"modelo": edicao.para_dict(model), "editado": bool(doc), "historico": (doc.get("historico") or [])[-50:],
+            "pode_desfazer": bool(doc.get("anteriores"))}
+
+
+@router.post("/takeoffs/{plan_id}/{page_index}/modelo/ops")
+async def bim_model_ops(plan_id: str, page_index: int, body: ModelOps, user=Depends(current_user)) -> dict:
+    """Aplica operações de edição (lista `ops`) e/ou frases correntes (`texto`) ao modelo do piso e guarda o resultado.
+    Cada operação recusada volta com o motivo; as frases não percebidas voltam em `nao_percebido`."""
+    from engines.bim_core import edicao
+
+    _, model, _ = await _load_model(plan_id, page_index, user, _params(None, None, None, None, None, None))
+    frases, resto = edicao.interpretar(body.texto, model) if body.texto.strip() else ([], [])
+    ops = list(body.ops) + frases
+    if not ops and not resto:
+        raise HTTPException(422, "Indique operações ou um pedido em texto.")
+    novo, feito, erros = edicao.aplicar(model, ops)
+    if feito:
+        key = _edit_key(plan_id, page_index, user)
+        doc = await db.bim_models.find_one(key, {"_id": 0, "anteriores": 1, "historico": 1}) or {}
+        agora = datetime.now(timezone.utc).isoformat()
+        await db.bim_models.update_one(key, {"$set": {
+            "model": edicao.para_dict(novo), "updated_at": agora,
+            "anteriores": ((doc.get("anteriores") or []) + [edicao.para_dict(model)])[-20:],
+            "historico": ((doc.get("historico") or []) + [{"quando": agora, "feito": feito}])[-200:]}}, upsert=True)
+    return {"modelo": edicao.para_dict(novo), "feito": feito, "erros": erros, "nao_percebido": resto, "editado": bool(feito)}
+
+
+@router.post("/takeoffs/{plan_id}/{page_index}/modelo/desfazer")
+async def bim_model_undo(plan_id: str, page_index: int, user=Depends(current_user)) -> dict:
+    """Volta ao modelo anterior à última edição (até 20 passos)."""
+    key = _edit_key(plan_id, page_index, user)
+    doc = await db.bim_models.find_one(key, {"_id": 0, "anteriores": 1}) or {}
+    anteriores = doc.get("anteriores") or []
+    if not anteriores:
+        raise HTTPException(409, "Não há edições para desfazer.")
+    agora = datetime.now(timezone.utc).isoformat()
+    doc_h = await db.bim_models.find_one(key, {"_id": 0, "historico": 1}) or {}
+    await db.bim_models.update_one(key, {"$set": {
+        "model": anteriores[-1], "anteriores": anteriores[:-1], "updated_at": agora,
+        "historico": ((doc_h.get("historico") or []) + [{"quando": agora, "feito": ["Última edição desfeita."]}])[-200:]}})
+    return {"modelo": anteriores[-1], "pode_desfazer": len(anteriores) > 1}
+
+
+@router.delete("/takeoffs/{plan_id}/{page_index}/modelo")
+async def bim_model_reset(plan_id: str, page_index: int, user=Depends(current_user)) -> dict:
+    """Apaga a cópia editada: o piso volta a ser o da planta lida."""
+    r = await db.bim_models.delete_one(_edit_key(plan_id, page_index, user))
+    return {"reposto": bool(r.deleted_count)}
 
 
 def _analyze_ifc(data: bytes, storey: int | None, loads: dict) -> dict:

@@ -5,6 +5,7 @@ import { ArrowLeft, Box, Calculator, Download, FolderOpen, Layers, Loader2, Maxi
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api, num } from "@/lib/api";
+import BimEditor from "@/components/bim/BimEditor";
 
 const CLASS_LABELS = {
   IfcWall: "Paredes", IfcSlab: "Lajes", IfcColumn: "Pilares", IfcBeam: "Vigas", IfcFooting: "Sapatas",
@@ -237,6 +238,7 @@ export default function BimViewer() {
         </div>
 
         <aside className="md:w-80 border-t md:border-t-0 md:border-l overflow-y-auto p-3 space-y-4 text-sm max-h-[45vh] md:max-h-none" data-testid="bim-panel">
+          {planId && summary && <BimEditor planId={planId} page={page} disabled={busy} onChanged={() => { setAnalysis(null); loadFromPlan(); }} />}
           {summary && (
             <section>
               <h2 className="font-semibold mb-2">Elementos</h2>
