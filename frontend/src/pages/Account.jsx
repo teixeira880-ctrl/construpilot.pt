@@ -11,6 +11,7 @@ import { TwoFaCard } from "@/components/account/TwoFaCard";
 import { DeleteAccountCard } from "@/components/account/DeleteAccountCard";
 import { BrochureCard } from "@/components/account/BrochureCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import { MarketingConsentCard } from "@/components/account/MarketingConsent";
 
 export default function Account() {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ export default function Account() {
           <ThemeToggle />
         </div>
       </section>
+      <MarketingConsentCard />
       <TwoFaCard />
       <PasswordForm />
       <DevicesList />

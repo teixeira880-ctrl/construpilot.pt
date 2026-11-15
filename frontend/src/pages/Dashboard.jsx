@@ -33,6 +33,7 @@ import { AppTile } from "@/components/workspace/AppTile";
 import { AssistantHero, WeekGoal } from "@/components/dashboard/Bento";
 import { useRefreshable } from "@/lib/useRefreshable";
 import "@/styles/workspace-tiles.css";
+import { MarketingConsentBanner } from "@/components/account/MarketingConsent";
 
 
 export default function Dashboard() {
@@ -135,6 +136,7 @@ export default function Dashboard() {
     <div className="dashboard-workspace">
       {professionalAccount && <PermissionNotice />}
       {guideOpen && <OnboardingTour forceOpen onClose={() => setGuideOpen(false)} />}
+      <MarketingConsentBanner />
       <header className="dashboard-heading dashboard-heading-bento">
         <div>
           <p className="dashboard-greeting">{new Date().toLocaleDateString({fr:"fr-FR",en:"en-GB"}[lang] || "pt-PT", {weekday:"long",day:"numeric",month:"long"})}</p>
