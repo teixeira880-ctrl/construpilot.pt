@@ -1,0 +1,75 @@
+{
+ "planta": "casa_b",
+ "descricao": "Moradia em L 14×10 m, sete divisões",
+ "verificado": true,
+ "fonte": "modelo geométrico exato (scripts/geometria_referencia.py)",
+ "escala_declarada": "1:50",
+ "area_implantacao_m2": 120.0,
+ "area_paredes_m2": 20.323,
+ "divisoes": {
+  "Sala comum": {
+   "area_m2": 18.735,
+   "perimetro_m": 17.34
+  },
+  "Cozinha": {
+   "area_m2": 23.31,
+   "perimetro_m": 19.34
+  },
+  "Hall": {
+   "area_m2": 10.97,
+   "perimetro_m": 13.44
+  },
+  "Instalação sanitária": {
+   "area_m2": 12.6,
+   "perimetro_m": 14.43
+  },
+  "Suite": {
+   "area_m2": 10.707,
+   "perimetro_m": 13.14
+  },
+  "Quarto 1": {
+   "area_m2": 11.677,
+   "perimetro_m": 14.19
+  },
+  "Quarto 2": {
+   "area_m2": 11.678,
+   "perimetro_m": 14.19
+  }
+ },
+ "area_util_total_m2": 99.677,
+ "paredes": {
+  "exteriores_eixo_m": 46.6,
+  "interiores_eixo_m": 31.175,
+  "espessuras_m": [
+   0.11,
+   0.15,
+   0.35
+  ]
+ },
+ "contagens": {
+  "porta": 7,
+  "janela": 8
+ },
+ "cotas_m": [
+  3.0,
+  3.0,
+  4.0,
+  5.0,
+  5.0,
+  9.0,
+  10.0,
+  14.0
+ ],
+ "imagem": {
+  "dpi": 150,
+  "dpi_scan": 150,
+  "rotacao_scan_graus": 0.6
+ },
+ "pdf": {
+  "formato": "A3 paisagem",
+  "origem_mm": [
+   40,
+   45
+  ]
+ }
+}

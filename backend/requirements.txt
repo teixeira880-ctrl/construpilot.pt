@@ -187,3 +187,10 @@ mitsuba==3.9.1
 bpy==5.3.0; python_version == "3.13"
 bpy==5.0.1; python_version == "3.11"
 drjit==1.5.0
+# Geometria v3 (engines/geometria): esqueleto e transformada de distância
+imageio==2.38.1
+lazy-loader==0.6
+networkx==3.7
+scikit-image==0.26.0
+scipy==1.18.1
+tifffile==2026.9.20

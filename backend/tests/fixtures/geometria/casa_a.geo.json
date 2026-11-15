@@ -1,0 +1,66 @@
+{
+ "planta": "casa_a",
+ "descricao": "Moradia T2 retangular 12×9 m",
+ "verificado": true,
+ "fonte": "modelo geométrico exato (scripts/geometria_referencia.py)",
+ "escala_declarada": "1:50",
+ "area_implantacao_m2": 108.0,
+ "area_paredes_m2": 15.088,
+ "divisoes": {
+  "Sala": {
+   "area_m2": 27.494,
+   "perimetro_m": 21.55
+  },
+  "Cozinha": {
+   "area_m2": 27.494,
+   "perimetro_m": 21.55
+  },
+  "Quarto 1": {
+   "area_m2": 12.256,
+   "perimetro_m": 14.55
+  },
+  "Instalação sanitária": {
+   "area_m2": 13.412,
+   "perimetro_m": 15.05
+  },
+  "Quarto 2": {
+   "area_m2": 12.256,
+   "perimetro_m": 14.55
+  }
+ },
+ "area_util_total_m2": 92.912,
+ "paredes": {
+  "exteriores_eixo_m": 40.8,
+  "interiores_eixo_m": 24.275,
+  "espessuras_m": [
+   0.1,
+   0.15,
+   0.3
+  ]
+ },
+ "contagens": {
+  "porta": 5,
+  "janela": 6
+ },
+ "cotas_m": [
+  3.0,
+  3.0,
+  3.0,
+  5.0,
+  7.0,
+  9.0,
+  12.0
+ ],
+ "imagem": {
+  "dpi": 150,
+  "dpi_scan": 150,
+  "rotacao_scan_graus": 0.6
+ },
+ "pdf": {
+  "formato": "A3 paisagem",
+  "origem_mm": [
+   40,
+   45
+  ]
+ }
+}
