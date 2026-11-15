@@ -259,7 +259,7 @@ def pisos_do_calculo(q: dict) -> list[dict]:
             piso = por_nome.setdefault(p["piso"], {"nome": p["piso"], "paredes": [], "faixas": []})
             if piso not in pisos:
                 pisos.append(piso)
-            piso["faixas"].append({"id": p["rotulo"], "tipo": p["elemento"].lower(), "ret": p["ret_m"]})
+            piso["faixas"].append({"id": p["rotulo"], "tipo": p["elemento"].lower(), "ret": p["ret_m"], "espessura_mm": p.get("espessura_mm")})
     return pisos
 
 

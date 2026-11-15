@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import EstudoWorkbench from "@/components/estudo/EstudoWorkbench";
 import {
   Boxes, Trash2, ArrowLeft, Loader2, FileDown, AlertTriangle, Info, FileSpreadsheet, Box, Coins, Globe, Save, Sparkles, Ruler, ShieldCheck,
 } from "lucide-react";
@@ -182,6 +183,7 @@ function Kpi({ label, value, unit }) {
 function StudyDetail({ study, setStudy, onBack }) {
   const [busy, setBusy] = useState("");
   const [viewer, setViewer] = useState(null);
+  const [modelo, setModelo] = useState(null);
   const [json, setJson] = useState(() => JSON.stringify(study.project, null, 2));
   const s = study.summary || {};
   const cats = useMemo(() => {
@@ -193,6 +195,10 @@ function StudyDetail({ study, setStudy, onBack }) {
   const openViewer = () => run("viewer", async () => {
     const { data } = await api.get(`/lsf/studies/${study.study_id}/viewer`, { responseType: "text" });
     setViewer(data);
+  });
+  const openModelo = () => run("modelo", async () => {
+    const { data } = await api.get(`/lsf/studies/${study.study_id}/modelo`);
+    setModelo(data);
   });
   const price = (mercado) => run(mercado ? "mercado" : "preco", async () => {
     const { data } = await api.post(`/lsf/studies/${study.study_id}/price`, { mercado });
@@ -222,11 +228,14 @@ function StudyDetail({ study, setStudy, onBack }) {
           {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}Dossier PDF</Button>
         <Button variant="outline" onClick={() => run("xlsx", () => download(`/lsf/studies/${study.study_id}/xlsx`, "Mapa-LSF.xlsx"))} disabled={!!busy}>
           {busy === "xlsx" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}Excel</Button>
+        <Button variant="outline" onClick={openModelo} disabled={!!busy} data-testid="lsf-estudo">
+          {busy === "modelo" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Boxes className="h-4 w-4 mr-1" />}Abrir estudo (3D, alçados, corte)</Button>
         <Button variant="outline" onClick={openViewer} disabled={!!busy} data-testid="lsf-3d">
           {busy === "viewer" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Box className="h-4 w-4 mr-1" />}Visualizador 3D</Button>
         <Button variant="outline" onClick={() => price(false)} disabled={!!busy}><Coins className="h-4 w-4 mr-1" />Preços da biblioteca</Button>
         <Button variant="outline" onClick={() => price(true)} disabled={!!busy}><Globe className="h-4 w-4 mr-1" />Procurar preços de mercado</Button>
       </div>
+      {modelo && <EstudoWorkbench modelo={modelo} />}
       {viewer && (
         <div className="rounded-lg border overflow-hidden" style={{ height: "70vh" }}>
           <iframe title="Visualizador 3D LSF" srcDoc={viewer} sandbox="allow-scripts" className="w-full h-full border-0" />

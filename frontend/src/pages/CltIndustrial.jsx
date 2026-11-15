@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import CltConfirmation from "@/components/bim/CltConfirmation";
 import CltEngines from "@/components/bim/CltEngines";
+import EstudoWorkbench from "@/components/estudo/EstudoWorkbench";
 import { useAuth } from "@/context/AuthContext";
 import { CLT_LANGS, LangScope, initialCltLang, rememberCltLang } from "@/lib/cltI18n";
 
@@ -543,12 +544,17 @@ function Calculation({ report }) {
   const [vat, setVat] = useState("pt");
   const [result, setResult] = useState(null);
   const [lot, setLot] = useState(null);
+  const [modelo, setModelo] = useState(null);
   const [error, setError] = useState("");
   const body = () => ({ floors, start, start_mode: mode, vat_regime: vat });
   async function calculate(event) {
     event?.preventDefault();
     setError(""); setLot(null);
     try { setResult((await api.post(`${base}/estimate`, body())).data); } catch (e) { setError(errText(e)); }
+  }
+  async function openModelo() {
+    setError("");
+    try { setModelo((await api.post(`${base}/estimate/modelo`, body())).data); } catch (e) { setModelo(null); setError(errText(e)); }
   }
   async function createLot() {
     setError("");
@@ -633,9 +639,11 @@ function Calculation({ report }) {
       {result.hipoteses_por_confirmar.length > 0 && <p className="text-amber-700 dark:text-amber-400">Estimativa com {result.hipoteses_por_confirmar.length} valores por confirmar: {result.hipoteses_por_confirmar.join(" · ")}.</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={button} onClick={createLot}>Criar lote de seguimento com este plano</button>
+        <button type="button" className={secondary} onClick={openModelo} data-testid="clt-estudo">Abrir estudo (3D, alçados, corte)</button>
         {lot && <span>Lote "{lot.name}" criado. O avanço segue-se no separador Custos e avanço.</span>}
       </div>
     </div>}
+    {modelo && <EstudoWorkbench modelo={modelo} />}
     {error && <p role="alert" className="text-destructive">{error}</p>}
   </form>;
 }

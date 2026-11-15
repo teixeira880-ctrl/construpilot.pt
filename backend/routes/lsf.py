@@ -297,6 +297,15 @@ async def study_viewer(study_id: str, lang: str = "pt", user=Depends(current_use
                     media_type="text/html; charset=utf-8")
 
 
+@router.get("/studies/{study_id}/modelo")
+async def study_model(study_id: str, user=Depends(current_user)) -> dict:
+    """Modelo de estudo comum aos motores (3D, alçados, quantidades, lista e planos de corte) para o visualizador partilhado."""
+    from engines.lsf.modelo import modelo
+    doc = await _get(study_id, user["user_id"])
+    st = await _full(doc, user["user_id"])
+    return modelo(st["resultado"], doc.get("title"), doc.get("project"))
+
+
 @router.get("/studies/{study_id}/render")
 async def study_render(study_id: str, user=Depends(current_user)) -> Response:
     doc = await _get(study_id, user["user_id"])

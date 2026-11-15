@@ -390,6 +390,28 @@ async def estimate_costs(body: EstimateInput, user=Depends(viewer)):
     return await _estimate(body, user)
 
 
+@router.post("/estimate/modelo")
+async def estimate_model(body: EstimateInput, user=Depends(viewer)):
+    """Modelo de estudo comum aos motores (3D, alçados, quantidades, lista e planos de corte) do cálculo CLT."""
+    from bim_studio import clt_ligacoes, clt_modelo, clt_only
+    doc = await get_db().clt_parameters.find_one({"_id": tenant_of(user)}) or {}
+    par, lib = merged(doc.get("values")), library_merged(await _library(user), country_of(user))
+    entrada = body.model_dump(mode="json")
+
+    def build():
+        q = clt_only.compute(entrada, par, lib)
+        pisos = clt_ligacoes.pisos_do_calculo(q)
+        if not any(p["paredes"] for p in pisos):
+            raise ValueError("Sem paredes medidas na planta: o modelo 3D precisa dos troços de parede revistos (com o seu contorno).")
+        m = clt_modelo.modelo(clt_modelo.empilhar(pisos), q["_desenhos"][1], "Estudo CLT", projeto=entrada)
+        m["avisos"] = list(q.get("notas") or []) + m["avisos"]
+        return m
+    try:
+        return await asyncio.to_thread(build)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 class EstimateLot(EstimateInput):
     lot_name: str = Field(min_length=1, max_length=120)
 
