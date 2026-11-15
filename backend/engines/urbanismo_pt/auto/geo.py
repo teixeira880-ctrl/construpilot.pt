@@ -10,7 +10,7 @@ Fontes (por ordem):
 - Classe de espaço do PDM: DGT OGC API «crus» (Carta do Regime de Uso do Solo).
 - Servidões e restrições (REN, RAN, domínio hídrico…): coleções SRUP da DGT, descobertas dinamicamente.
 - Cadastro predial (onde existe): coleção «cadastro» da DGT, descoberta dinamicamente.
-- Altimetria: Google Elevation API (se chave) → EU-DEM 25 m (OpenTopoData). É o equivalente programático do Google Earth;
+- Altimetria: MDT LiDAR da DGT (50 cm/2 m) → Copernicus DEM GLO-30 → Google Elevation API (se chave) → EU-DEM 25 m (OpenTopoData). É o equivalente programático do Google Earth;
   NÃO substitui o levantamento topográfico georreferenciado exigido para o projeto (feito por topógrafo).
 - Via de acesso: OpenStreetMap (Overpass), para orientar a frente do terreno.
 - Ortofotomapa: DGT OGC API Maps «ortos-rgb» (30 cm) → Google Static Maps (satélite, se chave).
@@ -488,15 +488,24 @@ async def cadastro(lat: float, lon: float) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ altimetria
-async def elevacoes(pontos: List[Tuple[float, float]]) -> Dict[str, Any]:
-    """Cota (m) de cada ponto (lat, lon)."""
+async def elevacoes(pontos: List[Tuple[float, float]], verificar: bool = False, prazo_oficial_s: float = 20.0) -> Dict[str, Any]:
+    """Cota (m) de cada ponto (lat, lon): MDT LiDAR da DGT → Copernicus DEM GLO-30 → Google → EU-DEM 25 m."""
     if not pontos:
         return _res(False, nota="sem pontos")
-    # 1.º MDT LiDAR oficial da DGT (50 cm / 2 m), quando o acesso ao CDD estiver configurado e o transporte for o real
+    try:
+        from engines.terrenos_pt import mdt as MDT
+        r = await asyncio.wait_for(MDT.cotas_oficiais(list(pontos), verificar=verificar), timeout=prazo_oficial_s)
+        if r and r.get("ok"):
+            return r
+    except asyncio.TimeoutError:
+        pass
+    except Exception:  # noqa: BLE001 — um modelo oficial falhado nunca pode impedir os recursos seguintes
+        pass
+    # recurso: grelha do motor MDT Portugal (mesma fonte DGT, outro cliente), só com o transporte real
     if _fetch is _http:
         try:
             from engines.mdt_pt.grelha import cotas as _cotas_dgt
-            d = await _cotas_dgt(pontos)
+            d = await asyncio.wait_for(_cotas_dgt(pontos), timeout=prazo_oficial_s)
         except Exception:  # noqa: BLE001
             d = None
         if d:
