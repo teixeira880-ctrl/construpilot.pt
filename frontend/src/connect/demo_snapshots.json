@@ -1,0 +1,512 @@
+{
+ "demo_margin": {
+  "demo": "demo_margin",
+  "quote": {
+   "engine": "engines/geometry.py + fórmulas de engines/chantier_costs.py",
+   "lines": [
+    {
+     "cost_price_ht": 6.2,
+     "cost_total_ht": 228.35,
+     "discount_pct": 0.0,
+     "key": "paint_walls",
+     "label": {
+      "en": "Wall painting (2 coats)",
+      "fr": "Peinture murs (2 couches)",
+      "pt": "Pintura de paredes (2 demãos)"
+     },
+     "lot": "pintura",
+     "margin_ht": 121.53,
+     "margin_pct": 34.7,
+     "markup_pct": 53.2,
+     "qty": 36.83,
+     "total_ht": 349.88,
+     "unit": "m2",
+     "unit_price_ht": 9.5
+    },
+    {
+     "cost_price_ht": 7.1,
+     "cost_total_ht": 113.32,
+     "discount_pct": 0.0,
+     "key": "paint_ceiling",
+     "label": {
+      "en": "Ceiling painting (2 coats)",
+      "fr": "Peinture plafond (2 couches)",
+      "pt": "Pintura de teto (2 demãos)"
+     },
+     "lot": "pintura",
+     "margin_ht": 62.24,
+     "margin_pct": 35.5,
+     "markup_pct": 54.9,
+     "qty": 15.96,
+     "total_ht": 175.56,
+     "unit": "m2",
+     "unit_price_ht": 11.0
+    },
+    {
+     "cost_price_ht": 27.5,
+     "cost_total_ht": 469.7,
+     "discount_pct": 0.0,
+     "key": "parquet",
+     "label": {
+      "en": "Floating floor",
+      "fr": "Parquet flottant",
+      "pt": "Pavimento flutuante"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 179.34,
+     "margin_pct": 27.6,
+     "markup_pct": 38.2,
+     "qty": 17.08,
+     "total_ht": 649.04,
+     "unit": "m2",
+     "unit_price_ht": 38.0
+    },
+    {
+     "cost_price_ht": 5.4,
+     "cost_total_ht": 89.69,
+     "discount_pct": 0.0,
+     "key": "skirting",
+     "label": {
+      "en": "Skirting",
+      "fr": "Plinthe",
+      "pt": "Rodapé"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 51.5,
+     "margin_pct": 36.5,
+     "markup_pct": 57.4,
+     "qty": 16.61,
+     "total_ht": 141.19,
+     "unit": "m",
+     "unit_price_ht": 8.5
+    }
+   ],
+   "lots": [
+    {
+     "cost_prev_ht": 341.67,
+     "label": {
+      "en": "Painting",
+      "fr": "Peinture",
+      "pt": "Pintura"
+     },
+     "lot": "pintura",
+     "margin_ht": 183.77,
+     "margin_pct": 35.0,
+     "markup_pct": 53.8,
+     "vente_ht": 525.44
+    },
+    {
+     "cost_prev_ht": 559.39,
+     "label": {
+      "en": "Flooring",
+      "fr": "Sols",
+      "pt": "Pavimentos"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 230.84,
+     "margin_pct": 29.2,
+     "markup_pct": 41.3,
+     "vente_ht": 790.23
+    }
+   ],
+   "prices_are_examples": true,
+   "takeoff": {
+    "calibration_ok": true,
+    "surface_m2": 15.96
+   },
+   "totals": {
+    "coefficient": 1.46,
+    "cost_prev_ht": 901.06,
+    "margin_ht": 414.61,
+    "margin_pct": 31.5,
+    "markup_pct": 46.0,
+    "vente_ht": 1315.67
+   }
+  }
+ },
+ "demo_painting": {
+  "demo": "demo_painting",
+  "takeoff": {
+   "calibration": {
+    "meters_per_pixel": 0.01,
+    "pixels_per_meter": 100.0,
+    "reference_pixel_distance": 500.0,
+    "reference_real_distance_m": 5.0
+   },
+   "calibration_check": {
+    "delta_m": 0.0,
+    "delta_pct": 0.0,
+    "expected_m": 3.8,
+    "measured_m": 3.8,
+    "ok": true,
+    "recommendation": "Calibração coerente"
+   },
+   "engine": "engines/geometry.py",
+   "quantities": {
+    "floor": {
+     "material": "parquet",
+     "quantity_m2": 17.08,
+     "surface_m2": 15.96,
+     "waste_pct": 7.0
+    },
+    "paint": {
+     "coats": 2,
+     "liters_recommended": 13,
+     "liters_theoretical": 10.56,
+     "margin_pct": 15.0,
+     "surface_m2": 52.79,
+     "yield_m2_per_liter": 10.0
+    },
+    "skirting": {
+     "doors_deduction_m": 0.9,
+     "net_m": 15.1,
+     "perimeter_m": 16.0,
+     "quantity_m": 16.61
+    }
+   },
+   "room": {
+    "ceiling_area_m2": 15.96,
+    "ceiling_height_m": 2.6,
+    "perimeter_m": 16.0,
+    "surface_m2": 15.96,
+    "wall_area_gross_m2": 41.6
+   },
+   "sample": {
+    "calibration_line_px": [
+     [
+      100,
+      520
+     ],
+     [
+      600,
+      520
+     ]
+    ],
+    "ceiling_height_m": 2.6,
+    "check_expected_m": 3.8,
+    "check_line_px": [
+     [
+      80,
+      100
+     ],
+     [
+      80,
+      480
+     ]
+    ],
+    "name": {
+     "en": "Sample living room — 3-bed house",
+     "fr": "Séjour d'exemple — maison T3",
+     "pt": "Sala de exemplo — Moradia T3"
+    },
+    "openings": [
+     {
+      "count": 1,
+      "height_m": 2.1,
+      "kind": "door",
+      "width_m": 0.9
+     },
+     {
+      "count": 2,
+      "height_m": 1.2,
+      "kind": "window",
+      "width_m": 1.2
+     }
+    ],
+    "room_px": [
+     [
+      100,
+      100
+     ],
+     [
+      520,
+      100
+     ],
+     [
+      520,
+      480
+     ],
+     [
+      100,
+      480
+     ]
+    ]
+   },
+   "walls": {
+    "openings": [
+     {
+      "area_m2": 1.89,
+      "count": 1,
+      "height_m": 2.1,
+      "kind": "door",
+      "width_m": 0.9
+     },
+     {
+      "area_m2": 2.88,
+      "count": 2,
+      "height_m": 1.2,
+      "kind": "window",
+      "width_m": 1.2
+     }
+    ],
+    "openings_area_m2": 4.77,
+    "wall_area_net_m2": 36.83
+   }
+  }
+ },
+ "demo_quote": {
+  "demo": "demo_quote",
+  "quote": {
+   "engine": "engines/geometry.py + fórmulas de engines/chantier_costs.py",
+   "lines": [
+    {
+     "cost_price_ht": 6.2,
+     "cost_total_ht": 228.35,
+     "discount_pct": 0.0,
+     "key": "paint_walls",
+     "label": {
+      "en": "Wall painting (2 coats)",
+      "fr": "Peinture murs (2 couches)",
+      "pt": "Pintura de paredes (2 demãos)"
+     },
+     "lot": "pintura",
+     "margin_ht": 121.53,
+     "margin_pct": 34.7,
+     "markup_pct": 53.2,
+     "qty": 36.83,
+     "total_ht": 349.88,
+     "unit": "m2",
+     "unit_price_ht": 9.5
+    },
+    {
+     "cost_price_ht": 7.1,
+     "cost_total_ht": 113.32,
+     "discount_pct": 0.0,
+     "key": "paint_ceiling",
+     "label": {
+      "en": "Ceiling painting (2 coats)",
+      "fr": "Peinture plafond (2 couches)",
+      "pt": "Pintura de teto (2 demãos)"
+     },
+     "lot": "pintura",
+     "margin_ht": 62.24,
+     "margin_pct": 35.5,
+     "markup_pct": 54.9,
+     "qty": 15.96,
+     "total_ht": 175.56,
+     "unit": "m2",
+     "unit_price_ht": 11.0
+    },
+    {
+     "cost_price_ht": 27.5,
+     "cost_total_ht": 469.7,
+     "discount_pct": 0.0,
+     "key": "parquet",
+     "label": {
+      "en": "Floating floor",
+      "fr": "Parquet flottant",
+      "pt": "Pavimento flutuante"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 179.34,
+     "margin_pct": 27.6,
+     "markup_pct": 38.2,
+     "qty": 17.08,
+     "total_ht": 649.04,
+     "unit": "m2",
+     "unit_price_ht": 38.0
+    },
+    {
+     "cost_price_ht": 5.4,
+     "cost_total_ht": 89.69,
+     "discount_pct": 0.0,
+     "key": "skirting",
+     "label": {
+      "en": "Skirting",
+      "fr": "Plinthe",
+      "pt": "Rodapé"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 51.5,
+     "margin_pct": 36.5,
+     "markup_pct": 57.4,
+     "qty": 16.61,
+     "total_ht": 141.19,
+     "unit": "m",
+     "unit_price_ht": 8.5
+    }
+   ],
+   "lots": [
+    {
+     "cost_prev_ht": 341.67,
+     "label": {
+      "en": "Painting",
+      "fr": "Peinture",
+      "pt": "Pintura"
+     },
+     "lot": "pintura",
+     "margin_ht": 183.77,
+     "margin_pct": 35.0,
+     "markup_pct": 53.8,
+     "vente_ht": 525.44
+    },
+    {
+     "cost_prev_ht": 559.39,
+     "label": {
+      "en": "Flooring",
+      "fr": "Sols",
+      "pt": "Pavimentos"
+     },
+     "lot": "pavimentos",
+     "margin_ht": 230.84,
+     "margin_pct": 29.2,
+     "markup_pct": 41.3,
+     "vente_ht": 790.23
+    }
+   ],
+   "prices_are_examples": true,
+   "takeoff": {
+    "calibration_ok": true,
+    "surface_m2": 15.96
+   },
+   "totals": {
+    "coefficient": 1.46,
+    "cost_prev_ht": 901.06,
+    "margin_ht": 414.61,
+    "margin_pct": 31.5,
+    "markup_pct": 46.0,
+    "vente_ht": 1315.67
+   }
+  }
+ },
+ "demo_takeoff": {
+  "demo": "demo_takeoff",
+  "takeoff": {
+   "calibration": {
+    "meters_per_pixel": 0.01,
+    "pixels_per_meter": 100.0,
+    "reference_pixel_distance": 500.0,
+    "reference_real_distance_m": 5.0
+   },
+   "calibration_check": {
+    "delta_m": 0.0,
+    "delta_pct": 0.0,
+    "expected_m": 3.8,
+    "measured_m": 3.8,
+    "ok": true,
+    "recommendation": "Calibração coerente"
+   },
+   "engine": "engines/geometry.py",
+   "quantities": {
+    "floor": {
+     "material": "parquet",
+     "quantity_m2": 17.08,
+     "surface_m2": 15.96,
+     "waste_pct": 7.0
+    },
+    "paint": {
+     "coats": 2,
+     "liters_recommended": 13,
+     "liters_theoretical": 10.56,
+     "margin_pct": 15.0,
+     "surface_m2": 52.79,
+     "yield_m2_per_liter": 10.0
+    },
+    "skirting": {
+     "doors_deduction_m": 0.9,
+     "net_m": 15.1,
+     "perimeter_m": 16.0,
+     "quantity_m": 16.61
+    }
+   },
+   "room": {
+    "ceiling_area_m2": 15.96,
+    "ceiling_height_m": 2.6,
+    "perimeter_m": 16.0,
+    "surface_m2": 15.96,
+    "wall_area_gross_m2": 41.6
+   },
+   "sample": {
+    "calibration_line_px": [
+     [
+      100,
+      520
+     ],
+     [
+      600,
+      520
+     ]
+    ],
+    "ceiling_height_m": 2.6,
+    "check_expected_m": 3.8,
+    "check_line_px": [
+     [
+      80,
+      100
+     ],
+     [
+      80,
+      480
+     ]
+    ],
+    "name": {
+     "en": "Sample living room — 3-bed house",
+     "fr": "Séjour d'exemple — maison T3",
+     "pt": "Sala de exemplo — Moradia T3"
+    },
+    "openings": [
+     {
+      "count": 1,
+      "height_m": 2.1,
+      "kind": "door",
+      "width_m": 0.9
+     },
+     {
+      "count": 2,
+      "height_m": 1.2,
+      "kind": "window",
+      "width_m": 1.2
+     }
+    ],
+    "room_px": [
+     [
+      100,
+      100
+     ],
+     [
+      520,
+      100
+     ],
+     [
+      520,
+      480
+     ],
+     [
+      100,
+      480
+     ]
+    ]
+   },
+   "walls": {
+    "openings": [
+     {
+      "area_m2": 1.89,
+      "count": 1,
+      "height_m": 2.1,
+      "kind": "door",
+      "width_m": 0.9
+     },
+     {
+      "area_m2": 2.88,
+      "count": 2,
+      "height_m": 1.2,
+      "kind": "window",
+      "width_m": 1.2
+     }
+    ],
+    "openings_area_m2": 4.77,
+    "wall_area_net_m2": 36.83
+   }
+  }
+ }
+}

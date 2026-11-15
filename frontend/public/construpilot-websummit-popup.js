@@ -78,6 +78,8 @@
   // Páginas públicas das empresas, orçamentos e documentos partilhados com clientes: nunca o popup do salão.
   if (/^\/(entreprise|sign|e|subscrever|espace|estimation-partagee|rendu|prospection|avis|etude|visto-bet|appel-offres)\//.test(location.pathname || "")) return;
   if (alreadySeen()) return;
+  // Discovery Engine (/connect): os visitantes chegam do stand por QR Code — o convite para o stand não deve tapar o diagnóstico.
+  if (/^\/connect(\/|$)/.test(location.pathname || "")) return;
   var lang = detectLang();
   var t = CONFIG.texts[lang];
   if (lang === "fr" && !/\.fr$/.test((location.hostname || "").toLowerCase())) {
