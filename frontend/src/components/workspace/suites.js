@@ -14,7 +14,7 @@ export const APP_SUITES = [
       fr: "Structure, descente de charges, ouvertures et linteaux, escaliers, thermique, électricité et plomberie — tout en une app.",
       en: "Structure, load descent, openings and lintels, stairs, thermal, electrical and plumbing — all in one app.",
     },
-    members: ["/estudo-moradia", "/structuro", "/escaliers", "/planos-execucao", "/renovation", "/structuro-bet", "/missions"],
+    members: ["/estudo-moradia", "/structuro", "/escaliers", "/planos-execucao", "/estrutura-lsf", "/renovation", "/structuro-bet", "/missions"],
   },
   {
     id: "licenciamento", to: "/licenciamento", icon: FileBadge, family: "etudes", group: "chantiers", pin: true, personalPin: true,
