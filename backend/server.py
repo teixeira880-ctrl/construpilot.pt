@@ -301,6 +301,8 @@ from routes import mdt as mdt_routes  # noqa: E402  — MDT Portugal (DGT LiDAR 
 api_router.include_router(mdt_routes.router)
 from routes import terrenos as terrenos_routes  # noqa: E402  — terrenos: identificação e análise sobre DGT + BUPi
 api_router.include_router(terrenos_routes.router)
+from routes import viabilidade as viabilidade_routes  # noqa: E402  — viabilidade construtiva: relevo, riscos, PDM/REN/RAN, conforto, IFC
+api_router.include_router(viabilidade_routes.router)
 from routes import structuro_bet_visto as bet_visto_routes  # noqa: E402  — visto do engenheiro (autopiloto BET)
 api_router.include_router(bet_visto_routes.bet_visto_router)
 api_router.include_router(bet_visto_routes.bet_visto_public)

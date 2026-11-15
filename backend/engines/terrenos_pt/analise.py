@@ -157,6 +157,20 @@ async def crus(poly_m, bbox: str) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ servidões, RAN, REN, recursos hídricos
+def _aneis_latlon(geom: Optional[dict], max_pts: int = 400) -> List[List[List[float]]]:
+    """Anéis exteriores [[lat, lon], …] de um Polygon/MultiPolygon GeoJSON (lon, lat), com no máximo max_pts vértices."""
+    g = geom or {}
+    polys = [g.get("coordinates")] if g.get("type") == "Polygon" else g.get("coordinates") if g.get("type") == "MultiPolygon" else []
+    out = []
+    for p in polys or []:
+        if not p or not p[0]:
+            continue
+        ring = p[0]
+        passo = max(1, len(ring) // max_pts)
+        out.append([[round(float(c[1]), 7), round(float(c[0]), 7)] for c in ring[::passo]])
+    return out
+
+
 def _tipo(titulo: str) -> str:
     t = titulo or ""
     if _RAN_PAT.search(t):
@@ -194,11 +208,15 @@ async def servidoes(poly_m, anel: List[List[float]], prazo_s: float = 75.0) -> D
             continue
         feats = t.result()[1]
         a_tot, dmin, comp = 0.0, None, 0.0
+        aneis: List[List[List[float]]] = []
         for f in feats:
             gm = GM.geom_para_m(f.get("geometry"))
             if gm is not None:
-                a_tot += gm.intersection(poly_m).area
+                ai = gm.intersection(poly_m).area
+                a_tot += ai
                 d = gm.distance(poly_m)
+                if ai > 0.5 and len(aneis) < 20:            # contornos (lat, lon) para excluir a área na implantação
+                    aneis += _aneis_latlon(f.get("geometry"))[: 20 - len(aneis)]
             else:
                 gl = GM.geom_linha_para_m(f.get("geometry"))
                 if gl is None:
@@ -212,6 +230,8 @@ async def servidoes(poly_m, anel: List[List[float]], prazo_s: float = 75.0) -> D
              "area_afetada_m2": round(a_tot, 1), "fracao": round(a_tot / area, 4),
              "comprimento_no_terreno_m": round(comp, 1), "distancia_m": round(dmin, 1),
              "url": f"{G.DGT}/collections/{c['id']}"}
+        if aneis:
+            e["aneis_latlon"] = aneis
         (afeta if (a_tot > 0.5 or comp > 0.1 or dmin < 0.05) else proximas).append(e)
     afeta.sort(key=lambda e: (-e["fracao"], e["distancia_m"]))
     proximas.sort(key=lambda e: e["distancia_m"])

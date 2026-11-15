@@ -87,6 +87,10 @@ AUTORIZACAO_TOOLS += [
          "caixilharia": {"type": "string"}},
     ),
 ]
+# Viabilidade construtiva de terrenos (relevo, riscos, PDM/REN/RAN, conforto, implantação)
+from engines.viabilidade_pt import assistente as _VIAB  # noqa: E402
+
+AUTORIZACAO_TOOLS += [_VIAB.TOOL]
 AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}
 
 AUTORIZACAO_INSTRUCTIONS = (
@@ -110,7 +114,7 @@ AUTORIZACAO_INSTRUCTIONS = (
     "(solo rústico, REN/RAN), explica o impedimento com honestidade e sugere o pedido de informação prévia à câmara. "
     "Diz sempre que o levantamento topográfico, os projetos de especialidades e a assinatura de arquiteto/engenheiros "
     "(termos de responsabilidade) são obrigatórios, e que a página do processo permite pedir essa subscrição.\n"
-)
+) + _VIAB.INSTRUCOES
 
 
 def _pedido(args: dict) -> dict:
@@ -126,6 +130,8 @@ def _pedido(args: dict) -> dict:
 
 
 async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
+    if name == "terreno_viabilidade":
+        return await _VIAB.executar(args, user)
     if name in ("licenciamento_automatico", "licenciamento_atualizar", "licenciamento_materiais"):
         from routes import urbanismo_auto as UA
         try:

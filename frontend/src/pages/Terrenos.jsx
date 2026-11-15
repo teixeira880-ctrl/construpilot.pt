@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api, num } from "@/lib/api";
+import Viabilidade from "@/components/terrenos/Viabilidade";
 
 /**
  * Terrenos — identificação e análise de prédios sobre fontes oficiais.
@@ -268,7 +269,7 @@ export default function Terrenos() {
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2"><MapPin className="h-6 w-6 text-primary" /> Terrenos</h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Identifique o terreno sobre o ortofotomapa oficial, veja as RGG já submetidas no BUPi e o cadastro, e obtenha numa só análise a freguesia, o PDM, a RAN, a REN, o domínio hídrico e os declives. Exporte o KML para submeter no BUPi.
+            Identifique o terreno sobre o ortofotomapa oficial, veja as RGG já submetidas no BUPi e o cadastro, e obtenha numa só análise a freguesia, o PDM, a RAN, a REN, o domínio hídrico e os declives. Avalie a viabilidade construtiva (relevo, sol, riscos, conforto, implantação, IFC) e exporte o KML para submeter no BUPi.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -422,6 +423,10 @@ export default function Terrenos() {
           )}
 
           {a && <Analise a={a} quando={sel?.analisado_em} />}
+
+          {((sel && !mudou) || (!sel && med && pts.length >= 3)) && (
+            <Viabilidade terrenoId={sel && !mudou ? sel.terreno_id : null} anel={pts} nome={nome} mapa={mapa} />
+          )}
         </div>
       </div>
 
