@@ -142,7 +142,6 @@ runwayml==5.17.0
 s3transfer==0.19.2
 s5cmd==0.2.0
 shapely==2.1.2
-tifffile==2026.3.3
 shellingham==1.5.4
 six==1.17.0
 slowapi==0.1.9
@@ -187,10 +186,10 @@ mitsuba==3.9.1
 bpy==5.3.0; python_version == "3.13"
 bpy==5.0.1; python_version == "3.11"
 drjit==1.5.0
-# Geometria v3 (engines/geometria): esqueleto e transformada de distância
+# Geometria v3 (engines/geometria): esqueleto e transformada de distância — versões para Python 3.11 (servidor)
 imageio==2.38.1
+tifffile==2026.3.3
 lazy-loader==0.6
-networkx==3.7
+networkx==3.6.1
 scikit-image==0.26.0
-scipy==1.18.1
-tifffile==2026.9.20
+scipy==1.17.1
