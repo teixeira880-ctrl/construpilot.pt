@@ -1,5 +1,7 @@
 import { WorkspaceFooter } from "@/components/workspace/WorkspaceFooter";
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, Suspense } from "react";
+// lazy com recarga única quando um ficheiro JS antigo desapareceu depois de um deploy
+import { lazyPage as lazy } from "@/lib/lazyPage";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { DefaultSEO } from "@/seo/DefaultSEO";
 import "@/App.css";
