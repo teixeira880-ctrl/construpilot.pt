@@ -57,7 +57,80 @@ TX = {
     "total": ("Total", "Total", "Total", "Разом"),
     "sem_preco": ("a orçamentar", "à chiffrer", "to be priced", "до розрахунку"),
     "origem": ("origem do preço", "origine du prix", "price source", "джерело ціни"),
+    "verif": ("Verificação estrutural (indicativa)", "Vérification structurelle (indicative)", "Structural check (indicative)",
+              "Перевірка конструкцій (орієнтовна)"),
 }
+_ST_COR = {"ok": "#2e7d4f", "proche": "#b07d0a", "a_revoir": "#b5310c", "non_calcule": "#6b7680"}
+_ST_TXT = {"ok": "OK", "proche": "próximo", "a_revoir": "A REVER", "non_calcule": "sem dado"}
+
+
+def _fmt_dict(d, lang):
+    out = []
+    for k, v in (d or {}).items():
+        if v is None or isinstance(v, (dict, list)):
+            continue
+        out.append(f"{k} = {num(v, 2, lang) if isinstance(v, (int, float)) else v}")
+    return "; ".join(out)
+
+
+def _verificacao(E, res, S, acc, lang):
+    """Capítulo « Verificação estrutural » (engines.lsf.verificacao)."""
+    v = res.get("verificacao") or {}
+    E.append(PageBreak())
+    E.append(Paragraph(tx("verif", lang), S["h1"]))
+    if v.get("erro") or not v.get("resumo"):
+        E.append(Paragraph(_esc(v.get("erro") or "Verificação não calculada."), S["warn"]))
+        return
+    r = v["resumo"]
+    E.append(Paragraph(_esc(v["disclaimer"]) + " Pré-dimensionamento: não substitui o projeto de estabilidade assinado.", S["warn"]))
+    E.append(_tbl([["", ""], ["Verificações", str(r["n"])], ["OK (≤ 0,90)", str(r["ok"])], ["Próximas do limite (0,90–1,00)", str(r["proximo"])],
+                   ["A REVER (> 1,00)", str(r["a_rever"])], ["Sem dado do fabricante", str(r["nao_calculado"])],
+                   ["Taxa máxima", (num(r["ratio_max"], 2, lang) + f" — {r['governante']}") if r["ratio_max"] is not None else "—"]],
+                  [70 * mm, 104 * mm], acc, (1,), 8))
+    a = v["acoes"]
+    E.append(Paragraph("Ações e materiais", S["h2"]))
+    E.append(_tbl([["Grandeza", "Valor", "Origem"],
+                   ["Aço", f"{v['aco']['grau']} — fy = {num(v['aco']['fy_MPa'], 0, lang)} MPa", "projeto"],
+                   ["Sobrecarga de piso (incl. divisórias)", f"{num(a['q_piso'], 2, lang)} kN/m²", "NP EN 1991-1-1"],
+                   ["Sobrecarga de cobertura H", f"{num(a['q_cobertura'], 2, lang)} kN/m²", "NP EN 1991-1-1"],
+                   ["Neve na cobertura s = μ1·sk", f"{num(a['s'], 3, lang)} kN/m² (sk = {num(a['sk'], 3, lang)})", Paragraph(_esc(a["fonte_neve"]), S["s"])],
+                   ["Pressão dinâmica de pico qp", f"{num(a['qp'], 3, lang)} kN/m² (vb = {num(a['vb'], 1, lang)} m/s)", Paragraph(_esc(a["fonte_vento"]), S["s"])],
+                   ["Vento nos montantes q_p·(cpe−cpi)", f"{num(a['w_parede'], 3, lang)} kN/m²", "NP EN 1991-1-4 §7.2"],
+                   ["Vento na cobertura ↓ / ↑", f"{num(a['w_cob_baixo'], 3, lang)} / {num(a['w_cob_cima'], 3, lang)} kN/m²", "NP EN 1991-1-4 §7.2.5"]],
+                  [62 * mm, 56 * mm, 56 * mm], acc, (), 7.2))
+    p = v["parametros"]
+    E.append(Paragraph("Cargas permanentes adotadas (hipóteses a validar): " + "; ".join(
+        f"{k} = {p[k]['valor']}" for k in ("g_piso_kn_m2", "g_cobertura_kn_m2", "g_teto_kn_m2", "g_parede_ext_kn_m2", "g_parede_int_kn_m2")), S["s"]))
+    E.append(Paragraph("Combinações (NP EN 1990, motor structuro_eurocode): " + "; ".join(
+        f"{c['id']}: " + " + ".join(f"{num(f, 2, lang)}·{k}" for k, f in c["factors"].items() if f) for c in v["combinacoes"]), S["s"]))
+    E.append(Paragraph("Secções efetivas (NP EN 1993-1-3 §5.5, larguras efetivas e encurvadura distorcional)", S["h2"]))
+    rows = [["Perfil", "A (mm²)", "Aeff (mm²)", "Iy (cm⁴)", "Weff,y (cm³)", "χd", "Vb,Rd (kN)"]]
+    for k, s in (v.get("seccoes") or {}).items():
+        rows.append([k, num(s["A"], 0, lang), num(s["Aeff"], 0, lang), num(s["Iy"] / 1e4, 1, lang), num(s["Weff_y"] / 1e3, 2, lang),
+                     num(s["chi_d"], 2, lang), num(s["Vb_N"] / 1e3, 1, lang)])
+    E.append(_tbl(rows, [30 * mm, 22 * mm, 24 * mm, 22 * mm, 26 * mm, 18 * mm, 24 * mm], acc, (1, 2, 3, 4, 5, 6), 7.2))
+    grupos = []
+    for c in v["verificacoes"]:
+        if c["grupo"] not in grupos:
+            grupos.append(c["grupo"])
+    for g in grupos:
+        E.append(Paragraph(_esc(g), S["h2"]))
+        rows = [["Elemento", "Perfil", "Comb.", "Esforços / resistências", "Taxa"]]
+        for c in (x for x in v["verificacoes"] if x["grupo"] == g):
+            cor = _ST_COR.get(c["status"], "#6b7680")
+            taxa = (num(c["ratio"], 2, lang) if c["ratio"] is not None else "—")
+            det = _esc(_fmt_dict(c["esforcos"], lang)) + "<br/><font color='#5f6b77'>" + _esc(_fmt_dict(c["resistencias"], lang)) + "</font>"
+            if c.get("notas"):
+                det += "<br/><font size=6.2 color='#9a3d0a'>" + _esc(" ".join(c["notas"])) + "</font>"
+            rows.append([Paragraph(_esc(c["elemento"]), S["s"]), Paragraph(_esc(c["perfil"]), S["s"]), Paragraph(_esc(c["combinacao"] or "—"), S["s"]),
+                         Paragraph(det, S["s"]), Paragraph(f"<font color='{cor}'><b>{taxa}</b><br/>{_ST_TXT.get(c['status'], '')}</font>", S["s"])])
+        E.append(_tbl(rows, [44 * mm, 20 * mm, 16 * mm, 78 * mm, 16 * mm], acc, (), 7))
+        f0 = next(x for x in v["verificacoes"] if x["grupo"] == g)
+        E.append(Paragraph("Método: " + _esc(f0["formula"]), S["s"]))
+    E.append(Paragraph("Limites do pré-dimensionamento", S["h2"]))
+    for a_ in v.get("avisos") or []:
+        E.append(Paragraph("• " + _esc(a_), S["warn"]))
+    E.append(Paragraph("Motores ConstruPilot usados: " + _esc(", ".join(v.get("motores") or [])) + ". Normas: " + _esc(", ".join(v.get("normas") or [])) + ".", S["s"]))
 _IDX = {"pt": 0, "fr": 1, "en": 2, "uk": 3}
 
 
@@ -154,7 +227,8 @@ def nota(res: dict, lin: list[dict], tot: dict | None, lang: str = "pt", accent=
     for h in res.get("hipoteses") or []:
         E.append(Paragraph("• " + _esc(h), S["p"]))
     E.append(Paragraph("• Perfis, espessuras, espaçamentos, ancoragens e regras de fixação: parâmetros do projeto (ver « "
-                       + tx("regras", lang) + " »); a verificação estrutural (EN 1993-1-3, EN 1998-1) é do projeto de estabilidade.", S["p"]))
+                       + tx("regras", lang) + " »); a verificação estrutural deste dossier (« " + tx("verif", lang) + " ») é indicativa — "
+                       "a verificação sísmica (EN 1998-1), as ligações e a assinatura cabem ao projeto de estabilidade.", S["p"]))
     if res.get("avisos"):
         E.append(Paragraph(tx("avisos", lang), S["h2"]))
         for a in res["avisos"][:80]:
@@ -213,6 +287,8 @@ def nota(res: dict, lin: list[dict], tot: dict | None, lang: str = "pt", accent=
         rows.append([c["nome"], f"{c['W']}×{c['H']}", str(c["pecas"]), str(len(c["folhas"])),
                      (num(pl["desperdicio"] * 100, 1, lang) + " %") if pl else "—"])
     E.append(_tbl(rows, [64 * mm, 26 * mm, 18 * mm, 30 * mm, 24 * mm], acc, (2, 3, 4), 7.4))
+    if res.get("verificacao"):
+        _verificacao(E, res, S, acc, lang)
     doc.build(E, onFirstPage=deco, onLaterPages=deco)
     return buf.getvalue()
 
@@ -546,6 +622,9 @@ def dossier(res: dict, lin: list[dict], tot: dict | None, lang="pt", branding: d
     cap = pymupdf.open(stream=capa(res, br, lang, renders, titulo, tot), filetype="pdf")
     cap.insert_pdf(out)
     toc = [[1, tx("sumario", lang), 2], [1, tx("mapa", lang), 3], [1, tx("corte", lang), 4]]
+    pv = next((i for i in range(n_nota) if "Taxa máxima" in out[i].get_text()), None)
+    if pv is not None:
+        toc.append([1, tx("verif", lang), pv + 2])
     toc.append([1, tx("planta", lang), n_nota + 2])
     try:
         cap.set_toc(toc)

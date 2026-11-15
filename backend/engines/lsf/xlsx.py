@@ -145,6 +145,39 @@ def xlsx(res: dict, lin: list[dict], tot: dict | None, lang: str = "pt", accent_
         k += 1
         w5.cell(row=k, column=1, value=a)
     w5.column_dimensions["A"].width = 160
+    v = res.get("verificacao") or {}
+    if v.get("verificacoes"):
+        w6 = wb.create_sheet("Verificação estrutural")
+        w6["A1"] = "Verificação estrutural INDICATIVA (NP EN 1990 / 1991 / 1993-1-3) — " + (v.get("disclaimer") or "")
+        w6["A1"].font = Font(bold=True, color=accent_hex)
+        hdr = ["Grupo", "Elemento", "Perfil", "Combinação", "Taxa Ed/Rd", "Estado", "Esforços", "Resistências", "Método", "Peças (IDs)"]
+        for i, h in enumerate(hdr, 1):
+            w6.cell(row=3, column=i, value=h)
+        _style_header(w6, 3, len(hdr), accent_hex)
+        cores = {"ok": "2E7D4F", "proche": "B07D0A", "a_revoir": "B5310C", "non_calcule": "6B7680"}
+        for k, c in enumerate(v["verificacoes"], 4):
+            vals = [c["grupo"], c["elemento"], c["perfil"], c["combinacao"], c["ratio"], c["label"],
+                    "; ".join(f"{a} = {b}" for a, b in (c["esforcos"] or {}).items()),
+                    "; ".join(f"{a} = {b}" for a, b in (c["resistencias"] or {}).items() if b is not None),
+                    c["formula"], ", ".join(c["membros"][:40])]
+            for i, x in enumerate(vals, 1):
+                w6.cell(row=k, column=i, value=x)
+            w6.cell(row=k, column=5).number_format = "0.00"
+            w6.cell(row=k, column=5).font = Font(bold=True, color=cores.get(c["status"], "6B7680"))
+        for i, wdt in enumerate([16, 34, 14, 12, 11, 26, 50, 44, 60, 60], 1):
+            w6.column_dimensions[get_column_letter(i)].width = wdt
+        k = len(v["verificacoes"]) + 6
+        w6.cell(row=k, column=1, value="Parâmetros").font = Font(bold=True, color=accent_hex)
+        for nome, p in (v.get("parametros") or {}).items():
+            k += 1
+            w6.cell(row=k, column=1, value=nome)
+            w6.cell(row=k, column=2, value=p["valor"] if not isinstance(p["valor"], (list, dict)) else str(p["valor"]))
+            w6.cell(row=k, column=3, value=p["fonte"])
+        k += 2
+        w6.cell(row=k, column=1, value="Limites").font = Font(bold=True, color="9A3D0A")
+        for a in v.get("avisos") or []:
+            k += 1
+            w6.cell(row=k, column=1, value=a)
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()

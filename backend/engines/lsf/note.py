@@ -14,6 +14,7 @@ from . import adapter, defaults
 from . import pdf as P
 from . import quantities as Q
 from .engine import calcular
+from . import verificacao_segura
 from .i18n import num, t
 from .viewer import html_viewer
 from .xlsx import xlsx
@@ -98,6 +99,7 @@ def note(a: dict) -> dict:
     p = projeto(a)
     res = calcular(p)
     res["barraComercial"] = p.get("barraComercial", 6000)
+    res["verificacao"] = verificacao_segura(p, res)
     lin = Q.linhas(res, lang)
     tot = Q.precificar(lin, a.get("_biblioteca"), p.get("precos"))
     br = a.get("_branding")
@@ -126,13 +128,23 @@ def note(a: dict) -> dict:
                                                          f"{x['vaos_exteriores'] + x['vaos_interiores']} vãos" for x in leitura["pisos"]))
     res_txt.append(f"Total com preço {tot['total']:.2f} € — {tot['linhas_sem_preco']} de {tot['linhas']} linhas a orçamentar (sem preço na biblioteca da empresa)."
                    if tot["total"] else f"Sem preços na biblioteca da empresa: {tot['linhas']} linhas de quantidades a orçamentar.")
+    vr = (res.get("verificacao") or {}).get("resumo")
+    if vr:
+        maus = [c for c in res["verificacao"]["verificacoes"] if c["status"] == "a_revoir"]
+        res_txt.append(f"Verificação estrutural INDICATIVA (NP EN 1993-1-3, ações NP EN 1991 PT): {vr['n']} verificações — {vr['ok']} OK, "
+                       f"{vr['proximo']} próximas do limite, {vr['a_rever']} A REVER, {vr['nao_calculado']} sem dado do fabricante; "
+                       f"taxa máxima {vr['ratio_max']:.2f} ({vr['governante']}).")
+        res_txt += [f"A REVER: {c['elemento']} ({c['perfil']}) taxa {c['ratio']:.2f} [{c['combinacao']}]" for c in maus[:10]]
+    elif (res.get("verificacao") or {}).get("erro"):
+        res_txt.append(res["verificacao"]["erro"])
     res_txt += [f"Hipótese: {h}" for h in (res.get("hipoteses") or [])[:8]]
     res_txt += [f"A VERIFICAR: {x}" for x in (res.get("avisos") or [])[:10]]
     res_txt.append("Ficheiros: dossier PDF (nota, mapa, lista de corte, plantas e alçados de fabrico com peças numeradas), Excel e visualizador 3D.")
     png = renders[0][1] if renders else _preview_png(doc)
     return {"titre": f"Estudo LSF — {titulo}", "resume": "\n".join(res_txt), "pdf": doc, "png": png,
             "data": {"kg_aco": round(e["kgAco"], 1), "pecas": e["nMembros"], "parafusos": e["nParafusos"], "kg_m2": e.get("kgPorM2"),
-                     "total_eur": tot["total"], "linhas_sem_preco": tot["linhas_sem_preco"], "avisos": len(res.get("avisos") or [])},
+                     "total_eur": tot["total"], "linhas_sem_preco": tot["linhas_sem_preco"], "avisos": len(res.get("avisos") or []),
+                     "verificacao": vr},
             "files_extra": [("Mapa-quantidades-LSF", f"Mapa de quantidades LSF — {titulo}", xl, "xlsx"),
                             ("Visualizador-3D-LSF", f"Visualizador 3D LSF — {titulo}", vw, "html")]}
 

@@ -64,6 +64,10 @@ class ProjectIn(BaseModel):
     project: dict
 
 
+class VerifIn(BaseModel):
+    parametros: dict = Field(default_factory=dict)   # chaves de engines.lsf.verificacao.PARAMETROS (zona de vento, cargas…)
+
+
 class PriceIn(BaseModel):
     mercado: bool = False          # procurar preços de mercado online para as linhas sem preço (assinalados « a analisar »)
 
@@ -73,7 +77,7 @@ def _resumo(st: dict) -> dict:
     e = r["estudo"]
     return {"kg_aco": round(e["kgAco"], 1), "pecas": e["nMembros"], "parafusos": e["nParafusos"], "kg_m2": e.get("kgPorM2"),
             "area_pisos_m2": e.get("areaPisos"), "avisos": len(r["avisos"]), "total_eur": st["totais"]["total"],
-            "linhas_sem_preco": st["totais"]["linhas_sem_preco"]}
+            "linhas_sem_preco": st["totais"]["linhas_sem_preco"], "verificacao": (r.get("verificacao") or {}).get("resumo")}
 
 
 def _calc(project: dict, biblioteca: list | None = None, lang: str = "pt") -> dict:
@@ -119,7 +123,8 @@ async def _save(uid: str, project: dict, title: str, plan_id: str | None = None)
     st = _calc(project, await _biblioteca(uid))
     doc = {"study_id": _sid(), "user_id": uid, "plan_id": plan_id, "title": title[:160], "created_at": _now(), "updated_at": _now(),
            "version": 1, "engine_version": VERSAO, "project": project, "summary": _resumo(st), "lines": st["linhas"], "totals": st["totais"],
-           "warnings": st["resultado"]["avisos"], "assumptions": st["resultado"]["hipoteses"], "reading": project.get("leitura")}
+           "warnings": st["resultado"]["avisos"], "assumptions": st["resultado"]["hipoteses"], "reading": project.get("leitura"),
+           "verification": st["resultado"].get("verificacao")}
     await db.lsf_studies.insert_one({**doc})
     return _public(doc)
 
@@ -189,9 +194,32 @@ async def update_project(study_id: str, body: ProjectIn, user=Depends(current_us
     st = _calc(body.project, await _biblioteca(user["user_id"]))
     patch = {"project": body.project, "summary": _resumo(st), "lines": st["linhas"], "totals": st["totais"], "warnings": st["resultado"]["avisos"],
              "assumptions": st["resultado"]["hipoteses"], "updated_at": _now(), "version": int(doc.get("version", 1)) + 1,
-             "render_png_b64": None}
+             "render_png_b64": None, "verification": st["resultado"].get("verificacao")}
     await db.lsf_studies.update_one({"study_id": study_id, "user_id": user["user_id"]}, {"$set": patch})
     return _public({**doc, **patch})
+
+
+@router.get("/studies/{study_id}/verificacao")
+async def get_verification(study_id: str, user=Depends(current_user)) -> dict:
+    """Verificação estrutural indicativa (NP EN 1990/1991/1993-1-3) recalculada a partir do projeto guardado."""
+    from engines.lsf.verificacao import PARAMETROS
+    doc = await _get(study_id, user["user_id"])
+    v = doc.get("verification")
+    if not v or v.get("versao") is None:
+        v = _calc(doc["project"], await _biblioteca(user["user_id"]))["resultado"]["verificacao"]
+    return {"verificacao": v, "parametros_padrao": PARAMETROS, "parametros": doc["project"].get("verificacao") or {}}
+
+
+@router.put("/studies/{study_id}/verificacao")
+async def set_verification(study_id: str, body: VerifIn, user=Depends(current_user)) -> dict:
+    """Altera os parâmetros da verificação (zonas, cargas, coeficientes, resistências do fabricante) e recalcula tudo."""
+    from engines.lsf.verificacao import PARAMETROS
+    doc = await _get(study_id, user["user_id"])
+    desconhecidos = sorted(set(body.parametros) - set(PARAMETROS))
+    if desconhecidos:
+        raise HTTPException(422, f"Parâmetros desconhecidos: {', '.join(desconhecidos)}")
+    project = {**doc["project"], "verificacao": {**(doc["project"].get("verificacao") or {}), **body.parametros}}
+    return await update_project(study_id, ProjectIn(project=project), user)
 
 
 @router.post("/studies/{study_id}/price")
@@ -287,6 +315,7 @@ async def study_result(study_id: str, user=Depends(current_user)) -> dict:
     r = st["resultado"]
     return {"perfis": r["perfis"], "placas": r["placasResumo"], "parafusos": r["parafusos"], "ancoragens": r["ancoragens"], "extras": r["extras"],
             "paredes": r["paredes"], "avisos": r["avisos"], "hipoteses": r["hipoteses"], "estudo": r["estudo"],
+            "verificacao": r.get("verificacao"),
             "membros": [{k: m[k] for k in ("id", "grupo", "ref", "nivel", "tipoPeca", "perfilNome", "L", "kg") if k in m} for m in r["membros"]]}
 
 

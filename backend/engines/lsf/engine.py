@@ -898,7 +898,8 @@ def _estrutura_cobertura(ctx, c):
         def add_in(tipo_peca, perfil, L, o2, w2, v2, u_sign, nota=None):
             kk = tag + tipo_peca
             ctx.cont[kk] = ctx.cont.get(kk, 0) + 1
-            return _membro(ctx, {"id": f"{tag}.{tipo_peca[0]}{ctx.cont[kk]}", "grupo": "Cobertura", "ref": ref, "asna": tag, "tipoPeca": tipo_peca,
+            pref = {"Banzo inferior": "BI", "Banzo superior": "BS"}.get(tipo_peca, tipo_peca[0])     # ids únicos (BI ≠ BS)
+            return _membro(ctx, {"id": f"{tag}.{pref}{ctx.cont[kk]}", "grupo": "Cobertura", "ref": ref, "asna": tag, "tipoPeca": tipo_peca,
                                  "perfil": perfil, "L": L, "nota": nota, "o": g(rc, o2[0], o2[1]), "u": gd(u_sign, 0, 0),
                                  "v": gd(0, v2[0], v2[1]), "w": gd(0, w2[0], w2[1]), "nivel": "COB"})
 
