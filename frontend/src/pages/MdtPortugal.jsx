@@ -77,7 +77,7 @@ export default function MdtPortugal() {
 
   useEffect(() => { api.get("/mdt/estado").then(({ data }) => setEstado(data)).catch(() => setEstado(null)); }, []);
 
-  // terreno vindo do licenciamento automático (mesmo polígono do processo)
+  // terreno vindo do licenciamento automático ou da maquete 3D (mesmo polígono do processo ou da obra)
   const loc = useLocation();
   useEffect(() => {
     const pol = loc.state?.poligono;
@@ -85,6 +85,15 @@ export default function MdtPortugal() {
       setPoligono(pol.map(([a, b]) => [Number(a), Number(b)]));
       if (loc.state.local) setLocal(loc.state.local);
       const t = setTimeout(() => mapa.current?.fitBounds(L.latLngBounds(pol).pad(0.6)), 50);
+      return () => clearTimeout(t);
+    }
+    // ponto vindo da maquete 3D (edifício ou ponto do terreno): MDT à volta desse ponto
+    const c = loc.state?.centro;
+    if (Array.isArray(c) && c.length === 2 && c.every((v) => Number.isFinite(Number(v)))) {
+      const p = [Number(c[0]), Number(c[1])];
+      setCentro(p);
+      if (loc.state.local) setLocal(loc.state.local);
+      const t = setTimeout(() => mapa.current?.setView(p, 18), 50);
       return () => clearTimeout(t);
     }
     return undefined;

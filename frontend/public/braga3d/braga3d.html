@@ -600,7 +600,18 @@ const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let hi=null;
 const hiMat=new THREE.MeshLambertMaterial({color:'#f2a516',emissive:'#7a4a00',side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
 function groundHit(){const o=ray.ray.origin,d=ray.ray.direction;let t0=0;for(let i=0;i<600;i++){const t=t0+Math.max(6,t0*0.015);if(o.y+d.y*t<gy(o.x+d.x*t,o.z+d.z*t)){let a=t0,b=t;for(let k=0;k<14;k++){const m=(a+b)/2;if(o.y+d.y*m<gy(o.x+d.x*m,o.z+d.z*m))b=m;else a=m;}return{point:new THREE.Vector3(o.x+d.x*b,o.y+d.y*b,o.z+d.z*b),distance:b};}t0=t;if(t>200000)break;}return null;}
 function setRay(e){const r=cv.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,camera);}
-function card(title,html){$('cardT').textContent=title;$('cardB').innerHTML=html;$('card').classList.add('on');}
+/* Ligação ao MDT Portugal do ConstruPilot: só existe quando a maquete está embebida na página (mesma origem).
+   mdt = lista de pontos [x,z] da cena: 1 ponto → MDT à volta desse ponto; 3 ou mais → polígono (terreno ou implantação da obra). */
+const CP_EMBED=(()=>{try{return window.parent!==window&&window.parent.location.origin===location.origin;}catch(_){return false;}})();
+function card(title,html,mdt){$('cardT').textContent=title;$('cardB').innerHTML=html;$('card').classList.add('on');
+  if(!CP_EMBED||!Array.isArray(mdt)||!mdt.length)return;
+  const pts=mdt.filter(q=>Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1])).map(q=>toMP(q[0],q[1]).map(v=>Math.round(v*100)/100));
+  if(!pts.length)return;
+  const b=document.createElement('button');b.className='btn';b.id='abrirMdt';b.style.cssText='display:block;margin-top:8px';
+  b.textContent=pts.length>=3?'Abrir no MDT Portugal (escavação e aterro)':'Abrir no MDT Portugal';
+  b.addEventListener('click',()=>{let cm=0,cp=0;for(const q of pts){cm+=q[0];cp+=q[1];}
+    window.parent.postMessage({type:'cp-abrir-mdt',nome:String(title||'').slice(0,120),centro_tm06:[cm/pts.length,cp/pts.length],anel_tm06:pts.length>=3?pts:null},location.origin);});
+  $('cardB').appendChild(b);}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function select(b){
   if(hi){scene.remove(hi);hi.geometry.dispose();hi=null;}
@@ -611,7 +622,7 @@ function select(b){
   card(t.name||TNAME[b.ty],'<dl class="kv"><dt>Tipo</dt><dd>'+TNAME[b.ty]+'</dd>'+(addr?'<dt>Morada</dt><dd>'+esc(addr)+'</dd>':'')+
    '<dt>Altura</dt><dd>'+fmt(b.h,1)+' m <span class="pill '+(b.src<2?'ok':'warn')+'">'+src+'</span></dd><dt>Pisos</dt><dd>'+fmt(b.lv)+(t['building:levels']?'':' (est.)')+'</dd>'+
    '<dt>Área de implantação</dt><dd>'+fmt(b.area)+' m²</dd><dt>Perímetro</dt><dd>'+fmt(b.per)+' m</dd><dt>ABC estimada</dt><dd>'+fmt(b.area*b.lv)+' m²</dd><dt>Cota aprox.</dt><dd>'+fmt(b.base+190)+' m</dd><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(b.cx,b.cz)+'</dd>'+
-   (t.start_date?'<dt>Construção</dt><dd>'+esc(t.start_date)+'</dd>':'')+'</dl>'+(/^(way|relation)\/\d+/.test(b.id)?'<a href="https://www.openstreetmap.org/'+b.id.split('#')[0]+'" target="_blank" rel="noopener">Ver no OpenStreetMap</a>':'')+pdmCard([[b.cx,b.cz]]));
+   (t.start_date?'<dt>Construção</dt><dd>'+esc(t.start_date)+'</dd>':'')+'</dl>'+(/^(way|relation)\/\d+/.test(b.id)?'<a href="https://www.openstreetmap.org/'+b.id.split('#')[0]+'" target="_blank" rel="noopener">Ver no OpenStreetMap</a>':'')+pdmCard([[b.cx,b.cz]]),[[b.cx,b.cz]]);
   touch();
 }
 $('cardX').addEventListener('click',()=>select(null));
@@ -627,7 +638,7 @@ function click(e){
   if(kind==='b')select(ref);
   else if(kind==='m'){select(null);card(ref.n,'<p class="note">'+ref.k+'</p><p style="margin:0">'+ref.i+'</p><p class="note">Modelo simplificado, posição aproximada.</p>');}
   else if(kind==='w'){select(null);showWork(ref);}
-  else{select(null);const h=groundHit();if(h&&PDM)card('PDM neste ponto','<dl class="kv"><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(h.point.x,h.point.z)+'</dd></dl>'+pdmCard([[h.point.x,h.point.z]]));}
+  else{select(null);const h=groundHit();if(h&&PDM)card('PDM neste ponto','<dl class="kv"><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(h.point.x,h.point.z)+'</dd></dl>'+pdmCard([[h.point.x,h.point.z]]),[[h.point.x,h.point.z]]);}
 }
 
 /* ---------- obras ---------- */
@@ -646,7 +657,7 @@ function drawWorks(){
   $('wTA').textContent=fmt(a)+' m²';$('wTG').textContent=fmt(g)+' m²';
   try{localStorage.setItem('braga3d-obras',JSON.stringify(works));}catch(_){ }touch();
 }
-function showWork(w){const i=works.indexOf(w);card('Obra '+(i+1),'<dl class="kv"><dt>Uso</dt><dd>'+esc(w.u)+'</dd><dt>Frente × fundo</dt><dd>'+fmt(w.w,1)+' × '+fmt(w.d,1)+' m</dd><dt>Pisos</dt><dd>'+w.f+'</dd><dt>Cércea</dt><dd>'+fmt(w.f*3)+' m</dd><dt>Implantação</dt><dd>'+fmt(w.w*w.d)+' m²</dd><dt>ABC</dt><dd>'+fmt(w.w*w.d*w.f)+' m²</dd><dt>Cota aprox.</dt><dd>'+fmt(elev(w.x,w.z))+' m</dd><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(w.x,w.z)+'</dd></dl>'+pdmCard(workPts(w))+'<button class="btn" id="delWork">Remover esta obra</button>');
+function showWork(w){const i=works.indexOf(w);card('Obra '+(i+1),'<dl class="kv"><dt>Uso</dt><dd>'+esc(w.u)+'</dd><dt>Frente × fundo</dt><dd>'+fmt(w.w,1)+' × '+fmt(w.d,1)+' m</dd><dt>Pisos</dt><dd>'+w.f+'</dd><dt>Cércea</dt><dd>'+fmt(w.f*3)+' m</dd><dt>Implantação</dt><dd>'+fmt(w.w*w.d)+' m²</dd><dt>ABC</dt><dd>'+fmt(w.w*w.d*w.f)+' m²</dd><dt>Cota aprox.</dt><dd>'+fmt(elev(w.x,w.z))+' m</dd><dt>PT-TM06/ETRS89 (M; P)</dt><dd>'+mpText(w.x,w.z)+'</dd></dl>'+pdmCard(workPts(w))+'<button class="btn" id="delWork">Remover esta obra</button>',workPts(w).slice(1));
   $('delWork').addEventListener('click',()=>{works.splice(works.indexOf(w),1);drawWorks();select(null);});}
 function placeWork(x,z){const w=Object.assign(wParams(),{x,z});works.push(w);setPlacing(false);drawWorks();showWork(w);}
 function setPlacing(on){placing=on;$('placeBtn').classList.toggle('on',on);$('placeBtn').textContent=on?'Cancelar':'Colocar no mapa';$('mode').classList.toggle('on',on);cv.style.cursor=on?'crosshair':'';if(ghost){scene.remove(ghost);ghost.geometry.dispose();ghost=null;}touch();}
@@ -931,7 +942,7 @@ function cpTerreno(anelMP,nome){
   flyTo(cx,cz,Math.max(260,Math.max(x1-x0,z1-z0)*3));
   const amostra=pts.concat([[cx,cz]]),pc=PDM?pdmCard(amostra):'';
   card('Terreno'+(nome?': '+nome:''),(pc||'<p class="note">Sem PDM municipal carregado para este local.</p>')+
-    '<p class="note">Leitura automática das plantas municipais do PDM: confirme na ficha oficial (DGT) da página Terrenos e na câmara municipal.</p>');
+    '<p class="note">Leitura automática das plantas municipais do PDM: confirme na ficha oficial (DGT) da página Terrenos e na câmara municipal.</p>',pts);
   touch();return true;
 }
 window.addEventListener('message',e=>{if(e.origin!==location.origin)return;const d=e.data;
