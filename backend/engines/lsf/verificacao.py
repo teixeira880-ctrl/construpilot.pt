@@ -405,7 +405,7 @@ def verificar(projeto: dict, resultado: dict) -> dict:
             continue
         Sm, sp = co["S"] / 1000, float(c.get("espacamento") or 600) / 1000
         a = float(c.get("inclinacao") or 30)
-        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        ca = math.cos(math.radians(a))
         bei = float(c.get("beiral") or 0) / 1000
         banzo, diag = S(c["banzo"]), S(c["diagonal"])
         pp_b, pp_d = banzo["kg_m"] * 9.81e-3, diag["kg_m"] * 9.81e-3

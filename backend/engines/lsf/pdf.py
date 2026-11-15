@@ -7,7 +7,6 @@ identifica as paredes; cada asna e cada zona de piso são desenhadas com as peç
 from __future__ import annotations
 
 import io
-import math
 from datetime import date
 
 from reportlab.lib import colors
@@ -508,7 +507,6 @@ def desenhos(res: dict, lang="pt", accent="#203B2D", empresa=None, max_alcados: 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=landscape(A3))
     mid = {m["id"]: m for m in res["membros"]}
-    folhas = []
     niveis = []
     for w in res["paredes"]:
         nv = w.get("nivel") or "—"

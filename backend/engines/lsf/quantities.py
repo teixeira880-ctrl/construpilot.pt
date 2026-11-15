@@ -8,7 +8,6 @@ Preços, por esta ordem:
 """
 from __future__ import annotations
 
-import math
 import re
 import unicodedata
 

@@ -104,6 +104,10 @@ export default function Structuro() {
         <div className="font-semibold text-sm">Projeto de licenciamento → modelo estrutural, cálculo gravítico e plantas de princípio</div>
         <div className="text-xs text-muted-foreground mt-1">Paredes, vigas, pilares, lajes e sapatas. Esforços rastreáveis e exportações PDF/DXF; dimensionamento resistente a completar.</div>
       </a>
+      <a href="/estrutura-lsf" data-testid="link-estrutura-lsf" className="block rounded-md border border-sky-700/30 bg-sky-50 p-4 hover:bg-sky-100 transition-colors">
+        <div className="font-semibold text-sm">Estrutura em aço leve (LSF) — perfis, placas, parafusos e verificação EN 1993-1-3</div>
+        <div className="text-xs text-muted-foreground mt-1">A partir da planta lida: cada perfil, plano de corte das placas, parafusos contados um a um, alçados de fabrico, Excel, 3D e verificação estrutural indicativa (asnas, vigas, montantes, vergas).</div>
+      </a>
       <a href="/structuro/lecture-plan" data-testid="link-plan-reader"
          className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-4 hover:bg-primary/10 transition-colors">
         <div className="rounded-sm bg-primary/15 p-2"><HardHat className="h-5 w-5 text-primary" /></div>
