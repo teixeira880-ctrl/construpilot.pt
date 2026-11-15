@@ -51,7 +51,7 @@ projeto com recálculo, preços, PDF, Excel, visualizador 3D, render). Assistent
 ## Verificação estrutural (`verificacao.py`)
 
 Indicativa, determinística, **reaproveita os motores existentes**: combinações `structuro_eurocode` (EN 1990), ações PT
-`bet_clt.norms` (sobrecargas NP EN 1991-1-1, neve Z1–Z3, vento A/B), encurvadura e flexão composta `structuro_ec3.verify_column`
+`acoes_pt` (sobrecargas NP EN 1991-1-1, neve Z1–Z3, vento A/B; módulo neutro, sem depender do motor CLT), encurvadura e flexão composta `structuro_ec3.verify_column`
 (§6.3.3 método 2) e `structuro_check.util_status`. Acrescenta o próprio do aço enformado a frio (NP EN 1993-1-3 / 1-5):
 
 - secção efetiva dos perfis C: larguras efetivas, lábio (kσ 5.13), encurvadura distorcional do reforço (mola K 5.10b, χd 5.12)

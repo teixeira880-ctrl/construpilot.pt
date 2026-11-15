@@ -2,7 +2,7 @@
 
 Reaproveita os motores existentes do ConstruPilot:
   - combinações EN 1990 ............ engines.structuro_eurocode.generate (γG 1,35 / γQ 1,5 / ψ por categoria)
-  - neve, vento, sobrecargas PT ...... engines.bet_clt.norms (NP EN 1991-1-1 / -1-3 zonas Z1–Z3 / -1-4 zonas A/B)
+  - neve, vento, sobrecargas PT ...... engines.acoes_pt (NP EN 1991-1-1 / -1-3 zonas Z1–Z3 / -1-4 zonas A/B)
   - encurvadura + flexão composta .... engines.structuro_ec3.verify_column (§6.3.1 e §6.3.3 método 2, Anexo B)
   - estado de utilização ............. engines.structuro_check.util_status / DISCLAIMER
 
@@ -29,7 +29,7 @@ from engines import structuro_ec3 as EC3
 from engines import structuro_eurocode as EN1990
 from engines.structuro_calc import Action
 from engines.structuro_check import DISCLAIMER, util_status
-from engines.bet_clt import norms as NORMAS
+from engines import acoes_pt as NORMAS
 
 VERSAO = "lsf-verificacao-1.0"
 E = 210000.0          # MPa
@@ -58,7 +58,7 @@ PARAMETROS = {
     "contraventamento_vrd_kn_m": None,   # resistência ao corte da parede contraventada (ensaio / fabricante)
 }
 FONTES = {
-    "uso": "NP EN 1991-1-1 Quadro 6.2 (valores do AN PT via engines.bet_clt.norms)",
+    "uso": "NP EN 1991-1-1 Quadro 6.2 (valores do AN PT via engines.acoes_pt)",
     "divisorias_kn_m2": "NP EN 1991-1-1 §6.3.1.2(8)",
     "g_piso_kn_m2": "hipótese de projeto — a confirmar com os acabamentos",
     "g_cobertura_kn_m2": "hipótese de projeto — a confirmar com o revestimento da cobertura",
@@ -695,7 +695,7 @@ def verificar(projeto: dict, resultado: dict) -> dict:
         "versao": VERSAO, "execution_ready": False, "disclaimer": DISCLAIMER,
         "normas": ["NP EN 1990", "NP EN 1991-1-1", "NP EN 1991-1-3", "NP EN 1991-1-4", "NP EN 1993-1-1", "NP EN 1993-1-3",
                    "NP EN 1993-1-5"],
-        "motores": ["structuro_eurocode (combinações)", "bet_clt.norms (neve, vento, sobrecargas PT)",
+        "motores": ["structuro_eurocode (combinações)", "acoes_pt (neve, vento, sobrecargas PT)",
                     "structuro_ec3.verify_column (encurvadura, N+M)", "structuro_check (estado)"],
         "parametros": {k: {"valor": par[k], "fonte": FONTES.get(k, "")} for k in PARAMETROS},
         "aco": {"grau": (projeto.get("aco") or {}).get("grau"), "fy_MPa": fy},
