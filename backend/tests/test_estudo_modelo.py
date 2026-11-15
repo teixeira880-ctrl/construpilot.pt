@@ -50,7 +50,7 @@ def test_clt_casa_simples_no_formato_comum():
     liquido = (8 * 3 - 2.1) + (8 * 3 - 1.44) + 18 + 18
     clt = next(q for q in m["quantidades"] if q["capitulo"] == "CLT")
     assert clt["qtd"] == pytest.approx(liquido * 0.1 + 48 * 0.16, abs=1e-3)
-    ligadores = sum(q["qtd"] for q in m["quantidades"] if q["item"].startswith("Cantoneira") or "hold-down" in q["item"])
+    ligadores = sum(q["qtd"] for q in m["quantidades"] if q["item"].startswith(("Cantoneira de corte", "Ancoragem de tração")))
     assert len(caixas("ligadores")) == ligadores == (7 + 8 + 6 + 6) + (4 + 2 + 2 + 2)                      # cada ligador desenhado no seu sítio
     assert len(m["alcados"]) == 4 and m["alcados"][0]["vaos"] == [{"x": 3000.0, "y": 0.0, "w": 1000.0, "h": 2100.0}]
     assert len(m["lista_corte"]) == 6 and len(m["planos_corte"]) == 1 and m["planos_corte"][0]["aproveitamento"] == 85.6
