@@ -199,14 +199,14 @@ def _classificar(res: Dict[str, Any]) -> Dict[str, Any]:
         elif e["nivel"] == "elevado":
             add("aviso", f"Risco {e['risco'].replace('_', ' ')} elevado.")
     if rel.get("declive_medio_pct") and rel["declive_medio_pct"] >= 25:
-        add("aviso", f"Declive médio de {rel['declive_medio_pct']:.0f} %: obra com muros de suporte e custos de terraplenagem altos.")
+        add("aviso", f"Declive médio de {_pt(rel['declive_medio_pct'], 0)} %: obra com muros de suporte e custos de terraplenagem altos.")
     ac = res["acessibilidade"]
     if ac.get("estado") == "afastada":
         add("aviso", ac["texto"] + ".")
     if not impl.get("ok"):
         add("critico", impl.get("nota") or "Sem implantação possível.")
     else:
-        add("ok", f"Implantação de {impl['area_m2']:.0f} m² possível na zona livre ({pot['area_livre_para_implantacao_m2']:.0f} m²).")
+        add("ok", f"Implantação de {_pt(impl['area_m2'], 0)} m² possível na zona livre ({_pt(pot['area_livre_para_implantacao_m2'], 0)} m²).")
     crit = sum(1 for f in fund if f["nivel"] == "critico")
     avis = sum(1 for f in fund if f["nivel"] == "aviso")
     if crit >= 2 or (not impl.get("ok")) or ren >= 0.9 or ran >= 0.9:
@@ -224,18 +224,24 @@ def _classificar(res: Dict[str, Any]) -> Dict[str, Any]:
     return {"classificacao": cl, "rotulo": rot, "indice": nota, "fundamentos": fund, "sintese": sint.strip()}
 
 
+def _pt(v, d: int) -> str:
+    """Número à portuguesa (vírgula decimal, espaço nos milhares)."""
+    return f"{float(v):,.{d}f}".replace(",", " ").replace(".", ",")
+
+
 def _recomendacoes(res: Dict[str, Any]) -> List[str]:
     rec: List[str] = []
     impl = res["implantacao"]
     if impl.get("ok"):
         t = impl["terreno_sob_edificio"]
-        rec.append(f"Implantar o edifício ({impl['largura_m']:.0f} × {impl['profundidade_m']:.0f} m) na posição proposta, com a "
-                   f"fachada principal virada a {SO.rumo(impl['azimute_fachada_principal'])} e a soleira à cota "
-                   f"{impl['cota_soleira_sugerida']:.2f} m ({impl['solucao_desnivel']}; desnível sob o edifício {t['desnivel_m']:.1f} m).")
+        rec.append(f"Implantar o edifício ({_pt(impl['largura_m'], 0)} × {_pt(impl['profundidade_m'], 0)} m) na posição proposta, "
+                   f"com a fachada principal virada a {SO.rumo(impl['azimute_fachada_principal'])} e a soleira à cota "
+                   f"{_pt(impl['cota_soleira_sugerida'], 2)} m ({impl['solucao_desnivel']}; desnível sob o edifício "
+                   f"{_pt(t['desnivel_m'], 1)} m).")
         mv = impl["movimento_terras"]
         if mv.get("ok") and (mv["escavacao_m3"] + mv["aterro_m3"]) > 0:
-            rec.append(f"Movimento de terras estimado da plataforma: {mv['escavacao_m3']:.0f} m³ de escavação e "
-                       f"{mv['aterro_m3']:.0f} m³ de aterro (sem taludes).")
+            rec.append(f"Movimento de terras estimado da plataforma: {_pt(mv['escavacao_m3'], 0)} m³ de escavação e "
+                       f"{_pt(mv['aterro_m3'], 0)} m³ de aterro (sem taludes).")
     for e in res["riscos"]["riscos"]:
         rec += e["recomendacoes"][:2]
     rec += res["conforto"]["recomendacoes"][:3]
