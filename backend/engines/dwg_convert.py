@@ -1,4 +1,4 @@
-"""Conversion DWG → DXF : ODA local, Autodesk si activé, puis CloudConvert historique.
+"""Conversion DWG → DXF : ODA local, LibreDWG local (open source), Autodesk si activé, puis CloudConvert historique.
 
 Le DWG est un format AutoCAD propriétaire binaire qu'aucune lib Python ne lit
 directement. On délègue la conversion à CloudConvert : création d'un job
@@ -50,9 +50,11 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
     from engines import dwg_local
     if dwg_local.available():                      # LibreDWG (WebAssembly) no próprio servidor: grátis, sem chave, sem rede
         try:
-            output = await asyncio.to_thread(dwg_local.dwg_to_dxf, dwg_bytes)
+            output, hint = await asyncio.to_thread(dwg_local.dwg_to_dxf_hint, dwg_bytes)
             _validate_dxf(output)
-            if provenance is not None: provenance.update(provider="libredwg", status="converted")
+            if provenance is not None:
+                provenance.update(provider="libredwg", status="converted")
+                if hint: provenance["units_hint"] = hint   # metros declarados em mm: plans_crud aplica a unidade real
             return output
         except RuntimeError as exc:
             logger.warning("LibreDWG local falhou, a passar aos serviços externos: %s", exc)

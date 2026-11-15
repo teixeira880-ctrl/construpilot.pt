@@ -60,6 +60,10 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
             raise HTTPException(502, "Conversão DWG impossível — tente mais tarde.")
         parse_name = (file.filename or "plan")[:-4] + ".dxf"
         mime = "image/vnd.dxf"
+        if not cad_unit and conversion.get("units_hint"):
+            # Implantações georreferenciadas em metros declaradas em mm : a escala seria 1000× errada.
+            cad_unit = conversion["units_hint"]
+            conversion["units_applied"] = cad_unit
     else:
         parse_name = file.filename or "plan"
 

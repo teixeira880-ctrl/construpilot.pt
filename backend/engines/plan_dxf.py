@@ -133,6 +133,15 @@ def _bounds_from_entity(e, upd) -> None:
     """Feed the per-type extents of entity `e` into `upd(x, y)`.
     Silent no-op if the entity has an unsupported type or bad geometry."""
     t = e.dxftype()
+    ext = e.dxf.get("extrusion") if e.dxf.is_supported("extrusion") else None
+    if ext is not None and (abs(ext[0]) > 1e-9 or abs(ext[1]) > 1e-9 or ext[2] < 0):
+        # Entidade espelhada (OCS com Z para baixo) : as coordenadas DXF não são as do mundo.
+        from ezdxf import bbox
+        b = bbox.extents([e], fast=True)
+        if b.has_data:
+            upd(b.extmin.x, b.extmin.y)
+            upd(b.extmax.x, b.extmax.y)
+        return
     if t == "LINE":
         upd(e.dxf.start.x, e.dxf.start.y)
         upd(e.dxf.end.x, e.dxf.end.y)
@@ -473,7 +482,7 @@ def process_dxf(data: bytes, filename: str = "plan.dxf", unit_override: str | No
             "analysis_pdf_b64":base64.b64encode(mapping["pdf_bytes"]).decode("ascii"),"detected_scale_denominator":None,
             "pages":[{"index":0,"width_px":mapping["width"],"height_px":mapping["height"],"dpi":mapping["dpi"],
                       "image_png_b64":base64.b64encode(png).decode("ascii"),"img_mime":"image/png",
-                      "vectors":vectors[:8000],"vectors_total":len(vectors),"vectors_truncated":len(vectors)>8000,
+                      "vectors":vectors[:8000],"vectors_total":len(vectors),"vectors_capped":len(vectors)>=1500000,"vectors_truncated":len(vectors)>8000,
                       "geometry_coordinate_space":"image_px","geometry_version":2,"cad_import":cad,
                       "walls_analysis":walls,"text_blocks":text_blocks[:3000],"dimensions_count":len(dims),
                       "dxf_dimensions":dims,"unit_to_m":unit_to_m,"raw_text_length":sum(len(t["text"]) for t in text_blocks),

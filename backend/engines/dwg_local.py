@@ -166,6 +166,36 @@ def dwg_to_dxf(data: bytes) -> bytes:
     return json_to_dxf(dwg_to_json(data))
 
 
+def units_hint(db: dict) -> str | None:
+    """Desenhos em metros declarados em milímetros (frequente em implantações georreferenciadas): textos com menos de
+    5 unidades de altura e extensão inferior a 5000 unidades não são plausíveis em mm → a unidade real é o metro."""
+    h = db.get("header") or {}
+    if h.get("INSUNITS") != 4:
+        return None
+    heights = []
+    for e in db.get("entities") or []:
+        if e.get("type") in ("TEXT", "MTEXT") and e.get("textHeight"):
+            try:
+                heights.append(float(e["textHeight"]))
+            except (TypeError, ValueError):
+                pass
+    heights.sort()
+    lo, hi = h.get("EXTMIN") or {}, h.get("EXTMAX") or {}
+    try:
+        span = max(abs(float(hi.get("x", 0)) - float(lo.get("x", 0))), abs(float(hi.get("y", 0)) - float(lo.get("y", 0))))
+    except (TypeError, ValueError, AttributeError):
+        return None
+    if heights and heights[len(heights) // 2] < 5 and 0 < span < 5000:
+        return "m"
+    return None
+
+
+def dwg_to_dxf_hint(data: bytes) -> tuple[bytes, str | None]:
+    """DXF + unidade real provável (ver units_hint), numa só leitura do DWG."""
+    db = dwg_to_json(data)
+    return json_to_dxf(db), units_hint(db)
+
+
 def ensure_installed() -> bool:
     """Au démarrage : installe le lecteur (npm, version figée) s'il manque. Sans réseau ni node : la chaîne garde ODA / services externes."""
     if available():
