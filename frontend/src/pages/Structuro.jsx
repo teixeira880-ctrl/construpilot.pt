@@ -108,6 +108,10 @@ export default function Structuro() {
         <div className="font-semibold text-sm">Estrutura em aço leve (LSF) — perfis, placas, parafusos e verificação EN 1993-1-3</div>
         <div className="text-xs text-muted-foreground mt-1">A partir da planta lida: cada perfil, plano de corte das placas, parafusos contados um a um, alçados de fabrico, Excel, 3D e verificação estrutural indicativa (asnas, vigas, montantes, vergas).</div>
       </a>
+      <a href="/construcao-tradicional" data-testid="link-tradicional" className="block rounded-md border border-orange-700/30 bg-orange-50 p-4 hover:bg-orange-100 transition-colors">
+        <div className="font-semibold text-sm">Construção tradicional — alvenaria unidade a unidade</div>
+        <div className="text-xs text-muted-foreground mt-1">Cada tijolo ou bloco assente fiada a fiada, cortes, argamassa das juntas, reboco e lintéis, com 3D, alçados e mapa de quantidades. Tijolo ou bloco à escolha por parede.</div>
+      </a>
       <a href="/structuro/lecture-plan" data-testid="link-plan-reader"
          className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-4 hover:bg-primary/10 transition-colors">
         <div className="rounded-sm bg-primary/15 p-2"><HardHat className="h-5 w-5 text-primary" /></div>

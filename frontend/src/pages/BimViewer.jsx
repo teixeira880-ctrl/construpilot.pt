@@ -208,6 +208,11 @@ export default function BimViewer() {
             {analysis ? "Ocultar cálculo" : "Calcular estrutura"}
           </Button>
         )}
+        {planId && (
+          <Button size="sm" variant="outline" className="h-8 gap-1" disabled={busy} onClick={() => navigate(`/construcao-tradicional?plan=${encodeURIComponent(planId)}&page=${page}`)} data-testid="bim-alvenaria">
+            <Layers className="h-4 w-4" /> Calcular alvenaria
+          </Button>
+        )}
         <Button size="sm" className="h-8 gap-1" disabled={!ifcBytes} onClick={download} data-testid="bim-download">
           <Download className="h-4 w-4" /> IFC
         </Button>

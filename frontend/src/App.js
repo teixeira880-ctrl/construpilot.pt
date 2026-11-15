@@ -136,6 +136,7 @@ const DailyLogLazy = lazy(() => import("@/pages/DailyLog"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
 const LsfStudiesLazy = lazy(() => import("@/pages/LsfStudies"));
+const TradicionalLazy = lazy(() => import("@/pages/Tradicional"));
 const BimStudioLazy = lazy(() => import("@/pages/BimStudio"));
 const CltIndustrialLazy = lazy(() => import("@/pages/CltIndustrial"));
 const MetodosMedicaoLazy = lazy(() => import("@/pages/MetodosMedicao"));
@@ -451,6 +452,7 @@ function AppRouter() {
       <Route path="/estudo-moradia" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><StructuroHouseLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/planos-execucao" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlansExecutionLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/estrutura-lsf" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><LsfStudiesLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/construcao-tradicional" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><TradicionalLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/estudio-imagens" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><EstudioImagensLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/urbanismo/validacao/:token" element={<Suspense fallback={<RouteSkeleton />}><UrbanismoValidacaoLazy /></Suspense>} />
       <Route path="/urbanismo" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><UrbanismoLazy /></Suspense></Shell></ProRoute>} />
