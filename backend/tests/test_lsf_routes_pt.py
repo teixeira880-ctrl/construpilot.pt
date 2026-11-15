@@ -113,3 +113,20 @@ def test_planta_inexistente(db):
     with pytest.raises(M.HTTPException) as e:
         asyncio.run(M.create_from_plan(M.FromPlanIn(plan_id="nao-existe"), {"user_id": "u1"}))
     assert e.value.status_code == 404
+
+
+def test_verificacao_estrutural(db):
+    """Verificação EN 1993-1-3 gravada com o estudo, parâmetros alteráveis (zona de vento, resistência do fabricante)."""
+    user = {"user_id": "u1"}
+    ex = asyncio.run(M.exemplo())
+    st = asyncio.run(M.create_from_input(M.FromInputIn(input=ex, title="Exemplo"), user))
+    assert st["summary"]["verificacao"]["n"] > 40 and st["verification"]["execution_ready"] is False
+    g = asyncio.run(M.get_verification(st["study_id"], user))
+    assert g["verificacao"]["acoes"]["vb"] == 27.0 and "zona_vento" in g["parametros_padrao"]
+    up = asyncio.run(M.set_verification(st["study_id"], M.VerifIn(parametros={"zona_vento": "B", "contraventamento_vrd_kn_m": 8.0}), user))
+    v = up["verification"]
+    assert v["acoes"]["vb"] == 30.0 and up["project"]["verificacao"]["zona_vento"] == "B"
+    assert all(c["ratio"] is not None for c in v["verificacoes"] if c["grupo"] == "Contraventamento")
+    with pytest.raises(M.HTTPException) as e:
+        asyncio.run(M.set_verification(st["study_id"], M.VerifIn(parametros={"inventado": 1}), user))
+    assert e.value.status_code == 422

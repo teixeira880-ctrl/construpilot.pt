@@ -48,14 +48,31 @@ projeto com recálculo, preços, PDF, Excel, visualizador 3D, render). Assistent
 - pisos em zonas retangulares, vão das vigas na menor dimensão, partido sobre paredes interiores do piso de baixo;
 - cobertura de duas águas (asnas) se o último piso for retangular, senão plana.
 
+## Verificação estrutural (`verificacao.py`)
+
+Indicativa, determinística, **reaproveita os motores existentes**: combinações `structuro_eurocode` (EN 1990), ações PT
+`bet_clt.norms` (sobrecargas NP EN 1991-1-1, neve Z1–Z3, vento A/B), encurvadura e flexão composta `structuro_ec3.verify_column`
+(§6.3.3 método 2) e `structuro_check.util_status`. Acrescenta o próprio do aço enformado a frio (NP EN 1993-1-3 / 1-5):
+
+- secção efetiva dos perfis C: larguras efetivas, lábio (kσ 5.13), encurvadura distorcional do reforço (mola K 5.10b, χd 5.12)
+  → Aeff, Weff,y; esforço transverso com encurvadura da alma (Quadro 6.1);
+- asnas Fink resolvidas como treliça (método dos deslocamentos) + flexão local dos banzos; vigas de piso (M, V, flechas
+  L/250 e L/300, frequência); montantes N+M com vento (zona A); vergas em caixão; montantes de apoio e rei; ancoragens ao
+  levantamento (1,0·G + 1,5·W); contraventamento (esforço por metro de parede OSB);
+- descida de cargas geométrica: asnas → paredes de apoio → pisos → paredes inferiores; paredes interiores portantes assinaladas.
+
+Parâmetros (zonas, cargas permanentes, cpe/cpi, limites de flecha, γM, resistências do fabricante) em `projeto["verificacao"]`,
+com a origem de cada um; API `GET/PUT /api/lsf/studies/{id}/verificacao`; capítulo no dossier PDF, folha no Excel, resumo na
+ferramenta `calcul_lsf`. Não verifica: sismo (NP EN 1998-1), ligações aparafusadas, esmagamento da alma, fogo.
+
 ## Âmbito
 
 Pré-dimensionamento e quantidades: perfis, espaçamentos, ancoragens e regras de fixação são **parâmetros** do projeto
-(com a sua origem). A verificação estrutural (EN 1993-1-3, EN 1998-1) e a assinatura cabem ao projeto de estabilidade.
+(com a sua origem). A verificação acima é indicativa; a verificação sísmica, as ligações e a assinatura cabem ao projeto de estabilidade.
 
 ## Testes
 
-`pytest tests/test_lsf_engine.py tests/test_lsf_routes_pt.py` — contagens verificadas à mão (comprimentos, parafusos,
+`pytest tests/test_lsf_engine.py tests/test_lsf_routes_pt.py tests/test_lsf_verificacao.py` — contagens verificadas à mão (comprimentos, parafusos,
 ancoragens, parafusos de placa linha a linha), planta real (fixture MEP), plano de corte sem sobreposições, determinismo,
 preços (nada inventado), dossier PT/FR/EN/UK, Excel, visualizador, ferramenta do Assistente, fluxo completo da API.
 
