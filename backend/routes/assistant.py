@@ -61,6 +61,8 @@ from engines.calc_lots.assistant_bridge import (CALC_TOOLS, CALC_TOOL_NAMES, CAL
 from engines.assistant_missions import MISSION_INSTRUCTIONS, MISSION_TOOL_NAMES, MISSION_TOOLS, run_mission_tool
 from engines.baie_detail_tool import (WINDOW_TOOLS, WINDOW_TOOL_NAMES, WINDOW_INSTRUCTIONS, WINDOW_STATUS, execute_window_tool)
 from engines.edificio_ba.assistant_tool import (TOOLS as EDIF_TOOLS, TOOL_NAMES as EDIF_TOOL_NAMES, TOOL_STATUS as EDIF_STATUS, INSTRUCTIONS as EDIF_INSTRUCTIONS, execute as execute_edif_tool)
+# Mapa de quantidades medido numa planta ESTRUTURAL em PDF (engines/mapa_estrutura)
+from engines.mapa_estrutura.assistant_tool import (TOOLS as MAPA_ESTR_TOOLS, TOOL_NAMES as MAPA_ESTR_TOOL_NAMES, TOOL_STATUS as MAPA_ESTR_STATUS, INSTRUCTIONS as MAPA_ESTR_INSTRUCTIONS, execute as execute_mapa_estr_tool)
 from engines.dossier_tool import (TOOLS as DOSSIER_TOOLS, TOOL_NAMES as DOSSIER_TOOL_NAMES, STATUS as DOSSIER_STATUS, INSTRUCTIONS as DOSSIER_INSTRUCTIONS,  # processos completos / ZIP
                                   execute as execute_dossier_tool, list_dossier, context_text as dossier_context_text)
 
@@ -291,7 +293,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamento_cad_completo"}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + MAPA_ESTR_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
     if assistant_clt.allowed(user):
@@ -732,6 +734,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
         return await run_bet_core_tool(name, args, user, conv, _allowed_doc)
     if name in EDIF_TOOL_NAMES:
         return await execute_edif_tool(name, args, user, conv, db)
+    if name in MAPA_ESTR_TOOL_NAMES:
+        return await execute_mapa_estr_tool(name, args, user, conv, db)
     if name in CALC_TOOL_NAMES:
         return await execute_calc_tool(name, args, user, conv, db)
     if name in MISSION_TOOL_NAMES:
@@ -1819,6 +1823,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
+        instructions += MAPA_ESTR_INSTRUCTIONS
         if any(t.get("name") in assistant_clt.NAMES for t in tools_for(user)):
             instructions += assistant_clt.INSTRUCTIONS
         if any(t.get("name") in assistant_clt_agent.NAMES for t in tools_for(user)):
@@ -2219,12 +2224,14 @@ TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor rev
 
 # BET-PT motores paridade .fr — merge dos status dos novos motores em ambos os dicionários
 TOOL_STATUS_PT.update(EDIF_STATUS)
+TOOL_STATUS_PT.update(MAPA_ESTR_STATUS)
 TOOL_STATUS_PT.update(CALC_STATUS)
 MISSION_STATUS = {"programme_ia_options": "Leitura das opções do motor IA…", "lancer_programme_ia": "Lançamento do programa IA…",
                   "suivre_programme_ia": "Acompanhamento do programa IA…"}
 TOOL_STATUS_PT.update(MISSION_STATUS)
 TOOL_STATUS.update(MISSION_STATUS)
 TOOL_STATUS.update(EDIF_STATUS)
+TOOL_STATUS.update(MAPA_ESTR_STATUS)
 TOOL_STATUS.update(CALC_STATUS)
 TOOL_STATUS_PT.update(WINDOW_STATUS)
 TOOL_STATUS_PT.update(DOSSIER_STATUS)
