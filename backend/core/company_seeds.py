@@ -91,9 +91,9 @@ COMPANIES = [
         "lang": "pt",
         "logo_file": "leveldesire.png",
         "temp_password_env": "LEVELDESIRE_TEMP_PASSWORD",
-        # empreinte bcrypt du mot de passe communiqué par le fondateur (jamais en clair) ; pas de changement forcé
+        # Palavra-passe SÓ nos segredos (env LEVELDESIRE_TEMP_PASSWORD ou ficheiro privado) : nada no código,
+        # nem sequer a empreinte. Sem segredo → conta criada sem palavra-passe (não entra) até o segredo existir.
         "temp_password_version": 1,
-        "temp_password_bcrypt": "$2b$12$QoP5UI8T.wH1Q/KvfZHANOzp7KGSDshHdgD5ZDNS0H21.ZSkqAfCW",
         "must_change_password": False,
         "pro_business_entitlement": True,
         "style_defaults": {"account_type": "pro_business", "brand_doc_layout": "detaille"},
@@ -160,6 +160,26 @@ COMPANIES = [
 ]
 
 
+
+def _secret(key: str) -> str:
+    """Segredo por variável de ambiente OU ficheiro privado `<GRANT_SECRETS_DIR>/<key>` (por omissão
+    /app/backend/.grant_secrets/, fora do git). Vazio se não existir."""
+    if not key:
+        return ""
+    v = (os.environ.get(key) or "").strip()
+    if v:
+        return v
+    folder = (os.environ.get("GRANT_SECRETS_DIR") or "/app/backend/.grant_secrets").strip()
+    try:
+        path = os.path.join(folder, key)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as fh:
+                return fh.read().strip()
+    except OSError as exc:  # noqa: BLE001
+        logger.warning("Ficheiro de segredo %s ilegível: %s", key, exc)
+    return ""
+
+
 def _logo_data_url(fname: str) -> str | None:
     p = LOGO_DIR / fname
     if not p.is_file():
@@ -197,7 +217,7 @@ async def apply_company_seeds(db, new_user_id, hash_password=None) -> dict:
                 summary[email] = "exists"
             # Palavra-passe provisória (só via env, nunca no código) : posée UNIQUEMENT si le
             # compte n'a encore aucun mot de passe ; jamais de réécriture d'un mot de passe existant.
-            temp_pw = (os.environ.get(c.get("temp_password_env") or "") or "").strip()
+            temp_pw = _secret(c.get("temp_password_env") or "")
             temp_hash = hash_password(temp_pw) if (temp_pw and hash_password) else c.get("temp_password_bcrypt")
             # Posé si le compte n'a pas de mot de passe, OU une seule fois (marqueur temp_password_version)
             # pour remettre le mot de passe provisoire connu, tant que l'entreprise ne l'a pas changé.

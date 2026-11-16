@@ -9,7 +9,9 @@ mm = pytest.importorskip("mongomock_motor")
 from core import company_seeds as CS  # noqa: E402
 
 
-def test_leveldesire_account_created(monkeypatch):
+def test_leveldesire_account_created(monkeypatch, tmp_path):
+    monkeypatch.setenv("GRANT_SECRETS_DIR", str(tmp_path))
+    monkeypatch.setenv("LEVELDESIRE_TEMP_PASSWORD", "Segredo-so-de-teste-1")
     db = mm.AsyncMongoMockClient()["t"]
     photos = []
 
@@ -26,7 +28,7 @@ def test_leveldesire_account_created(monkeypatch):
     s1, s2, u, ents = asyncio.run(run())
     assert "created" in s1["jorge.gois@leveldesire.com"] and "+pro_business" in s1["jorge.gois@leveldesire.com"]
     assert s2["jorge.gois@leveldesire.com"] == "exists"
-    assert bcrypt.checkpw(b"Ruquinha2020", u["password_hash"].encode()) and u["must_change_password"] is False
+    assert bcrypt.checkpw(b"Segredo-so-de-teste-1", u["password_hash"].encode()) and u["must_change_password"] is False
     assert u["account_type"] == "pro_business" and u["plan"] == "premium" and u["brand_accent_color"] == "#009B95"
     assert u["public_slug"] == "leveldesire" and u["brand_logo_b64"].startswith("data:image/png;base64,")
     assert "Avenida João XXI" in u["brand_address"] and u["public_contact_phone"] == "+351 968 364 515"
@@ -75,3 +77,20 @@ def test_conta_info_renomeada_para_jorge(monkeypatch):
     assert s["jorge.gois@leveldesire.com"].startswith("renamed_from:info@leveldesire.com")
     assert len(users) == 1 and users[0]["user_id"] == "u9" and users[0]["email"] == "jorge.gois@leveldesire.com"
     assert users[0]["password_hash"] == "HASH-DA-EMPRESA"
+
+
+def test_leveldesire_sem_segredo_nao_ha_palavra_passe_no_codigo(monkeypatch, tmp_path):
+    """Sem segredo configurado a conta é criada mas NÃO entra (nada de empreinte no código)."""
+    monkeypatch.setenv("GRANT_SECRETS_DIR", str(tmp_path))
+    monkeypatch.delenv("LEVELDESIRE_TEMP_PASSWORD", raising=False)
+    db = mm.AsyncMongoMockClient()["t"]
+
+    async def fake_photos(db_, uid, c):
+        return None
+    monkeypatch.setattr(CS, "_seed_photos", fake_photos)
+    n = iter(range(100))
+    asyncio.run(CS.apply_company_seeds(db, lambda: f"user_{next(n)}",
+                                       lambda pw: bcrypt.hashpw(pw.encode(), bcrypt.gensalt(4)).decode()))
+    u = asyncio.run(db.users.find_one({"email": "jorge.gois@leveldesire.com"}))
+    assert not u.get("password_hash")
+    assert "QoP5UI8T" not in open(CS.__file__, encoding="utf-8").read()
