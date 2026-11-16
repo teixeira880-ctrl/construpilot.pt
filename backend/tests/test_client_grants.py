@@ -91,3 +91,39 @@ def test_conta_ja_registada_recebe_so_o_acesso(monkeypatch):
 def test_sem_password_em_claro_no_modulo():
     src = open(cg.__file__, encoding="utf-8").read()
     assert "os.environ.get" in src and "GRANT_RUI_PASSWORD" in src
+
+
+def _run_ubi(db, monkeypatch, tmp_path, env=None, file_pw=None):
+    monkeypatch.delenv("GRANT_RUI_PASSWORD", raising=False)
+    monkeypatch.setenv("GRANT_SECRETS_DIR", str(tmp_path))
+    if env is None:
+        monkeypatch.delenv("GRANT_UBI_PASSWORD", raising=False)
+    else:
+        monkeypatch.setenv("GRANT_UBI_PASSWORD", env)
+    if file_pw is not None:
+        (tmp_path / "GRANT_UBI_PASSWORD").write_text(file_pw + "\n", encoding="utf-8")
+    ids = iter(f"user_{i}" for i in range(10))
+    return asyncio.run(cg.apply_client_grants(db, lambda p: "h:" + p, lambda: next(ids), now=_NOW))
+
+
+def test_ubi_password_vinda_de_ficheiro_privado(monkeypatch, tmp_path):
+    db = _DB()
+    s = _run_ubi(db, monkeypatch, tmp_path, file_pw="Do-ficheiro-1")
+    assert s["ubi@construpilot.pt"] == "created+granted"
+    u = db.users.docs[0]
+    assert u["password_hash"] == "h:Do-ficheiro-1" and u["must_change_password"] is True
+    assert u["account_type"] == "pro_business" and u["company_name"] == "Universidade da Beira Interior"
+    assert db.entitlements.docs[0]["expires_at"] == (_NOW + timedelta(days=365)).isoformat()
+
+
+def test_ubi_variavel_tem_prioridade_sobre_ficheiro(monkeypatch, tmp_path):
+    db = _DB()
+    _run_ubi(db, monkeypatch, tmp_path, env="Da-variavel", file_pw="Do-ficheiro-1")
+    assert db.users.docs[0]["password_hash"] == "h:Da-variavel"
+
+
+def test_ubi_sem_variavel_nem_ficheiro_e_saltada(monkeypatch, tmp_path):
+    db = _DB()
+    s = _run_ubi(db, monkeypatch, tmp_path)
+    assert s["ubi@construpilot.pt"] == "skipped_no_password"
+    assert db.users.docs == []

@@ -6,7 +6,10 @@ contas de teste.
 
 Regras:
   - Zero password em claro no código: a palavra-passe provisória é lida de uma
-    variável de ambiente por conta. Sem variável → conta saltada (fail-closed).
+    variável de ambiente por conta OU, se a variável não existir, de um ficheiro
+    privado `<GRANT_SECRETS_DIR>/<NOME_DA_VARIÁVEL>` (por omissão
+    `/app/backend/.grant_secrets/`, fora do git). Sem nenhum dos dois → conta
+    saltada (fail-closed).
   - Conta nova: criada com `must_change_password=True` (a app obriga a mudar a
     palavra-passe na primeira ligação) e um entitlement com `expires_at`.
   - Conta existente: a palavra-passe NUNCA é reescrita. Só é garantido o
@@ -29,13 +32,24 @@ GRANTS = [
      "company_name": "Universidade da Beira Interior",
      "temp_password_env": "GRANT_UBI_PASSWORD",
      "account_type": "pro_business", "plan_id": "pro_business_yearly",
-     "valid_days": 90},  # conta de teste Pro Business (UBI), 3 meses
+     "valid_days": 365},  # cliente real (UBI), Pro Business 1 ano; renovável
 ]
 
 
 def _env(key: str) -> str | None:
     v = (os.environ.get(key) or "").strip()
-    return v or None
+    if v:
+        return v
+    # Alternativa sem variável de ambiente: ficheiro privado fora do repositório.
+    folder = (os.environ.get("GRANT_SECRETS_DIR") or "/app/backend/.grant_secrets").strip()
+    try:
+        path = os.path.join(folder, key)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as fh:
+                return fh.read().strip() or None
+    except OSError as exc:  # noqa: BLE001
+        logger.warning("Ficheiro de segredo %s ilegível: %s", key, exc)
+    return None
 
 
 async def apply_client_grants(db, hash_password, new_user_id, now: datetime | None = None) -> dict:
