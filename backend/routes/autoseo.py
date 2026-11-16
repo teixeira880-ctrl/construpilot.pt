@@ -24,6 +24,7 @@ from starlette.concurrency import run_in_threadpool
 
 from core.db import db
 from engines import storage
+from html_safe import sanitize_html
 
 router = APIRouter(tags=["autoseo"])
 logger = logging.getLogger(__name__)
@@ -111,7 +112,7 @@ async def autoseo_webhook(
             "slug": slug,
             "published_url": payload.get("published_url") or f"{SITE_URL}/blog/{slug}",
             "meta_description": payload.get("metaDescription"),
-            "content_html": payload.get("content_html"),
+            "content_html": sanitize_html(payload.get("content_html") or ""),
             "content_markdown": payload.get("content_markdown"),
             "hero_image_url": f"{media_base}/hero" if hero else None,
             "hero_image_storage": hero["storage_path"] if hero else None,
@@ -169,6 +170,7 @@ async def get_autoseo_article(slug: str):
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Article not found")
+    doc["content_html"] = sanitize_html(doc.get("content_html") or "")  # também limpa artigos antigos já guardados
     return doc
 
 

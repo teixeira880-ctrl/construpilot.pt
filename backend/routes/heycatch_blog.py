@@ -12,13 +12,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 import time
 from urllib.parse import quote
 
 import httpx
-from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
+
+from html_safe import sanitize_html  # noqa: F401 — reexportado (usado por outros módulos e testes)
 
 log = logging.getLogger("heycatch")
 router = APIRouter(prefix="/blog/heycatch", tags=["blog"])
@@ -26,44 +26,10 @@ BASE = os.environ.get("HEYCATCH_API_BASE", "https://api.heycatch.ai/v1").rstrip(
 TTL = 120.0
 _cache: dict[str, tuple[float, object]] = {}
 
-ALLOWED = {"h2", "h3", "h4", "h5", "h6", "p", "br", "hr", "ul", "ol", "li", "table", "thead", "tbody", "tfoot", "tr", "th",
-           "td", "caption", "a", "blockquote", "strong", "b", "em", "i", "u", "s", "code", "pre", "sup", "sub", "span", "div",
-           "section", "aside", "figure", "figcaption", "img", "details", "summary", "dl", "dt", "dd", "mark", "small", "abbr"}
-DROP = {"script", "style", "iframe", "object", "embed", "noscript", "template", "form", "input", "button", "link", "meta",
-        "svg", "math", "frame", "frameset", "base"}
-ATTRS = {"href", "title", "id", "class", "src", "alt", "width", "height", "colspan", "rowspan", "scope", "start", "rel",
-         "target", "loading", "open"}
-_BAD_URL = re.compile(r"^\s*(javascript|vbscript|data):", re.I)
-
-
-# Chave publicável do blog (o guia HeyCatch permite-a no código) ; HEYCATCH_API_KEY no ambiente tem prioridade.
-_PUBLISHABLE_KEY = "hck_lv_cfcae4f9a95924320149f4e4"
-
 
 def _key() -> str:
-    return (os.environ.get("HEYCATCH_API_KEY") or _PUBLISHABLE_KEY).strip()
-
-
-def sanitize_html(html: str) -> str:
-    """Mantém títulos, parágrafos, listas, tabelas, ligações, citações, ênfases, código e o id dos h2."""
-    soup = BeautifulSoup(html or "", "html.parser")
-    for tag in soup.find_all(DROP):
-        tag.decompose()
-    for tag in soup.find_all("h1"):     # o título do artigo (já mostrado) é o único <h1> da página
-        tag.decompose()
-    for tag in soup.find_all(True):
-        if tag.name not in ALLOWED:
-            tag.unwrap()
-            continue
-        for attr in list(tag.attrs):
-            val = tag.attrs[attr]
-            sval = " ".join(val) if isinstance(val, list) else str(val)
-            if attr.lower().startswith("on") or attr not in ATTRS or (attr in ("href", "src") and _BAD_URL.match(sval)):
-                del tag.attrs[attr]
-        if tag.name == "a" and tag.get("href", "").startswith("http") and "construpilot.pt" not in tag.get("href", ""):
-            tag["rel"] = "noopener noreferrer"
-            tag["target"] = "_blank"
-    return str(soup)
+    """Chave só no ambiente (HEYCATCH_API_KEY). Sem chave, o blog HeyCatch fica vazio (falha fechada)."""
+    return (os.environ.get("HEYCATCH_API_KEY") or "").strip()
 
 
 async def _get(path: str, params: dict) -> tuple[int, dict]:

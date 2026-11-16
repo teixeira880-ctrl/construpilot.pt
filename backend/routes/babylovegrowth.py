@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from core.db import db
 from core.security import admin_user
+from html_safe import sanitize_html
 from routes.autoseo import SITE_URL, _download_and_store
 
 router = APIRouter(tags=["babylovegrowth"])
@@ -101,7 +102,7 @@ async def _upsert(article: dict, event: str) -> str | None:
     slug = article.get("slug") or _slugify(article.get("title"))
     hero_src = article.get("hero_image_url") or article.get("featured_image")
     hero = await run_in_threadpool(_download_and_store, hero_src, aid, "hero")
-    html = article.get("content_html") or article.get("content") or ""
+    html = sanitize_html(article.get("content_html") or article.get("content") or "")
     created = article.get("created_at") or article.get("publish_date") or _now()
     doc = {
         "autoseo_id": aid, "source": SOURCE, "last_event": event,

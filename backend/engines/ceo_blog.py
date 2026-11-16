@@ -19,6 +19,7 @@ from core.db import db
 from engines import ceo_media, storage
 from engines.ai import _complete, _json
 from engines.expenses import cap
+from html_safe import sanitize_html
 
 log = logging.getLogger("ceo.blog")
 
@@ -203,7 +204,7 @@ async def generate_article(topic: str, keywords: list[str] | None = None, audien
         "published_url": f"{SITE_URL}/blog/{slug}",
         "meta_description": (data.get("meta_description") or "")[:160],
         "excerpt": (data.get("meta_description") or "")[:200],
-        "content_html": content_html, "content_markdown": None,
+        "content_html": sanitize_html(content_html), "content_markdown": None,
         "faq_schema": faq,
         "hero_image_url": hero_url, "hero_image_storage": hero_storage,
         "hero_image_alt": data.get("title"),

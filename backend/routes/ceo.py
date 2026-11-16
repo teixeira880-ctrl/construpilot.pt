@@ -31,6 +31,7 @@ from engines import storage
 from engines import ceo_media
 from engines import ceo_blog, ceo_daily
 from engines import emailer
+from html_safe import sanitize_html
 from engines.ai import _complete, _json
 from engines.expenses import cap
 from engines.expenses.context import bind
@@ -290,6 +291,9 @@ async def email_draft(body: EmailIn, admin=Depends(admin_user)) -> dict:
     emails = data.get("emails") or []
     if not emails or not isinstance(emails, list):
         raise HTTPException(502, "Geração do e-mail impossível, tente novamente.")
+    for em in emails:
+        if isinstance(em, dict):
+            em["body_html"] = sanitize_html(em.get("body_html") or "")
     copy_id = "cpy_" + secrets.token_hex(8)
     doc = {
         "copy_id": copy_id, "kind": "email", "email_type": etype, "audience": body.audience,
@@ -412,7 +416,12 @@ async def list_drafts() -> dict:
         {}, {"_id": 0, "storage_path": 0}
     ).sort("created_at", -1).to_list(100)
     copies = await db.ceo_copy.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    for blk in blog:
+        blk["content_html"] = sanitize_html(blk.get("content_html") or "")
     emails = [c for c in copies if c.get("kind") == "email"]
+    for c in emails:
+        for em in (c.get("payload") or {}).get("emails") or []:
+            em["body_html"] = sanitize_html(em.get("body_html") or "")
     ads = [c for c in copies if c.get("kind") == "ad"]
     videos = [c for c in copies if c.get("kind") == "video"]
     return {"blog": blog, "assets": assets, "emails": emails, "ads": ads, "videos": videos}
@@ -435,7 +444,7 @@ async def review_copy(copy_id: str, action: str) -> dict:
 def _render_email_html(em: dict, unsub_url: str | None) -> str:
     subject = (em.get("subjects") or ["ConstruPilot"])[0]
     return emailer.wrap_html(
-        title=subject, body=em.get("body_html") or "",
+        title=subject, body=sanitize_html(em.get("body_html") or ""),
         cta_url=SITE_URL, cta_label=em.get("cta_label") or "Descobrir ConstruPilot",
         unsubscribe_url=unsub_url)
 
