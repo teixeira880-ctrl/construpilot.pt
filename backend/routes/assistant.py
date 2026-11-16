@@ -2438,7 +2438,7 @@ async def write_state(conversation_id: str, body: StateEntryIn, user=Depends(cur
 
 
 @router.post("/pdf-pages")
-async def pdf_pages(file: UploadFile = File(...), user=Depends(current_user)) -> dict:
+async def pdf_pages(file: UploadFile = File(...), hd: bool = False, user=Depends(current_user)) -> dict:
     """Pages d'un PDF déjà téléchargé par l'utilisateur, rendues en JPEG pour la visionneuse (mobile inclus). 8 pages max."""
     # SEC-X-003 (Y.2): PDF only + max 25 MB preservado.
     from core.uploads import validate_upload, ALLOWED_DOCUMENT
@@ -2451,8 +2451,9 @@ async def pdf_pages(file: UploadFile = File(...), user=Depends(current_user)) ->
         out = []
         with pymupdf.open(stream=data, filetype="pdf") as doc:
             for page in list(doc)[:8]:
-                z = 1400 / max(page.rect.width, page.rect.height)
-                out.append(base64.b64encode(page.get_pixmap(matrix=pymupdf.Matrix(z, z), alpha=False).tobytes("jpeg")).decode())
+                z = (2400 if hd else 1400) / max(page.rect.width, page.rect.height)
+                page_image = page.get_pixmap(matrix=pymupdf.Matrix(z, z), alpha=False)
+                out.append(base64.b64encode(page_image.tobytes("jpeg", jpg_quality=93 if hd else 88)).decode())
             return {"pages": out, "total_pages": len(doc)}
     return await asyncio.to_thread(render)
 
