@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+    branches: [main, Construpilot, "claude/**"]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Instalar dependências
+        run: pip install -r requirements.txt pytest
+      - name: Testes sem base de dados (segurança, sanitização, motores)
+        run: >
+          python -m pytest -q -p no:cacheprovider -o addopts=""
+          tests/test_html_safe.py tests/test_security_policy.py
+          tests/bet_frame tests/test_mapa_estrutura.py
+      - name: Auditoria de dependências (informativa)
+        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r requirements.txt

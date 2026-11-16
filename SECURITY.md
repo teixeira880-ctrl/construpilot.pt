@@ -291,3 +291,11 @@ cd /app/backend && pytest tests/test_websummit_demo.py -v
 BASE_URL=http://localhost:3000 API_URL=http://localhost:8001 \
   node /app/frontend/e2e/websummit_demo.spec.js
 ```
+
+## Sanitização de HTML (2026-11-16)
+
+- Todo o HTML de blog e de e-mail (AutoSEO, BabyLoveGrowth, agente CEO, HeyCatch) passa por
+  `backend/html_safe.py::sanitize_html` ao guardar e ao servir (lista branca de etiquetas/atributos;
+  sem scripts, iframes, `on*`, `javascript:`/`data:`).
+- A chave HeyCatch vive só em `HEYCATCH_API_KEY`; sem ela o blog fica vazio (falha fechada).
+- Teste: `backend/tests/test_html_safe.py`.
