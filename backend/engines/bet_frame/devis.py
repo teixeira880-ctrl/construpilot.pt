@@ -21,9 +21,9 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
     P = {k: v[1 if pt else 0] for k, v in PRICES.items()}
     L = []
 
-    def add(lot, des, unit, qty, pu):
+    def add(lot, des, unit, qty, pu, key=None):
         if qty and qty > 0:
-            L.append({"lot": lot, "des": des, "unit": unit, "qty": round(qty, 2), "pu": pu})
+            L.append({"lot": lot, "des": des, "unit": unit, "qty": round(qty, 2), "pu": pu, **({"key": key} if key else {})})
     f = r["foundations"]
     bas = r.get("basement")
     lot1 = _("1. Terrassements et fondations", "1. Movimento de terras e fundações")
@@ -85,8 +85,8 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
             kgs += (p["mesh_short"]["As"] + p["mesh_long"]["As"] + top * 0.6) * pa * 1.10 * STEEL
     add(lot2, _("Béton des poutres (retombées)", "Betão em vigas (abaixo da laje)"), "m³", vb, P["beton_elev"])
     add(lot2, _("Coffrage des poutres", "Cofragem de vigas"), "m²", fb, P["coff_poutre"])
-    add(lot2, _("Béton des dalles pleines", "Betão em lajes maciças"), "m³", vs, P["beton_dalle"])
-    add(lot2, _("Coffrage et étaiement des dalles", "Cofragem e escoramento de lajes"), "m²", fs, P["coff_dalle"])
+    add(lot2, _("Béton des dalles pleines", "Betão em lajes maciças"), "m³", vs, P["beton_dalle"], key="laje_betao")
+    add(lot2, _("Coffrage et étaiement des dalles", "Cofragem e escoramento de lajes"), "m²", fs, P["coff_dalle"], key="laje_cofragem")
     vbal = sum((bc["a1"] - bc["a0"]) * bc["depth"] * bc["h"] * max(len(bc["levels"]), 1) for bc in r.get("balconies") or [])
     add(lot2, _("Béton des balcons en console", "Betão em varandas em consola"), "m³", vbal, P["beton_dalle"])
     hcore = r["floors"][-1]["slab"].z - m.levels[0].z
@@ -106,7 +106,7 @@ def build_lines(m: Frame, r: dict, e: dict) -> list[dict]:
         kgw = 0.0
     lv0 = m.levels[0]
     if lv0.on_grade:
-        add(lot2, _(f"Dallage / dalle sur terre-plein {lv0.name} e=0,15 (treillis soudé)", f"Laje térrea {lv0.name} e=0,15 (malha eletrossoldada)"), "m²", m.footprint, P["dallage"])
+        add(lot2, _(f"Dallage / dalle sur terre-plein {lv0.name} e=0,15 (treillis soudé)", f"Laje térrea {lv0.name} e=0,15 (malha eletrossoldada)"), "m²", m.footprint, P["dallage"], key="laje_terrea")
     kg2 = kgcol + kgb + kgs + vbal * 110 + vcore * 80 + kgw
     add(lot2, _(f"Aciers {r['mat']['steel']} façonnés — ossature", f"Aço {r['mat']['steel']} moldado — estrutura"), "kg", kg2 * 1.05, P["acier"])
     # ---------------------------------------------------------------- réseaux collectifs
@@ -155,7 +155,8 @@ def write_xlsx(path, m: Frame, lines: list[dict]):
     row = 5
     first = row
     for x in lines:
-        ws.append([x["lot"], x["des"], x["unit"], x["qty"], x["pu"], f"=D{row}*E{row}"])
+        des = x["des"] + (_(" — estimation à confirmer", " — estimativa a confirmar") if x.get("por_confirmar") else "")
+        ws.append([x["lot"], des, x["unit"], x["qty"], x["pu"], f"=D{row}*E{row}"])
         ws[f"E{row}"].number_format = "#,##0.00"
         ws[f"F{row}"].number_format = "#,##0.00"
         row += 1

@@ -38,6 +38,20 @@ def _thermal(m, anomalies: list) -> dict | None:
         return None
 
 
+def _verificar(m, r, lines: list[dict], anomalies: list) -> dict | None:
+    """Verificação cruzada das quantidades do orçamento ; nunca bloqueia nem interrompe o estudo."""
+    try:
+        from . import verificacao
+        res = verificacao.reconciliar(m, r, lines)
+        anomalies.extend(res["avisos"])
+        return res
+    except Exception as exc:  # noqa: BLE001
+        anomalies.append({"code": "VERIF-ERR", "level": model.WARN,
+                          "message": _(f"Vérification croisée non exécutée ({type(exc).__name__}: {str(exc)[:160]}).",
+                                       f"Verificação cruzada não executada ({type(exc).__name__}: {str(exc)[:160]}).")})
+        return None
+
+
 def is_frame(raw: dict | None) -> bool:
     return bool(raw) and raw.get("kind") == "frame"
 
@@ -123,6 +137,7 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
             th = _thermal(m, anomalies)
             shs = sheets.all_sheets(m, r, e, th)
             lines = devis.build_lines(m, r, e)
+            verif = _verificar(m, r, lines, anomalies)         # 2.ª fonte + IA: corrige o orçamento antes de o oferecer
             tot = devis.totals(lines, m.country)
             rev = report.review(m, r, e, anomalies)
         except Exception as exc:  # noqa: BLE001 — jamais de plantage muet : une anomalie lisible
@@ -199,6 +214,7 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
                 cl[x["classe"]] = cl.get(x["classe"], 0) + 1
             thermo = {"classes": cl, "heating_kw": round(sum(x["phi_w"] for x in th["units"]) / 1000, 1), "units": len(th["units"])}
         return {"status": rev["status"], "blocking": rev["blocking"], "lang": lang, "kind": "frame", "thermal": thermo,
+                "verificacao": ({k: verif[k] for k in ("tentativas", "corrigidos", "por_confirmar", "log")} if verif else None),
                 "sheets": [s.code + " " + s.title for s in shs], "devis_ht": tot["ht"], "devis_ttc": tot["ttc"],
                 "decisions": r["decisions"], "anomalies": [a for a in anomalies + r["issues"] if a.get("level") != model.BLOCK],
                 "review": [i for i in rev["items"] if str(i.get("level", "")).upper() != "OK"][:40],
