@@ -127,3 +127,18 @@ def test_ubi_sem_variavel_nem_ficheiro_e_saltada(monkeypatch, tmp_path):
     s = _run_ubi(db, monkeypatch, tmp_path)
     assert s["ubi@construpilot.pt"] == "skipped_no_password"
     assert db.users.docs == []
+
+
+def test_ubi_existente_com_90_dias_e_estendida_para_365(monkeypatch, tmp_path):
+    db = _DB()
+    db.users.docs.append({"email": "ubi@construpilot.pt", "user_id": "u_ubi", "password_hash": "h:antiga"})
+    start = _NOW - timedelta(days=2)
+    db.entitlements.docs.append({"entitlement_id": "admin_grant_u_ubi", "user_id": "u_ubi",
+                                 "granted_at": start.isoformat(),
+                                 "expires_at": (start + timedelta(days=90)).isoformat()})
+    s = _run_ubi(db, monkeypatch, tmp_path)
+    assert s["ubi@construpilot.pt"] == "exists+extended"
+    assert db.entitlements.docs[0]["expires_at"] == (start + timedelta(days=365)).isoformat()
+    assert db.users.docs[0]["password_hash"] == "h:antiga"   # palavra-passe nunca reescrita
+    s2 = _run_ubi(db, monkeypatch, tmp_path)                  # idempotente
+    assert s2["ubi@construpilot.pt"] == "exists"

@@ -79,7 +79,19 @@ async def apply_client_grants(db, hash_password, new_user_id, now: datetime | No
             else:
                 summary[email] = "exists"
             ent_id = f"admin_grant_{user['user_id']}"
-            if await db.entitlements.find_one({"entitlement_id": ent_id}, {"_id": 0}):
+            existing = await db.entitlements.find_one({"entitlement_id": ent_id}, {"_id": 0})
+            if existing:
+                # A validade só pode ser ESTENDIDA (nunca encurtada): conta desde a primeira concessão.
+                try:
+                    start = datetime.fromisoformat(existing.get("granted_at") or now_iso)
+                    target = (start + timedelta(days=g["valid_days"])).isoformat()
+                    if (existing.get("expires_at") or "") < target:
+                        await db.entitlements.update_one(
+                            {"entitlement_id": ent_id}, {"$set": {"expires_at": target}})
+                        summary[email] += "+extended"
+                        logger.info("Validade de %s estendida até %s", email, target)
+                except (TypeError, ValueError) as exc:
+                    logger.warning("Validade de %s não ajustada: %s", email, exc)
                 continue
             exp = (now_dt + timedelta(days=g["valid_days"])).isoformat()
             await db.entitlements.update_one(
