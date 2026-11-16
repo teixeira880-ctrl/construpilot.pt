@@ -26,6 +26,7 @@ class Envelope(_Open):
     width_y: float
     wall_total_thickness: float
     wall_structural_thickness: float
+    footprint_shape: Literal["rectangular", "non_rectangular"] | None = None
 
 
 class Side(_Open):
@@ -141,7 +142,7 @@ def json_schema() -> dict:
                 "schema_version": {"type": "string"},
                 "project": {"type": "object"},
                 "envelope": {"type": "object", "properties": {"length_x": _NUM, "width_y": _NUM, "wall_total_thickness": _NUM,
-                             "wall_structural_thickness": _NUM},
+                             "wall_structural_thickness": _NUM, "footprint_shape": {"type": "string", "enum": ["rectangular", "non_rectangular"]}},
                              "required": ["length_x", "width_y", "wall_total_thickness", "wall_structural_thickness"]},
                 "sides": {"type": "object", "additionalProperties": side},
                 "levels": {"type": "array", "items": level},

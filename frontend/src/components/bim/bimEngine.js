@@ -60,22 +60,29 @@ export async function createBimViewer(container, { onSelect, background = "#f5f5
     }
   }
 
-  async function pick() {
-    const hit = await caster.castRay();
+  async function selectItem(model, localId) {
     await clearSelection();
-    if (!hit || hit.localId === undefined || !hit.fragments) {
+    if (localId === null || localId === undefined || !model) {
       onSelect?.(null);
       return;
     }
-    const model = hit.fragments;
-    selected = { model, localId: hit.localId };
-    await model.highlight([hit.localId], HIGHLIGHT);
-    await fragments.core.update(true);
-    const [data] = await model.getItemsData([hit.localId], {
+    const [data] = await model.getItemsData([localId], {
       attributesDefault: true,
       relations: { IsDefinedBy: { attributes: true, relations: true }, HasAssociations: { attributes: true, relations: false } },
     });
-    onSelect?.(describeItem(data));
+    const item = describeItem(data);
+    // Keep the flooring visible when the pointer is on the finish itself.
+    if (item?.ifcClass?.toUpperCase() !== "IFCCOVERING") {
+      selected = { model, localId };
+      await model.highlight([localId], HIGHLIGHT);
+      await fragments.core.update(true);
+    }
+    onSelect?.(item);
+  }
+
+  async function pick() {
+    const hit = await caster.castRay();
+    await selectItem(hit?.fragments, hit?.localId);
   }
 
   // Clique simples (sem arrastar) = seleção.
@@ -90,8 +97,8 @@ export async function createBimViewer(container, { onSelect, background = "#f5f5
 
   return {
     async loadIfc(bytes, name = "modelo") {
-      for (const id of [...fragments.list.keys()]) await fragments.core.disposeModel(id);
       await clearSelection();
+      for (const id of [...fragments.list.keys()]) await fragments.core.disposeModel(id);
       const model = await ifcLoader.load(new Uint8Array(bytes), true, name);
       await this.fit();
       return model;
@@ -111,6 +118,17 @@ export async function createBimViewer(container, { onSelect, background = "#f5f5
       await world.camera.projection.set(mode === "ortho" ? "Orthographic" : "Perspective");
     },
     clearSelection,
+    async selectByGuid(guid) {
+      if (!guid) { await selectItem(null, null); return; }
+      for (const model of fragments.list.values()) {
+        const [localId] = await model.getLocalIdsByGuids([guid]);
+        if (localId !== null && localId !== undefined) {
+          await selectItem(model, localId);
+          return;
+        }
+      }
+      await selectItem(null, null);
+    },
     /** Pinta elementos por GlobalId: `colors` = { [guid]: "#rrggbb" }. Os restantes ficam semitransparentes. */
     async colorByGuid(colors) {
       const guids = Object.keys(colors);

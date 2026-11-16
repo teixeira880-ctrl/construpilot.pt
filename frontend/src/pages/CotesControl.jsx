@@ -75,16 +75,22 @@ export default function CotesControl() {
     setPlans(data.plans || []);
     return data.plans || [];
   }, []);
-  const loadPlan = useCallback(async (id) => {
+  const loadPlan = useCallback(async (id, initialPage) => {
     if (!id) return;
     const { data } = await api.get(`/takeoffs/${id}`);
     setPlan(data);
+    if (initialPage !== undefined) {
+      setPageIndex(Number.isInteger(initialPage) && initialPage >= 0 && initialPage < (data.page_count || data.pages?.length || 1) ? initialPage : 0);
+    }
   }, []);
 
   useEffect(() => {
     loadPlans().then((list) => {
       const id = params.get("plan") || list[0]?.plan_id;
-      if (id) { loadPlan(id); if (!params.get("plan")) setParams({ plan: id }, { replace: true }); }
+      if (id) {
+        if (!params.get("plan")) setParams({ plan: id }, { replace: true });
+        return loadPlan(id, Number(params.get("page") || 0));
+      }
     }).catch(() => toast.error("Carregamento das plantas impossível"));
   }, []); // eslint-disable-line
 
@@ -181,7 +187,7 @@ export default function CotesControl() {
           </Select>
         )}
         {plan && (
-          <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => navigate(`/plan?open=${plan.plan_id}`)} data-testid="cotes-open-editor">
+          <Button variant="outline" size="sm" className="rounded-sm gap-2" onClick={() => navigate(`/plan?open=${encodeURIComponent(plan.plan_id)}&page=${pageIndex}`)} data-testid="cotes-open-editor">
             <ExternalLink className="h-3.5 w-3.5" /> Abrir no editor de plantas
           </Button>
         )}

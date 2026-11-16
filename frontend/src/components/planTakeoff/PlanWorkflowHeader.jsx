@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronDown, ClipboardCheck, FileDown, FileText, Loader2, Ruler, Settings2, Sparkles } from "lucide-react";
+import { ArrowRight, Box, ChevronDown, ClipboardCheck, FileDown, FileText, Loader2, Ruler, Settings2, Sparkles } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import "./PlanWorkspace.css";
 
@@ -28,7 +28,7 @@ function ActionMenu({ label, icon: Icon, actions, disabled }) {
 
 export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, calibration, busy, mode, onModeChange,
   planKind, onPlanKindChange, onAnalyze, progress, hasRecap, onCalibrate, onReview, onEstimate,
-  documentActions, exportActions, studyActions, children }) {
+  documentActions, exportActions, studyActions, onBim, children }) {
   const selectedMode = MODES[mode] || MODES.complete;
   const stage = busy ? 1 : !calibration ? 0 : hasRecap ? 2 : 1;
   const steps = [
@@ -49,6 +49,9 @@ export default function PlanWorkflowHeader({ filename, pageIndex, pageCount, cal
         <ActionMenu label="Documento" icon={FileText} actions={documentActions} disabled={busy} />
         <ActionMenu label="Exportar" icon={FileDown} actions={exportActions} disabled={busy} />
         <ActionMenu label="Ferramentas" icon={Settings2} actions={studyActions} disabled={busy} />
+        {onBim && <button type="button" className="plan-menu-button" onClick={onBim} disabled={busy} data-testid="plan-open-bim">
+          <Box size={16} aria-hidden="true" /> BIM 3D
+        </button>}
       </div>
     </div>
     <nav className="plan-workflow-steps" aria-label="Etapas da medição">

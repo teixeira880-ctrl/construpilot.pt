@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, num } from "@/lib/api";
 
 /** Page de comparaison de deux plans (existant / projet).
  *  Route: /plan/compare */
 export default function PlanCompare() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPlan = searchParams.get("plan");
   const [plans, setPlans] = useState([]);
   const [beforeId, setBeforeId] = useState("");
   const [afterId, setAfterId] = useState("");
@@ -34,8 +36,12 @@ export default function PlanCompare() {
   const [showRemovedWalls, setShowRemovedWalls] = useState(true);
 
   useEffect(() => {
-    api.get("/takeoffs").then(({ data }) => setPlans(data.plans || []));
-  }, []);
+    api.get("/takeoffs").then(({ data }) => {
+      const available = data.plans || [];
+      setPlans(available);
+      if (available.some((plan) => plan.plan_id === requestedPlan)) setAfterId(requestedPlan);
+    }).catch(() => toast.error("Carregamento das plantas impossível"));
+  }, [requestedPlan]);
 
   const runCompare = async () => {
     if (!beforeId || !afterId) return toast.error("Selecione as 2 plantas");

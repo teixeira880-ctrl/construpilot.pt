@@ -164,6 +164,8 @@ def _geometry(raw):
 
 def _parts(raw):
     """→ dict material → lista de polígonos; mesmas regras que house3d (empenas, vãos, cobertura)."""
+    if raw.get("verified_footprint"):
+        return _verified_parts(raw)
     L, W, lvls, roof, eaves, ridge, sides, pitched = _geometry(raw)
     P = {"wall": [], "roof": [], "flat": [], "parapet": [], "frame": [], "glass": [], "door": [], "sill": [], "plinth": []}
     zb = 0.0
@@ -239,6 +241,78 @@ def _parts(raw):
     return P
 
 
+def _verified_parts(raw):
+    from shapely import constrained_delaunay_triangles
+    from shapely.geometry import LineString, Point, Polygon
+    from shapely.geometry.polygon import orient
+
+    spec = raw["verified_footprint"]
+    outline = Polygon(spec["vertices"])
+    vertices = list(outline.exterior.coords)
+    levels = H._levels(raw)
+    top = float(raw["roof"]["eaves_level"])
+    parts = {key: [] for key in ("wall", "granite", "timber", "flat", "parapet", "frame", "glass")}
+    deck = top - 0.28
+    faces = list(constrained_delaunay_triangles(outline).geoms)
+    if (not all(outline.covers(face) for face in faces)
+            or not math.isclose(sum(face.area for face in faces), outline.area, abs_tol=1e-7)):
+        raise ValueError("Roof mesh does not reproduce the verified footprint")
+    parts["flat"] = [[(x, y, deck) for x, y in orient(face).exterior.coords[:-1]] for face in faces]
+    for a, b in zip(vertices, vertices[1:]):
+        edge = LineString([a, b])
+        length = edge.length
+        ux, uy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
+
+        def point(t, z, recess=0.0):
+            return a[0] + ux * t - uy * recess, a[1] + uy * t + ux * recess, z
+
+        def quad(t0, t1, z0, z1, recess=0.0):
+            return [point(t0, z0, recess), point(t1, z0, recess),
+                    point(t1, z1, recess), point(t0, z1, recess)]
+
+        parts["parapet"].append(quad(0, length, deck, top))
+        for i, level in enumerate(levels):
+            lo = float(level["floor_top"])
+            hi = float(levels[i + 1]["floor_top"]) if i + 1 < len(levels) else deck
+            material = "granite" if i == 0 and spec["granite"] else "timber" if i and spec["timber"] else "wall"
+            marks = [sorted((edge.project(Point(p)), edge.project(Point(q))))
+                     for p, q in spec["openings"][i] if edge.buffer(0.015).covers(LineString([p, q]))]
+            last = 0.0
+            sill, lintel = lo + (0.12 if i == 0 else 0.85), min(lo + 2.33, hi - 0.12)
+            if lintel <= sill:
+                marks = []
+            for start, end in sorted(marks):
+                if end - start < 0.35 or start < last:
+                    continue
+                if start > last:
+                    parts[material].append(quad(last, start, lo, hi))
+                parts[material].extend([quad(start, end, lo, sill), quad(start, end, lintel, hi)])
+                parts["frame"].append(quad(start, end, sill, lintel, 0.12))
+                count = max(1, math.ceil((end - start) / 1.45))
+                width = (end - start) / count
+                for segment in range(count):
+                    x0 = start + width * segment
+                    parts["glass"].append(quad(x0 + 0.034, x0 + width - 0.034, sill + 0.05, lintel - 0.05, 0.108))
+                last = end
+            if last < length:
+                parts[material].append(quad(last, length, lo, hi))
+    return parts
+
+
+def _tex_granite():
+    rng = np.random.default_rng(21)
+    h, w = 512, 512
+    fine = rng.normal(0, 0.045, (h, w))
+    crystals = _noise(h, w, 6, 21) - 0.5
+    shade = 0.67 + fine + 0.24 * crystals
+    for y in range(0, h, 128):
+        shade[y:y + 2] *= 0.57
+        shift = 128 if (y // 128) % 2 else 0
+        for x in range(shift, w, 256):
+            shade[y:y + 128, x:x + 2] *= 0.62
+    return np.clip(shade[..., None] * np.array([1.0, 0.987, 0.977]), 0, 1)
+
+
 def _camera(raw, view, width, height):
     """Mesma projeção ortográfica e mesmo enquadramento que engines.house3d.render_png (as máscaras de geometria coincidem)."""
     L, W, lvls, roof, eaves, ridge, sides, pitched = _geometry(raw)
@@ -298,7 +372,7 @@ def _post(rgb):
     return ImageEnhance.Contrast(im).enhance(1.05)
 
 
-RENDER_VERSION = "3"          # muda quando o motor muda → a cache antiga deixa de servir
+RENDER_VERSION = "5"          # muda quando o motor muda → a cache antiga deixa de servir
 
 
 def _cache_path(raw, width, height, view, spp):
@@ -307,7 +381,8 @@ def _cache_path(raw, width, height, view, spp):
     import json
     import os
     from pathlib import Path
-    geo = {k: raw.get(k) for k in ("envelope", "sides", "levels", "openings", "roof", "interior_walls", "materials", "walls")}
+    geo = {k: raw.get(k) for k in ("envelope", "sides", "levels", "openings", "roof", "interior_walls",
+                                    "materials", "walls", "verified_footprint")}
     key = hashlib.sha256(json.dumps([RENDER_VERSION, geo, width, height, view, spp], sort_keys=True, default=str).encode()).hexdigest()
     d = Path(os.environ.get("RENDER_CACHE_DIR") or "/tmp/cp_render_cache")
     return d / f"{key[:40]}.png"
@@ -380,14 +455,25 @@ def _render(raw, width, height, view, spp):
     n = math.hypot(dx, dy)
     dx, dy = dx / n, dy / n
     top = ridge if pitched else eaves + 0.5
+    verified = raw.get("verified_footprint")
+    if verified:
+        from shapely.geometry import Polygon
+        outline = Polygon(verified["vertices"])
+        notch = outline.envelope.difference(outline).representative_point()
+        dx, dy = notch.x - L / 2, notch.y - W / 2
+        n = math.hypot(dx, dy)
+        dx, dy = ((dx / n, dy / n) if n > 0.1 else (0.70, -0.71))
+        for _ in range(rot):
+            dx, dy = -dy, dx
+        top = eaves
     cx, cy = L / 2, W / 2
     diag = math.hypot(L, W)
     fov = 40
     dist = (max(diag, top * 1.6) * 0.66) / math.tan(math.radians(fov / 2))
     if view == "aerial":
-        d = dist * 1.15
+        d = dist * (1.47 if verified else 1.15)
         org = [cx + dx * d * 0.78, cy + dy * d * 0.78, d * 0.62]
-        tgt = [cx, cy, 1.2]
+        tgt = [cx, cy, 2.1 if verified else 1.2]
     else:
         org = [cx + dx * dist, cy + dy * dist, 1.6]
         tgt = [cx, cy, top * 0.42]
@@ -404,10 +490,19 @@ def _render(raw, width, height, view, spp):
         mat_of = {"wall": "reboco", "plinth": "soco", "roof": "telha", "flat": "seixo", "parapet": "remate", "frame": "caixilho",
                   "glass": "vidro", "door": "porta", "sill": "pedra"}
         uvs = {"wall": (2.0, 2.0), "roof": (3.6, 2.4), "flat": (1.5, 1.5)}
-        sc = {"type": "scene", "integrator": {"type": "path", "max_depth": 7},
+        if verified:
+            mats["granito"] = {"type": "principled", "base_color": _bitmap(mi, _tex_granite()), "roughness": 0.83, "specular": 0.15}
+            wood = os.path.join(tmp, "madeira.png")
+            mats["timber_face"] = {"type": "principled", "base_color": {"type": "bitmap", "filename": wood},
+                                   "roughness": 0.77, "specular": 0.24}
+            mats["vidro"] = {"type": "principled", "base_color": {"type": "rgb", "value": [0.13, 0.16, 0.18]},
+                              "roughness": 0.12, "specular": 0.87, "metallic": 0.25}
+            mat_of.update(granite="granito", timber="timber_face")
+            uvs.update(granite=(2.0, 1.5), timber=(1.12, 3.0))
+        sc = {"type": "scene", "integrator": {"type": "path", "max_depth": 5 if verified else 7},
               "sensor": {"type": "perspective", "fov": fov, "to_world": mi.ScalarTransform4f().look_at(origin=org, target=tgt, up=[0, 0, 1]),
                          "film": {"type": "hdrfilm", "width": width, "height": height, "rfilter": {"type": "gaussian"}},
-                         "sampler": {"type": "independent", "sample_count": int(spp)}},
+                         "sampler": {"type": "stratified" if verified else "independent", "sample_count": int(spp)}},
               "ceu": {"type": "sunsky", "sun_direction": sol, "turbidity": 3.0, "albedo": 0.2}}
         sc.update(mats)
         for name, polys in parts.items():
@@ -424,15 +519,30 @@ def _render(raw, width, height, view, spp):
                          "bsdf": {"type": "principled", "base_color": {"type": "rgb", "value": [0.11, 0.15, 0.06]}, "roughness": 1.0},
                          "filename": _obj(os.path.join(tmp, "campo.obj"), [[(-G, -G, -0.05), (G, -G, -0.05), (G, G, -0.05), (-G, G, -0.05)]],
                                           (1.0, 1.0), XY)}
+        paving = [[(-1.2, -1.2, 0.0), (L + 1.2, -1.2, 0.0), (L + 1.2, W + 1.2, 0.0), (-1.2, W + 1.2, 0.0)]]
+        if verified:
+            from shapely import constrained_delaunay_triangles
+            from shapely.geometry.polygon import orient
+            offset = outline.buffer(1.25, join_style="mitre")
+            paving = [[(x, y, 0.0) for x, y in orient(face).exterior.coords[:-1]]
+                      for face in constrained_delaunay_triangles(offset).geoms]
         sc["m_passeio"] = {"type": "obj", "face_normals": True, "bsdf": {"type": "ref", "id": "lajeado"},
                            "filename": _obj(os.path.join(tmp, "passeio.obj"),
-                                            [[(-1.2, -1.2, 0.0), (L + 1.2, -1.2, 0.0), (L + 1.2, W + 1.2, 0.0), (-1.2, W + 1.2, 0.0)]],
+                                            paving,
                                             (8.0, 8.0), XY)}
         img = mi.render(mi.load_dict(sc), spp=int(spp))
         img = _oidn(img, spp)
         rgb = R3._tonemap(img)
     from PIL import Image, ImageFilter
-    im = Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.UnsharpMask(radius=1.0, percent=50, threshold=2))
+    pixels = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+    if verified:
+        try:
+            import cv2
+            # Preserve the edges of the actual model while removing path-tracing grain.
+            pixels = cv2.bilateralFilter(pixels, 7, 30, 5)
+        except ImportError:
+            pass
+    im = Image.fromarray(pixels).filter(ImageFilter.UnsharpMask(radius=0.9, percent=35 if verified else 50, threshold=3))
     out = io.BytesIO()
     im.save(out, "PNG", optimize=True)
     return out.getvalue()
@@ -458,14 +568,17 @@ def dossier_renders(raw: dict, out_dir, width: int = 0, height: int = 0, spp: in
     budget = float(os.environ.get("DOSSIER_RENDER_BUDGET") or 90)
     t0 = time.monotonic()
     out = []
-    for view, pt, fr in DOSSIER_VIEWS:
+    views = (DOSSIER_VIEWS[0], DOSSIER_VIEWS[-1]) if raw.get("verified_footprint") else DOSSIER_VIEWS
+    for view, pt, fr in views:
         slow_ok = available() and (time.monotonic() - t0) < budget
         png = render(raw, width, height, view, spp) if slow_ok else None
-        if not png:
+        if not png and not raw.get("verified_footprint"):
             try:
                 png = H.render_png(raw, width, height, view)
             except Exception:  # noqa: BLE001
                 continue
+        if not png:
+            continue
         p = Path(out_dir) / f"perspetiva_{view}.png"
         p.write_bytes(png)
         out.append((p, pt, fr))

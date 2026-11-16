@@ -110,6 +110,9 @@ INSTRUCTIONS = (
     "(/assistant/…, /agents?run=…) dans le texte — dis seulement « les 3 fichiers sont téléchargeables ci-dessous ». Donne le statut "
     "du contrôle et les points à valider ; rappelle que le dossier est un pré-dimensionnement à faire viser par un ingénieur structure. "
     "Ne recalcule et n'invente aucun chiffre : reprends ceux de l'outil. "
+    "Pour des fondations en L au Portugal, joins aussi la fiche PDF CP_SAPATAS_V1 si elle est fournie. "
+    "Ne crée pas de données de sol ou de réactions de projet. Si foundation_study est présent, précise quelle étape a abouti "
+    "et présente les plans comme pré-dimensionnement, jamais comme approuvés pour exécution. "
     "PLANS DE LOTS (generate_bet_lot_plans) : dès qu'une étude BET existe dans la conversation et que l'utilisateur demande un plan, "
     "un schéma ou les passages de gaines en électricité, plomberie, VMC, chauffage / plancher chauffant / PAC, des coupes ou des "
     "schémas de principe, appelle generate_bet_lot_plans avec les lots demandés (schemas = schémas de principe) et ses précisions "
@@ -269,6 +272,7 @@ def wants_questions(text: str) -> bool:
 def docs_hash(docs, hypotheses, country, decide_alone=False) -> str:
     """Empreinte des documents + hypothèses : mêmes pièces → même relevé → mêmes résultats (stabilité d'une étude à l'autre)."""
     h = hashlib.sha256()
+    h.update(b"footprint-check-v1")
     for d in sorted(hashlib.sha256(data).hexdigest() for _, data in docs):
         h.update(d.encode())
     h.update(" ".join((hypotheses or "").lower().split()).encode())
@@ -327,6 +331,111 @@ def _has_drawings(docs) -> bool:
         return True
 
 
+async def _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, *, force=False):
+    from . import geometry_review as geometry
+
+    source = await asyncio.to_thread(geometry.inspect, docs, hypotheses, force=force)
+    if source is None:
+        return False
+    lang = "pt" if country == "PT" else "fr"
+    pt = lang == "pt"
+    await step("A confrontar cotas e contornos com as plantas de origem" if pt else "Vérification des cotes et des contours des plans sources")
+    review = ("Geometria de referência. Peças de execução por validar." if pt
+              else "Géométrie de référence. Plans d'exécution à valider.")
+    points = [("O motor de execução atual usa uma envolvente retangular. Este resultado conserva as plantas de origem e não inclui cálculos, armaduras ou traçados gerados para outro contorno."
+               if pt else "Le moteur d'exécution actuel utilise une enveloppe rectangulaire. Ce résultat conserve les plans sources sans armatures ni réseaux calculés sur un autre contour.")]
+    if not source.floors:
+        points.append("As cotas do contorno não puderam ser confirmadas automaticamente." if pt
+                      else "Les cotes du contour n'ont pas pu être vérifiées automatiquement.")
+    foundation = None
+    with tempfile.TemporaryDirectory(prefix="cp_geometry_") as temp:
+        folder = Path(temp)
+        original = folder / ("Plantas_de_origem.pdf" if pt else "Plans_sources.pdf")
+        await asyncio.to_thread(geometry.write_originals, source, docs, original)
+        artifacts = [await _store(db, uid, cid, request_id, "plans_pdf", original,
+                                 "Peças desenhadas de origem" if pt else "Planches sources")]
+        if source.floors:
+            pdf = folder / ("Contornos_cotados.pdf" if pt else "Contours_cotes.pdf")
+            dxf = folder / "DXF.zip"
+            await asyncio.to_thread(geometry.write_presentation, source, pdf, lang)
+            await asyncio.to_thread(geometry.write_dxf, source, dxf)
+            for kind, path, label in (
+                ("pdf", pdf, "Contornos verificados" if pt else "Contours vérifiés"),
+                ("zip", dxf, "DXF dos contornos e vãos" if pt else "DXF des contours et baies"),
+            ):
+                artifacts.append(await _store(db, uid, cid, request_id, kind, path, label))
+        if pt and source.floors:
+            from . import foundation_sheets, strip_foundations
+
+            foundation = {"status": "inputs_required", "execution_verified": False}
+            try:
+                inputs = await asyncio.to_thread(strip_foundations.read_inputs, docs)
+                if inputs is None:
+                    points.append("Para calcular as sapatas em L, anexe a ficha CP_SAPATAS_V1 com as reações por tramo e os limites geotécnicos de projeto.")
+                else:
+                    await step("A calcular pressões, armaduras e amarração dos tramos retos")
+                    design = await asyncio.to_thread(strip_foundations.calculate, source, inputs)
+                    structural = folder / "Fundacoes_Armaduras_em_L.pdf"
+                    cad = folder / "Fundacoes_em_L_DXF.zip"
+                    await asyncio.to_thread(foundation_sheets.write_pdf, design, structural)
+                    await asyncio.to_thread(foundation_sheets.write_cad, design, cad)
+                    artifacts.extend([
+                        await _store(db, uid, cid, request_id, "plans_pdf", structural, "Sapatas e armaduras em L · pré-dimensionamento"),
+                        await _store(db, uid, cid, request_id, "zip", cad, "DXF das sapatas em L · pré-dimensionamento"),
+                    ])
+                    foundation.update(status="preliminary", demo=inputs.demo, segments=len(design["edges"]),
+                                      width_mm=design["width_mm"], height_mm=design["height_mm"],
+                                      transverse_bar_mm=design["bar_mm"], transverse_spacing_mm=design["spacing_mm"],
+                                      longitudinal_count=design["long_count"])
+                    points = ["Foram calculadas as pressões, a flexão transversal, o esforço transverso e a amarração reta nos seis tramos.",
+                              "Permanecem por validar os cantos, o dimensionamento longitudinal, os assentamentos e as restantes fundações."]
+                    if inputs.demo:
+                        points.insert(0, "Ensaio com valores fictícios de terreno e reações. A ficha identifica todas as hipóteses.")
+                    review = "Sapatas em L pré-dimensionadas. Peças de execução por validar."
+            except strip_foundations.InputError as exc:
+                foundation.update(status="input_or_check_failed", message=str(exc))
+                points.append(str(exc))
+        verified_model = geometry.model(source)
+        ready = ("Pré-dimensionamento de sapatas concluído" if foundation and foundation["status"] == "preliminary"
+                 else "Peças de referência prontas" if pt else "Planches de référence prêtes")
+        await step(ready,
+                   status="done", review_status=review, artifacts=artifacts, points=points, questions=[],
+                   renders_status="pending" if verified_model else None,
+                   geometry_verified=bool(source.floors), execution_verified=False, foundation_study=foundation)
+        if source.floors and cid:
+            current = await db.bet_study_jobs.find_one({"job_id": job_id, "user_id": uid}, {"document_ids": 1})
+            if current and current.get("document_ids"):
+                ids = list(set(current["document_ids"]))
+                await db.bet_study_jobs.update_many(
+                    {"user_id": uid, "conversation_id": cid, "job_id": {"$ne": job_id}, "country": country,
+                     "status": "done", "model": {"$ne": None}, "document_ids": {"$all": ids, "$size": len(ids)}},
+                    {"$set": {"geometry_replaced_by": job_id}},
+                )
+        if verified_model:
+            from engines import house_pbr
+
+            try:
+                views = await asyncio.wait_for(asyncio.to_thread(
+                    house_pbr.dossier_renders, verified_model, folder, 1920, 1080, 32),
+                    float(os.environ.get("BET_RENDER_TIMEOUT") or 600))
+                photo_label = "Perspetiva de volumetria · vãos ilustrativos" if pt else "Perspective volumétrique · baies illustratives"
+                for path, label_pt, label_fr in views:
+                    artifacts.append(await _store(db, uid, cid, request_id, "render_png", path,
+                                                 f"{photo_label} ({label_pt if pt else label_fr})"))
+                if views:
+                    book = folder / ("Apresentacao_da_geometria.pdf" if pt else "Presentation_geometrie.pdf")
+                    await asyncio.to_thread(geometry.write_presentation, source, book, lang,
+                                            [(label_pt if pt else label_fr, path) for path, label_pt, label_fr in views])
+                    artifacts.append(await _store(db, uid, cid, request_id, "pdf", book,
+                                                 "Dossiê ilustrado da geometria" if pt else "Dossier illustré de la géométrie"))
+                await step(ready,
+                           artifacts=artifacts, renders_status="done" if views else "failed")
+            except Exception:  # noqa: BLE001
+                log.warning("verified footprint renders failed for %s", job_id, exc_info=True)
+                await step("Peças de referência prontas" if pt else "Planches de référence prêtes", renders_status="failed")
+    return True
+
+
 async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm=None, branding=None, decide_alone=False):
     async def step(label, **extra):
         await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {"step": label, "updated_at": _now(), **extra}})
@@ -343,6 +452,8 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             await step("Échec", status="failed", error=f"{type(exc).__name__}: {exc}"[:1200], trace=traceback.format_exc()[-3000:])
         return
     try:
+        if await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step):
+            return
         from engines.bet_frame import hook as _frame_hook       # bet_frame : immeubles, bureaux, parkings, ERP (ossature BA)
         if await _frame_hook.maybe_handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, step=step, store=_store,
                                           llm=llm, branding=branding, decide_alone=decide_alone):
@@ -366,6 +477,9 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 log.warning("bet study %s: reading timed out — typical model", job_id)
                 rd = {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "questions": [], "decisions": [],
                       "read_timeout": True}
+            if rd.get("source_geometry_required"):
+                await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, force=True)
+                return
             if rd["ok"] and not rd.get("demo"):
                 try:
                     await db.bet_models.update_one({"user_id": uid, "docs_hash": key}, {"$set": {
@@ -684,6 +798,17 @@ LOT_LABEL = {"electricite": "Électricité", "plomberie": "Plomberie", "ventilat
 
 async def _lot_plans(db, user: dict, conv: dict, args: dict, branding_loader=None) -> dict:
     uid, cid = user["user_id"], conv.get("conversation_id")
+    scope = {"user_id": uid}
+    if args.get("job_id"):
+        scope["job_id"] = args["job_id"]
+    elif cid:
+        scope["conversation_id"] = cid
+    if len(scope) > 1:
+        latest = await db.bet_study_jobs.find_one(scope, {"_id": 0, "execution_verified": 1, "geometry_replaced_by": 1, "points": 1},
+                                                  sort=[("created_at", -1)])
+        if latest and (latest.get("execution_verified") is False or latest.get("geometry_replaced_by")):
+            return {"status": "geometry_review", "execution_verified": False, "points": latest.get("points", []),
+                    "error": "Use as peças de referência verificadas. O motor de execução não suporta este contorno."}
     q = {"user_id": uid, "model": {"$ne": None}}
     job = None
     if args.get("job_id"):

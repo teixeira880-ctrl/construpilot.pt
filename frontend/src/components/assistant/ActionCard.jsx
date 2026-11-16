@@ -49,7 +49,9 @@ export function BetStudyFollow({ jobId }) {
         const { data } = await api.get(`/bet-studies/${jobId}`);
         if (!active) return;
         setS(data);
-        if (["running", "queued"].includes(data.status) || !data.status) timer = setTimeout(tick, 3000);
+        if (["running", "queued"].includes(data.status) || data.renders_status === "pending" || !data.status) {
+          timer = setTimeout(tick, data.status === "done" ? 6000 : 3000);
+        }
       } catch { if (active) timer = setTimeout(tick, 5000); }
     };
     tick();
@@ -66,7 +68,7 @@ export function BetStudyFollow({ jobId }) {
     <div className="mt-1 grid gap-2 rounded-sm border border-emerald-500/30 bg-emerald-500/5 p-2" data-testid="assistant-bet-study-card" data-status={status || "running"}>
       <div className="flex items-center gap-2">
         <Layers className="h-3.5 w-3.5 text-emerald-700" />
-        <b className="text-[12px]">Estudo BET completo</b>
+        <b className="text-[12px]">{s?.execution_verified === false ? "Geometria do estudo" : "Estudo BET completo"}</b>
         {running && <span className="ml-auto text-[10px] text-muted-foreground num">{mmss}</span>}
         {status === "done" && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
       </div>
@@ -89,9 +91,22 @@ export function BetStudyFollow({ jobId }) {
       )}
       {status === "done" && (
         <div className="grid gap-1.5" data-testid="assistant-bet-study-done">
+          {s.geometry_replaced_by ? (
+            <p className="text-[11px] text-amber-800">Peças substituídas após verificação geométrica. Use a revisão deste estudo na conversa.</p>
+          ) : <>
           <p className="text-[11px]">Ficheiros prontos a descarregar{s.review_status ? ` · Verificação: ${s.review_status}` : ""}{s.devis_ht != null ? ` · ${eur(s.devis_ht)} s/ IVA` : ""}.</p>
-          <div className="grid gap-1">{(s.artifacts || []).map((x) => <ArtifactCard key={x.artifact_id} artifact={x} />)}</div>
+          {s.execution_verified === false && !!s.points?.length && (
+            <ul className="list-disc pl-4 text-[11px] text-muted-foreground">
+              {s.points.map((point, i) => <li key={i}>{point}</li>)}
+            </ul>
+          )}
+          {s.renders_status === "pending" && <p className="text-[11px] text-muted-foreground">A gerar perspetivas em alta definição. As peças já podem ser abertas.</p>}
+          <div className="grid gap-1">{(s.artifacts || []).slice().sort((a, b) => (
+            Number(b.title?.includes("Dossiê ilustrado") || b.title?.includes("Dossier illustré")) -
+            Number(a.title?.includes("Dossiê ilustrado") || a.title?.includes("Dossier illustré"))
+          )).map((x) => <ArtifactCard key={x.artifact_id} artifact={x} />)}</div>
           {Array.isArray(s.decisions) && s.decisions.length > 0 && <details className="text-[11px]"><summary className="cursor-pointer">Decisões tomadas ({s.decisions.length}) — modificáveis</summary><ul className="list-disc pl-4">{s.decisions.slice(0, 30).map((d, i) => <li key={i}>{d}</li>)}</ul></details>}
+          </>}
         </div>
       )}
       {status === "failed" && (

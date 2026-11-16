@@ -12,7 +12,15 @@ export function TaskHome({ onProfile }) {
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const load = () => api.get("/me/work-profile/home").then(({ data }) => { setData(data); onProfile?.(data.profile); }).catch(() => setFailed(true));
+  const load = () => api.get("/me/work-profile/home").then(({ data }) => {
+    if (typeof data?.profile?.mode !== "string" || !Array.isArray(data.tasks)) {
+      setFailed(true);
+      return;
+    }
+    setData(data);
+    setFailed(false);
+    onProfile?.(data.profile);
+  }).catch(() => setFailed(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 

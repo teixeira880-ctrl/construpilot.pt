@@ -11,33 +11,61 @@ import { api } from "@/lib/api";
 const n2 = (x) => Number(x).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const VAO = { porte: "Porta", fenetre: "Janela", baie: "Vão" };
 const EXEMPLOS = ["muda a espessura da parede w1 para 25 cm", "acrescenta uma janela de 1,20 m na parede w2 a 2 m do início", "pé-direito 2,80"];
+const TIPOS = {
+  IfcWall: ["walls", "Aumenta a espessura em 5 cm"],
+  IfcDoor: ["openings", "Muda a largura para 90 cm"],
+  IfcWindow: ["openings", "Muda a largura para 1,20 m"],
+  IfcSlab: ["slabs", "Aplica cerâmica neste pavimento"],
+  IfcColumn: ["columns", "Muda a largura para 30 cm"],
+  IfcBeam: ["beams", "Aumenta o comprimento em 20 cm"],
+  IfcFooting: ["footings", "Aumenta o comprimento em 20 cm"],
+  IfcSpace: ["spaces", "Muda a altura para 2,70 m"],
+};
+const APENAS_MEDIDA = /^(?:(?:para|em|por)\s+)?[+-]?\s*\d+(?:[.,]\d+)?\s*(?:mm|cm|m|%)\s*[.!]?$/i;
 
-export default function BimEditor({ planId, page, disabled, onChanged }) {
+export default function BimEditor({ planId, page, disabled, onChanged, selected, elements = [], onSelect }) {
   const base = `/bim/takeoffs/${encodeURIComponent(planId)}/${page}/modelo`;
   const [estado, setEstado] = useState(null);
   const [texto, setTexto] = useState("");
   const [busy, setBusy] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [aberto, setAberto] = useState(false);
+  const tipo = TIPOS[selected?.ifc_class];
+  const id = selected?.source_id;
+  const alvo = tipo && id ? { grupo: tipo[0], id } : null;
+  const acabamento = tipo?.[0] === "slabs"
+    ? elements.find((element) => element.ifc_class === "IfcCovering" && element.source_id === id)?.finish
+    : selected?.finish;
+  const chaveAlvo = alvo ? `${alvo.grupo}:${alvo.id}` : "";
+  const pergunta = resultado?.chaveAlvo === chaveAlvo
+    ? resultado.esclarecimentos?.find((item) => item.pedir_medida) : null;
 
   const carregar = useCallback(async () => {
     try { setEstado((await api.get(base)).data); } catch { setEstado(null); }
   }, [base]);
   useEffect(() => { if (aberto) carregar(); }, [aberto, carregar]);
+  useEffect(() => { if (id) setAberto(true); }, [id]);
 
   const enviar = async (payload) => {
     setBusy(true);
     try {
       const { data } = await api.post(`${base}/ops`, payload);
-      setResultado(data);
+      setResultado({ ...data, chaveAlvo });
+      if (payload.texto && (data.feito?.length || data.esclarecimentos?.some((item) => item.pedir_medida))) setTexto("");
       if (data.feito?.length) {
-        if (payload.texto) setTexto("");
         await carregar();
         onChanged?.();
       }
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Não foi possível aplicar a alteração.");
     } finally { setBusy(false); }
+  };
+  const enviarTexto = (event) => {
+    event.preventDefault();
+    const comando = texto.trim();
+    if (!comando || off) return;
+    enviar({ texto: pergunta && APENAS_MEDIDA.test(comando) ? `${pergunta.frase} ${comando}` : comando,
+      ...(alvo ? { selecao: alvo } : {}) });
   };
   const op = (o) => enviar({ ops: [o] });
   const desfazer = async () => {
@@ -64,9 +92,22 @@ export default function BimEditor({ planId, page, disabled, onChanged }) {
       </button>
       {aberto && (
         <>
-          <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); if (texto.trim()) enviar({ texto }); }}>
+          <form className="space-y-1" onSubmit={enviarTexto}>
+            {alvo && <p className="text-xs text-primary" data-testid="bim-editor-selection">
+              Selecionado · <strong>{selected.name || alvo.id}</strong>
+            </p>}
+            {acabamento && <p className="text-xs text-muted-foreground">Acabamento · {acabamento}</p>}
+            {onSelect && <select className="w-full rounded border bg-background p-1 text-xs" aria-label="Elemento a editar"
+                value={selected?.guid || ""} disabled={off} onChange={(event) => onSelect(event.target.value)}>
+              <option value="">Clique no desenho ou escolha um elemento</option>
+              {elements.filter((element) => TIPOS[element.ifc_class]).map((element) => (
+                <option key={element.guid} value={element.guid}>{element.name || element.source_id}</option>
+              ))}
+            </select>}
             <textarea className="w-full rounded border bg-background p-2 text-xs" rows={3} value={texto} onChange={(e) => setTexto(e.target.value)}
-                      placeholder={`Peça em texto, uma alteração por frase. Ex.: ${EXEMPLOS[0]}`} data-testid="bim-editor-prompt" />
+                      aria-label="Comando para editar o modelo"
+                      placeholder={pergunta ? "Indique a medida" : tipo?.[1] || `Selecione um elemento ou indique o seu ID. Ex.: ${EXEMPLOS[0]}`}
+                      data-testid="bim-editor-prompt" />
             <div className="flex flex-wrap gap-1">
               <Button type="submit" size="sm" className="h-7 gap-1 text-xs" disabled={off || !texto.trim()}>
                 {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Aplicar
@@ -80,10 +121,13 @@ export default function BimEditor({ planId, page, disabled, onChanged }) {
             </div>
           </form>
           {resultado && (
-            <ul className="space-y-0.5 text-[11px]" data-testid="bim-editor-result">
+            <ul className="space-y-0.5 text-[11px]" data-testid="bim-editor-result" aria-live="polite">
+              {resultado.interpretado_ia && <li className="text-muted-foreground">Pedido interpretado com IA.</li>}
               {(resultado.feito || []).map((f, i) => <li key={`f${i}`} className="text-emerald-700 dark:text-emerald-400">{f}</li>)}
               {(resultado.erros || []).map((f, i) => <li key={`e${i}`} className="text-red-700 dark:text-red-400">Recusado — {f}</li>)}
               {(resultado.nao_percebido || []).map((f, i) => <li key={`n${i}`} className="text-amber-700 dark:text-amber-400">Não percebi: «{f}»</li>)}
+              {(resultado.chaveAlvo === chaveAlvo ? resultado.esclarecimentos || [] : []).map((item, i) =>
+                <li key={`a${i}`} className="text-amber-700 dark:text-amber-400">{item.mensagem}</li>)}
             </ul>
           )}
           {m && (

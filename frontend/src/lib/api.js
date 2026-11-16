@@ -1,5 +1,6 @@
 import axios from "axios";
 import { currentMarket } from "@/lib/market";
+import { filenameFromResponse } from "@/lib/downloadName";
 import { currentUiLang } from "@/lib/uiLang";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -57,6 +58,28 @@ export const IMAGES = {
 // Import de plan en tâche de fond : POST /takeoffs/upload renvoie un job_id, on interroge jusqu'à la fin (évite la coupure proxy à 120 s).
 export async function uploadPlan(formData, { onStatus } = {}) {
   const { data: job } = await api.post("/takeoffs/upload", formData, { headers: { "Content-Type": "multipart/form-data", "X-Async-Upload": "1" } });
+  return followPlanImport(job, onStatus);
+}
+
+export async function importAssistantPlan(docId) {
+  const { data: job } = await api.post(`/takeoffs/import-assistant-document/${encodeURIComponent(docId)}`);
+  return followPlanImport(job);
+}
+
+export async function loadSavedPlanPdf(planId, filename = "planta.pdf") {
+  try {
+    const response = await api.get(`/takeoffs/${encodeURIComponent(planId)}/original-pdf`, { responseType: "blob" });
+    return new File([response.data], filenameFromResponse(response, filename), { type: "application/pdf" });
+  } catch (error) {
+    const body = error.response?.data;
+    if (body instanceof Blob) {
+      error.response.data = await body.text().then(JSON.parse).catch(() => null);
+    }
+    throw error;
+  }
+}
+
+async function followPlanImport(job, onStatus) {
   if (job.plan_id && !job.job_id) return job;
   const started = Date.now();
   for (;;) {

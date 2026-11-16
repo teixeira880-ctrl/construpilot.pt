@@ -18,6 +18,7 @@ const copy = {
     attach: "Anexar", existing: "Escolher um documento já importado", image: "Preparar uma imagem",
     webOn: "Internet ativa", webOff: "Internet desativada", you: "Você", loading: "A abrir a conversa…",
     historyHint: "Retome os seus projetos", documents: "Documentos associados", listen: "Ouvir",
+    openInPlanEditor: "Ouvrir dans l’éditeur de plans", importingPlan: "Importation du plan…",
   },
   pt: {
     table: "Tabela da resposta — deslocamento horizontal",
@@ -36,6 +37,7 @@ const copy = {
     attach: "Anexar", existing: "Escolher um documento já importado", image: "Preparar uma imagem",
     webOn: "Internet ativa", webOff: "Internet desativada", you: "Você", loading: "A abrir a conversa…",
     historyHint: "Retome os seus projetos", documents: "Documentos associados", listen: "Ouvir",
+    openInPlanEditor: "Abrir no Editor de Plantas", importingPlan: "A importar a planta…",
   },
   en: {
     table: "Response table — scroll horizontally",
@@ -54,6 +56,7 @@ const copy = {
     attach: "Attach", existing: "Choose an imported document", image: "Prepare an image",
     webOn: "Web on", webOff: "Web off", you: "You", loading: "Opening conversation…",
     historyHint: "Pick up where you left off", documents: "Linked documents", listen: "Listen",
+    openInPlanEditor: "Open in Plan Editor", importingPlan: "Importing the plan…",
   },
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { useSearchParams } from "react-router-dom";
+import { api, loadSavedPlanPdf } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,9 @@ const RATIO_TYPES = ["semelle_isolee", "semelle_filante", "longrine", "chainage"
 const num = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
 
 export default function PlanReader() {
+  const [params] = useSearchParams();
+  const planId = params.get("plan");
+  const [savedPlan, setSavedPlan] = useState(null);
   const [reads, setReads] = useState([]);
   const [read, setRead] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -38,6 +42,15 @@ export default function PlanReader() {
 
   const loadList = () => api.get("/structuro/plan/list").then(({ data }) => setReads(data.reads || [])).catch(() => {});
   useEffect(() => { loadList(); }, []);
+  useEffect(() => {
+    setSavedPlan(null);
+    if (!planId) return;
+    let active = true;
+    api.get(`/takeoffs/${encodeURIComponent(planId)}`).then(({ data }) => {
+      if (active && data.kind === "pdf") setSavedPlan(data);
+    }).catch(() => { if (active) toast.error("Planta guardada indisponível."); });
+    return () => { active = false; };
+  }, [planId]);
 
   const applyRead = (d) => {
     setRead(d);
@@ -49,14 +62,15 @@ export default function PlanReader() {
     setRatios(r);
   };
 
-  const analyze = async (file) => {
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".pdf")) { toast.error("Forneça um PDF (de preferência vetorial)."); return; }
+  const analyze = async (file, source = null) => {
+    if (!file && !source) return;
+    if (file && !file.name.toLowerCase().endsWith(".pdf")) { toast.error("Forneça um PDF (de preferência vetorial)."); return; }
     setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("title", title || file.name);
     try {
+      const input = file || await loadSavedPlanPdf(source.plan_id, source.filename);
+      const fd = new FormData();
+      fd.append("file", input);
+      fd.append("title", title || input.name);
       const { data } = await api.post("/structuro/plan/read", fd, {
         headers: { "Content-Type": "multipart/form-data" }, timeout: 180000,
       });
@@ -150,6 +164,10 @@ export default function PlanReader() {
 
       {/* Upload */}
       <Card className="p-5 rounded-md space-y-3" data-testid="plan-upload-card">
+        {savedPlan && <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm break-all" data-testid="reader-saved-plan"><strong>PDF guardado</strong> · {savedPlan.filename}</p>
+          <Button type="button" size="sm" disabled={uploading} onClick={() => analyze(null, savedPlan)} data-testid="reader-analyze-saved-plan">Analisar esta planta</Button>
+        </div>}
         <div className="grid sm:grid-cols-[1fr_auto] gap-3 items-end">
           <div className="space-y-1.5">
             <Label className="text-xs">Título</Label>

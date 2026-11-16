@@ -1,5 +1,6 @@
 // ConstruPilot BIM Studio — modelos IFC, visualização 3D, medições rastreáveis e orçamento.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import BimViewer from "@/components/bim/BimViewer";
@@ -11,6 +12,9 @@ const FINAL = ["done", "failed", "cancelled"];
 const TABS = [["modelo", "Modelo 3D"], ["medicoes", "Medições"], ["orcamento", "Orçamento"], ["versoes", "Versões"]];
 
 export default function BimStudio() {
+  const [params] = useSearchParams();
+  const requestedModelId = params.get("model");
+  const requestedVersion = Number(params.get("version")) || null;
   const [cfg, setCfg] = useState(null);
   const [models, setModels] = useState([]);
   const [model, setModel] = useState(null);
@@ -66,6 +70,10 @@ export default function BimStudio() {
       pollRef.current = setTimeout(poll, 1000);
     }
   }, [loadModels]);
+  useEffect(() => {
+    if (!cfg?.enabled || !requestedModelId) return;
+    openModel(encodeURIComponent(requestedModelId), requestedVersion).catch(() => toast.error("Modelo BIM indisponível."));
+  }, [cfg?.enabled, requestedModelId, requestedVersion, openModel]);
 
   // Metadados leves (categoria/piso) para filtros do visualizador
   useEffect(() => {

@@ -6,21 +6,27 @@ Refactor iter53 : extrait de `routes/plans.py`.
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import logging
 import secrets
 from typing import Literal
 
 from fastapi import Request, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field
 
 from core.db import db
+from core.permissions import feature_dependency
 from core.security import current_user
 from core.uploads import (
     validate_upload, ALLOWED_IMAGE, ALLOWED_DOCUMENT, ALLOWED_CAD,
 )
 from engines import geometry as G
-from engines.plan_sources import save_plan_source, save_cad_source, delete_plan_sources, copy_plan_sources, image_plan_pdf
+from engines.plan_sources import MAX_SOURCE_SIZE, save_plan_source, save_cad_source, delete_plan_sources, copy_plan_sources, image_plan_pdf
 from engines.plan_processor import process_upload
+from engines.plan_verified_floor import verified_structure
 
 from routes.plans_common import (
     ALLOWED_MIMES, MAX_UPLOAD_MB, _now, _plan_summary, _snapshot, _apply_new_calibration, router,
@@ -105,8 +111,6 @@ async def _process_and_store(data: bytes, filename: str, content_type: str, user
     }
     await _insert_plan_safe(doc)
     try:
-        import base64
-        import hashlib
         if parsed["kind"] == "pdf":
             await save_plan_source(db, plan_id, user["user_id"], data, mime="application/pdf",
                                    filename=file.filename, source_kind="original_pdf", created_at=_now())
@@ -176,6 +180,73 @@ async def upload_plan(
     asyncio.create_task(_run_upload_job(job_id, data, file.filename or "plan", mime, user, project_id, deskew, cad_unit, display_name))
     from fastapi.responses import JSONResponse
     return JSONResponse({"job_id": job_id, "status": "processing"}, status_code=202)
+
+
+@router.post("/import-assistant-document/{doc_id}")
+async def import_assistant_document(doc_id: str, user=Depends(feature_dependency("dashboard"))):
+    from engines import usage_meter
+    from routes.assistant import _allowed_doc
+
+    user_id = user["user_id"]
+    try:
+        doc = await _allowed_doc(doc_id, user_id)
+    except PermissionError as exc:
+        raise HTTPException(404, "Anexo inacessível.") from exc
+    except ValueError as exc:
+        raise HTTPException(409, "O PDF guardado está incompleto ou ilegível.") from exc
+    if doc.get("mime") != "application/pdf":
+        raise HTTPException(415, "Selecione um anexo PDF para abrir no Editor de Plantas.")
+    try:
+        data = base64.b64decode(doc.get("data_b64") or "", validate=True)
+    except ValueError as exc:
+        raise HTTPException(409, "O PDF guardado está incompleto ou ilegível.") from exc
+    if b"%PDF-" not in data[:1024] or (doc.get("size") is not None and len(data) != doc["size"]):
+        raise HTTPException(409, "O PDF guardado está incompleto ou ilegível.")
+    if len(data) > MAX_SOURCE_SIZE:
+        raise HTTPException(413, "O PDF ultrapassa 50 MB. Importe apenas as páginas necessárias.")
+
+    digest = hashlib.sha256(data).hexdigest()
+    jobs = db.plan_upload_jobs
+    key = f"assistant-pdf:{user_id}:{digest}"
+    existing = await jobs.find_one({"_id": key})
+
+    # Reuse the exact PDF, even if it was first uploaded in the editor.
+    async for source in db.plan_sources.find(
+        {"user_id": user_id, "source_kind": "original_pdf", "sha256": digest}, {"plan_id": 1}
+    ):
+        plan = await db.plans_takeoff.find_one(
+            {"user_id": user_id, "plan_id": source["plan_id"], "trashed_at": {"$exists": False}},
+            {"_id": 0, "plan_id": 1},
+        )
+        if plan:
+            return plan
+
+    if existing and existing["status"] == "processing":
+        return {"job_id": existing["job_id"], "status": "processing"}
+
+    await usage_meter.check_storage(user, len(data))
+    job_id = "pjob_" + secrets.token_hex(6)
+    filename = doc.get("filename") or "planta.pdf"
+    now = _now()
+    job = {"_id": key, "job_id": job_id, "user_id": user_id, "filename": filename,
+           "size_bytes": len(data), "status": "processing", "created_at": now, "updated_at": now}
+    if existing:
+        result = await jobs.replace_one(
+            {"_id": key, "job_id": existing["job_id"], "status": existing["status"]}, job
+        )
+        claimed = bool(result.matched_count)
+    else:
+        try:
+            await jobs.insert_one(job)
+            claimed = True
+        except DuplicateKeyError:
+            claimed = False
+    if not claimed:
+        current = await jobs.find_one({"_id": key}, {"job_id": 1, "status": 1})
+        return {"job_id": current["job_id"], "status": current["status"]}
+
+    asyncio.create_task(_run_upload_job(job_id, data, filename, "application/pdf", user, None, False, None))
+    return {"job_id": job_id, "status": "processing"}
 
 
 async def _run_upload_job(job_id, data, filename, mime, user, project_id, deskew, cad_unit, display_name=None):
@@ -577,12 +648,38 @@ async def list_plans(user=Depends(current_user)) -> dict:
     return {"plans": docs}
 
 
+@router.get("/{plan_id}/original-pdf")
+async def original_plan_pdf(plan_id: str, user=Depends(feature_dependency("dashboard"))):
+    from engines.nom_fichier import content_disposition
+    from engines.plan_sources import load_plan_source
+
+    owner = {"plan_id": plan_id, "user_id": user["user_id"], "trashed_at": {"$exists": False}}
+    plan = await db.plans_takeoff.find_one(owner, {"_id": 0, "kind": 1, "filename": 1})
+    if not plan:
+        raise HTTPException(404, "Planta não encontrada.")
+    if plan.get("kind") != "pdf":
+        raise HTTPException(415, "A origem desta planta não é um PDF.")
+    source = await load_plan_source(db, plan_id, user["user_id"])
+    if not source or source.get("source_kind") not in (None, "original_pdf"):
+        raise HTTPException(404, "O PDF original desta planta não está disponível.")
+    name = source.get("filename") or plan.get("filename") or "planta.pdf"
+    if not name.lower().endswith(".pdf"):
+        name += ".pdf"
+    return Response(base64.b64decode(source["data_b64"]), media_type="application/pdf", headers={
+        "Content-Disposition": content_disposition(name), "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
 @router.get("/{plan_id}")
 async def get_plan(plan_id: str, user=Depends(current_user)):
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                          {"_id": 0})
     if not p:
         raise HTTPException(404, "Planta não encontrada")
+    for index in range(len(p.get("pages") or [])):
+        if str(index) in (p.get("structure") or {}):
+            p["structure"][str(index)] = verified_structure(p, index)
     return _plan_summary(p)
 
 

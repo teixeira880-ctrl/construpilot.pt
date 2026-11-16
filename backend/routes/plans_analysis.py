@@ -25,6 +25,7 @@ from engines.plan_ai import analyze_plan_image
 from engines.plan_cv import detect_all_rooms, detect_walls, flood_fill_room
 from engines.plan_structure import detect_structure_tiled, refine_structure
 from engines.plan_processor import auto_calibration_from_pdf_scale
+from engines.plan_verified_floor import verified_structure
 
 from routes.plans_common import (
     _diff_rooms, _now, _snapshot, _resolve_branding, _apply_new_calibration, router,
@@ -513,7 +514,7 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
     plan_kind ("gros_oeuvre"|"maison"|"auto") : force le type d'analyse choisi par l'utilisateur.
     """
     p = await db.plans_takeoff.find_one(
-        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1})
+        {"plan_id": plan_id, "user_id": user["user_id"]}, {"_id": 0, "pages": 1, "kind": 1, "calibrations": 1})
     if not p:
         raise HTTPException(404, "Planta não encontrada")
     pages = p.get("pages") or []
@@ -533,7 +534,7 @@ async def detect_structure_route(plan_id: str, page_index: int = 0,
         {"plan_id": plan_id},
         {"$set": {f"structure.{page_index}": {**result, "detected_at": _now()},
                   "updated_at": _now()}})
-    return result
+    return verified_structure({**p, "structure": {str(page_index): result}}, page_index)
 
 
 class StructureIn(BaseModel):
@@ -1135,7 +1136,7 @@ async def get_analysis(plan_id: str, page_index: int, wall_height: float = 2.5,
     if not p:
         raise HTTPException(404, "Planta não encontrada")
     ppm = _page_ppm(p, page_index)
-    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    structure = verified_structure(p, page_index)
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
@@ -1174,7 +1175,7 @@ async def export_beton_xlsx(plan_id: str, page_index: int, wall_height: float = 
     if not p:
         raise HTTPException(404, "Planta não encontrada")
     ppm = _page_ppm(p, page_index)
-    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    structure = verified_structure(p, page_index)
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
@@ -1291,7 +1292,7 @@ async def export_beton_pdf(plan_id: str, page_index: int, wall_height: float = 2
         raise HTTPException(404, "Planta não encontrada")
     branding = await _resolve_branding(user["user_id"])
     ppm = _page_ppm(p, page_index)
-    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    structure = verified_structure(p, page_index)
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}
@@ -1722,7 +1723,7 @@ async def annotated_plan_pdf(plan_id: str, page_index: int, wall_height: float =
     pages = p.get("pages") or []
     if page_index < 0 or page_index >= len(pages):
         raise HTTPException(404, "Página desconhecida")
-    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    structure = verified_structure(p, page_index)
     if not (structure.get("walls") or structure.get("openings")):
         raise HTTPException(400, "Lance primeiro «Analisar a planta».")
     ppm = _page_ppm(p, page_index)
@@ -1776,7 +1777,7 @@ async def structure_to_quote(plan_id: str, page_index: int, wall_height: float =
     ppm = _page_ppm(p, page_index)
     if not ppm:
         raise HTTPException(400, "Calibre primeiro a planta antes de gerar o orçamento.")
-    structure = (p.get("structure") or {}).get(str(page_index)) or {}
+    structure = verified_structure(p, page_index)
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index") == page_index]
     ar = {"semelles": acier_semelles, "poteaux": acier_poteaux, "poutres": acier_poutres,
           "dalles": acier_dalles, "voiles": acier_voiles}

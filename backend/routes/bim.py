@@ -7,7 +7,10 @@ gerações, para que cálculos, orçamentos e comentários fiquem ligados aos me
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
+from functools import partial
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -17,6 +20,7 @@ from pydantic import BaseModel, Field
 from core.db import db
 from core.security import current_user
 from engines.nom_fichier import content_disposition, nom_document, sujet_plan
+from engines.plan_verified_floor import PAGE_FIELDS, verified_structure
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +44,27 @@ async def _load_model(plan_id: str, page_index: int, user: dict, params: dict):
     p = await db.plans_takeoff.find_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
         {"_id": 0, "structure": 1, "calibrations": 1, "rooms": 1, "filename": 1, "name": 1,
-         "original_filename": 1, "project_name": 1, "cad_import": 1})
+         "original_filename": 1, "project_name": 1, "cad_import": 1, "kind": 1,
+         **{f"pages.{name}": 1 for name in PAGE_FIELDS}})
     if not p:
         raise HTTPException(404, "Planta não encontrada")
     calib = (p.get("calibrations") or {}).get(str(page_index)) or {}
     ppm = calib.get("pixels_per_meter")
     structure = (p.get("structure") or {}).get(str(page_index)) or {}
     rooms = [r for r in (p.get("rooms") or []) if r.get("page_index", 0) == page_index]
+    corrected = verified_structure(p, page_index)
+    options = dict(rooms=rooms, plan_id=plan_id, page_index=page_index, storey_name=f"Piso {page_index}", params=params)
     try:
-        model = bim.from_takeoff(structure, ppm, rooms=rooms, plan_id=plan_id, page_index=page_index,
-                                 storey_name=f"Piso {page_index}", params=params)
+        model = bim.from_takeoff(corrected, ppm, origin_structure=structure, **options)
     except bim.ModelError as e:
         raise HTTPException(422, str(e)) from e
     # Cópia editada no editor BIM (opções ou prompt): passa a ser o modelo deste piso até ser reposta a planta lida.
     saved = await db.bim_models.find_one({"plan_id": plan_id, "page_index": page_index, "user_id": user["user_id"]}, {"_id": 0, "model": 1})
     if saved and saved.get("model"):
         from engines.bim_core import edicao
-        model = edicao.de_dict(saved["model"])
+        saved_model = edicao.de_dict(saved["model"])
+        model = (edicao.reconcile_pdf_outline(saved_model, bim.from_takeoff(structure, ppm, **options), model)
+                 if corrected.get("verified_outline") else saved_model)
     return bim, model, p
 
 
@@ -146,13 +154,29 @@ async def bim_analysis(plan_id: str, page_index: int,
 
 
 # ------------------------------------------------------------------------------------------------ editor do modelo
+class ModelSelection(BaseModel):
+    grupo: Literal["walls", "openings", "slabs", "columns", "beams", "footings", "spaces"]
+    id: str = Field(min_length=1, max_length=160)
+
+
 class ModelOps(BaseModel):
     ops: list[dict] = Field(default_factory=list, max_length=200)
     texto: str = Field(default="", max_length=4000)
+    selecao: ModelSelection | None = None
 
 
 def _edit_key(plan_id: str, page_index: int, user: dict) -> dict:
     return {"plan_id": plan_id, "page_index": page_index, "user_id": user["user_id"]}
+
+
+async def _interpret_free_text(frase, model, selection):
+    from engines.bet_core.reader import PROVIDERS, _provider_order
+    from engines.bim_core import prompt
+
+    names = [name for name in _provider_order() if name in ("claude", "openai")] or ["claude", "openai"]
+    models = {"claude": os.environ.get("ANTHROPIC_MODEL_HAIKU", "claude-haiku-4-5-20251001"),
+              "openai": os.environ.get("OPENAI_MODEL_FAST", "gpt-4o-mini")}
+    return await prompt.interpret(frase, model, selection, [partial(PROVIDERS[name], model=models[name]) for name in names])
 
 
 @router.get("/takeoffs/{plan_id}/{page_index}/modelo")
@@ -170,14 +194,34 @@ async def bim_model(plan_id: str, page_index: int, user=Depends(current_user)) -
 async def bim_model_ops(plan_id: str, page_index: int, body: ModelOps, user=Depends(current_user)) -> dict:
     """Aplica operações de edição (lista `ops`) e/ou frases correntes (`texto`) ao modelo do piso e guarda o resultado.
     Cada operação recusada volta com o motivo; as frases não percebidas voltam em `nao_percebido`."""
-    from engines.bim_core import edicao
+    from engines.bim_core import edicao, prompt
 
-    _, model, _ = await _load_model(plan_id, page_index, user, _params(None, None, None, None, None, None))
-    frases, resto = edicao.interpretar(body.texto, model) if body.texto.strip() else ([], [])
+    bim, model, plan = await _load_model(plan_id, page_index, user, _params(None, None, None, None, None, None))
+    selecao = body.selecao.model_dump() if body.selecao else None
+    frases, resto, esclarecimentos = edicao.interpretar_selecao(body.texto, model, selecao)
+    interpretado_ia = False
+    if resto and not (esclarecimentos or body.ops):
+        alternativas, perguntas = await _interpret_free_text(body.texto, model, selecao)
+        if alternativas or perguntas:
+            frases, resto, esclarecimentos = alternativas, [], perguntas
+            interpretado_ia = True
     ops = list(body.ops) + frases
-    if not ops and not resto:
+    if not ops and not resto and not esclarecimentos:
         raise HTTPException(422, "Indique operações ou um pedido em texto.")
     novo, feito, erros = edicao.aplicar(model, ops)
+    if interpretado_ia and erros:
+        return {"modelo": edicao.para_dict(model), "feito": [], "erros": erros, "esclarecimentos": esclarecimentos,
+                "nao_percebido": resto, "interpretado_ia": True, "editado": False}
+    if feito and any(op.get("op") in prompt.GEOMETRY_OPS for op in ops):
+        try:
+            _, ifc_errors = await run_in_threadpool(_build, bim, novo, sujet_plan(plan) or "Projeto ConstruPilot")
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to verify edited BIM for plan=%s page=%s", plan_id, page_index)
+            ifc_errors = ["build"]
+        if ifc_errors:
+            return {"modelo": edicao.para_dict(model), "feito": [],
+                    "erros": ["A alteração não passou a verificação IFC. A edição anterior foi mantida."],
+                    "esclarecimentos": esclarecimentos, "nao_percebido": resto, "interpretado_ia": interpretado_ia, "editado": False}
     if feito:
         key = _edit_key(plan_id, page_index, user)
         doc = await db.bim_models.find_one(key, {"_id": 0, "anteriores": 1, "historico": 1}) or {}
@@ -186,7 +230,9 @@ async def bim_model_ops(plan_id: str, page_index: int, body: ModelOps, user=Depe
             "model": edicao.para_dict(novo), "updated_at": agora,
             "anteriores": ((doc.get("anteriores") or []) + [edicao.para_dict(model)])[-20:],
             "historico": ((doc.get("historico") or []) + [{"quando": agora, "feito": feito}])[-200:]}}, upsert=True)
-    return {"modelo": edicao.para_dict(novo), "feito": feito, "erros": erros, "nao_percebido": resto, "editado": bool(feito)}
+    return {"modelo": edicao.para_dict(novo), "feito": feito, "erros": erros,
+            "esclarecimentos": esclarecimentos, "nao_percebido": resto,
+            "interpretado_ia": interpretado_ia, "editado": bool(feito)}
 
 
 @router.post("/takeoffs/{plan_id}/{page_index}/modelo/desfazer")

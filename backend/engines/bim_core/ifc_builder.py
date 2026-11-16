@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import math
 import uuid
+from itertools import product
+from threading import Lock
 
 import numpy as np
 
@@ -20,10 +22,17 @@ from .model import BuildingModel
 
 SCHEMA = "IFC4X3"
 _NS = uuid.UUID("5b0f7c1e-6c2a-4b8e-9a51-c0a57e2f1a10")  # espaço de nomes ConstruPilot BIM
+_SCHEMA_VALIDATION_LOCK = Lock()
 
 MATERIALS = {
     "concrete": ("Betão armado C25/30", "CONCRETE"),
     "masonry": ("Alvenaria", "MASONRY"),
+}
+OPENING_PALETTE = {
+    "frame": ("Caixilharia antracite", (.15, .18, .20), 0.),
+    "glass": ("Vidro", (.58, .76, .82), .62),
+    "door": ("Folha de madeira", (.52, .34, .22), 0.),
+    "hardware": ("Ferragens acetinadas", (.70, .72, .73), 0.),
 }
 
 
@@ -40,11 +49,53 @@ def _matrix(x: float, y: float, z: float, angle: float = 0.0) -> np.ndarray:
     return m
 
 
+def _floor_preview(points, tiled, color):
+    from shapely import constrained_delaunay_triangles
+    from shapely.geometry import Polygon, box
+
+    polygon = Polygon(points)
+    xmin, ymin, xmax, ymax = polygon.bounds
+    module, half_joint = .60, .002
+    cols = range(math.floor(xmin/module), math.ceil(xmax/module))
+    rows = range(math.floor(ymin/module), math.ceil(ymax/module))
+    # Tile joints are a presentation detail. The base surface keeps the full
+    # slab outline and the preview never declares a tile size or thickness.
+    tiled = tiled and len(cols) * len(rows) <= 3200
+    base = ((.57, .51, .46) if tiled else color)
+    parts = [(base, 0., [polygon])]
+    if tiled:
+        tiles = [[] for _ in range(3)]
+        for i, j in product(cols, rows):
+            cell = box(i*module+half_joint, j*module+half_joint, (i+1)*module-half_joint, (j+1)*module-half_joint)
+            if polygon.intersects(cell):
+                tiles[(i + 2*j) % 3].append(polygon.intersection(cell))
+        for tone, regions in zip((.92, 1.0, 1.06), tiles):
+            if regions:
+                parts.append((tuple(min(c*tone, 1.) for c in color), .0004, regions))
+
+    mesh_vertices, mesh_faces, colors = [], [], []
+    for shade, z, regions in parts:
+        vertices, faces = [], []
+        for region in regions:
+            for triangle in constrained_delaunay_triangles(region).geoms:
+                coords = list(triangle.exterior.coords)[:-1]
+                if not triangle.exterior.is_ccw:
+                    coords.reverse()
+                faces.append(list(range(len(vertices), len(vertices) + len(coords))))
+                vertices.extend((x, y, z) for x, y in coords)
+        if faces:
+            mesh_vertices.append(vertices)
+            mesh_faces.append(faces)
+            colors.append(shade)
+    return mesh_vertices, mesh_faces, colors
+
+
 def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot",
               author: str = "ConstruPilot"):
     """Devolve um `ifcopenshell.file` IFC4X3 com o piso descrito por `model`."""
     import ifcopenshell  # noqa: PLC0415
     import ifcopenshell.api  # noqa: PLC0415
+    from .edicao import PAVIMENTOS, REVESTIMENTOS
 
     api = ifcopenshell.api.run
     f = api("project.create_file", version=SCHEMA)
@@ -109,6 +160,25 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
 
     # ---------- Paredes + vãos ----------
     walls_by_id = {}
+    styles = {}
+
+    def surface(label, color, transparency=0.):
+        if label not in styles:
+            red, green, blue = color
+            style = api("style.add_style", f, name=label)
+            attributes = {"SurfaceColour": {"Name": label, "Red": red, "Green": green, "Blue": blue}}
+            if transparency:
+                # WebIFC reads alpha from SurfaceStyleRendering; exporters
+                # reading the IFC also receive the glazing reflectance type.
+                api("style.add_surface_style", f, style=style, ifc_class="IfcSurfaceStyleRendering",
+                    attributes={**attributes, "Transparency": transparency, "DiffuseColour": 1.0,
+                                "ReflectanceMethod": "GLASS"})
+            else:
+                api("style.add_surface_style", f, style=style, ifc_class="IfcSurfaceStyleShading", attributes=attributes)
+            styles[label] = style
+        return styles[label]
+
+    revestimentos = model.params.get("revestimentos") or {}
     openings_by_wall: dict[str, list] = {}
     for o in model.openings:
         openings_by_wall.setdefault(o.wall_id, []).append(o)
@@ -126,6 +196,24 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
                {"Length": w.length, "Width": w.thickness, "Height": w.height,
                 "GrossVolume": gross, "NetVolume": max(gross - void, 0.0)},
                w.source_id)
+        revestimento = revestimentos.get(w.source_id)
+        cor = (model.params.get("cores_parede") or {}).get(w.source_id)
+        props = {}
+        if revestimento in REVESTIMENTOS:
+            label, color = REVESTIMENTOS[revestimento]
+            props["Revestimento"] = label
+        elif w.load_bearing:
+            label, color = "Betão", (.61, .62, .60)
+        else:
+            label, color = "Alvenaria", (.86, .83, .76)
+        if cor:
+            label = f"Pintura {cor.upper()}"
+            color = tuple(int(cor[i:i+2], 16) / 255 for i in (1, 3, 5))
+            props["Cor"] = cor.upper()
+        api("style.assign_representation_styles", f, shape_representation=rep, styles=[surface(label, color)])
+        if props:
+            acabamento = api("pset.add_pset", f, product=el, name="CP_Acabamento")
+            api("pset.edit_pset", f, pset=acabamento, properties=props)
         walls_by_id[w.source_id] = (w, el)
         contained.append(el)
 
@@ -141,10 +229,12 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
         api("geometry.assign_representation", f, product=op, representation=rep)
         api("feature.add_feature", f, feature=op, element=wall_el)
 
-        if o.kind == "porte":
+        door = o.kind == "porte"
+        shape = f.create_entity("IfcProductDefinitionShape", Representations=[])
+        if door:
             fill = entity("IfcDoor", f"Porta {o.source_id}", f"fill-{o.source_id}", predefined_type="DOOR")
             frep = api("geometry.add_door_representation", f, context=body,
-                       overall_height=o.height, overall_width=o.width)
+                       overall_height=o.height, overall_width=o.width, part_of_product=shape)
             fill.OverallHeight, fill.OverallWidth = o.height, o.width
             pset = {"Pset_DoorCommon": {"Reference": "Porta"}}
             qto = ("Qto_DoorBaseQuantities", {"Width": o.width, "Height": o.height, "Area": o.width * o.height})
@@ -152,12 +242,22 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
             label = "Janela" if o.kind == "fenetre" else "Vão envidraçado"
             fill = entity("IfcWindow", f"{label} {o.source_id}", f"fill-{o.source_id}", predefined_type="WINDOW")
             frep = api("geometry.add_window_representation", f, context=body,
-                       overall_height=o.height, overall_width=o.width)
+                       overall_height=o.height, overall_width=o.width, part_of_product=shape)
             fill.OverallHeight, fill.OverallWidth = o.height, o.width
             pset = {"Pset_WindowCommon": {"Reference": label}}
             qto = ("Qto_WindowBaseQuantities", {"Width": o.width, "Height": o.height, "Area": o.width * o.height})
-        # A caixilharia fica a meio da espessura da parede.
-        finish(fill, _matrix(ox - uy * 0.0, oy + ux * 0.0, o.sill, w.angle), frep, None, pset,
+        for aspect in shape.HasShapeAspects:
+            for representation in aspect.ShapeRepresentations:
+                for i, item in enumerate(representation.Items):
+                    finish_kind = "frame"
+                    if aspect.Name == "Glazing":
+                        finish_kind = "glass"
+                    elif door and aspect.Name == "Framing":
+                        finish_kind = "door" if i == 0 else "hardware"
+                    api("style.assign_item_style", f, item=item, style=surface(*OPENING_PALETTE[finish_kind]))
+        shape.Representations = [frep]
+        fill.Representation = shape
+        finish(fill, _matrix(ox, oy, o.sill, w.angle), None, None, pset,
                qto[0], qto[1], o.source_id)
         api("feature.add_filling", f, opening=op, element=fill)
         contained.append(fill)
@@ -176,6 +276,38 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
             ps = api("pset.add_pset", f, product=el, name="CP_Altimetria")
             api("pset.edit_pset", f, pset=ps, properties={"CotaNGF": float(s.elevation_ngf)})
         contained.append(el)
+        pavement = (model.params.get("pavimentos") or {}).get(s.source_id) or {}
+        flooring = pavement.get("material")
+        if flooring in PAVIMENTOS:
+            label, color = PAVIMENTOS[flooring]
+            covering = entity("IfcCovering", f"{label} · {s.name}", s.source_id, predefined_type="FLOORING")
+            depth = pavement.get("espessura")
+            if depth is None:
+                vertices, faces, shades = _floor_preview(s.points, flooring in ("ceramica", "porcelanato"), color)
+                items = [f.create_entity("IfcPolygonalFaceSet", Closed=False,
+                         Coordinates=f.create_entity("IfcCartesianPointList3D", CoordList=points),
+                         Faces=[f.create_entity("IfcIndexedPolygonalFace", CoordIndex=[v+1 for v in face])
+                                for face in polygons]) for points, polygons in zip(vertices, faces)]
+                flooring_rep = f.create_entity("IfcShapeRepresentation", ContextOfItems=body,
+                    RepresentationIdentifier="Body", RepresentationType="Tessellation", Items=items)
+            else:
+                flooring_rep = api("geometry.add_slab_representation", f, context=body, depth=depth,
+                                   polyline=[tuple(p) for p in s.points])
+                shades = [color]
+            for i, (item, shade) in enumerate(zip(flooring_rep.Items, shades), 1):
+                style_name = label if len(shades) == 1 else f"{label} · {i}"
+                api("style.assign_item_style", f, item=item, style=surface(style_name, shade))
+            if flooring not in mats:
+                mats[flooring] = api("material.add_material", f, name=label, category="REVESTIMENTO")
+            qs = {"GrossArea": s.area, "NetArea": s.area}
+            if depth is not None:
+                qs["Width"] = depth
+            finish(covering, _matrix(0., 0., .001 if depth is None else 0.), flooring_rep, flooring,
+                   {"CP_Acabamento": {"Revestimento": label, "EspessuraDefinida": depth is not None}},
+                   "Qto_CoveringBaseQuantities", qs, s.source_id)
+            f.create_entity("IfcRelCoversBldgElements", GlobalId=stable_guid(*key, "flooring-rel", s.source_id),
+                            RelatingBuildingElement=el, RelatedCoverings=[covering])
+            contained.append(covering)
 
     # ---------- Pilares ----------
     for i, c in enumerate(model.columns, 1):
@@ -207,11 +339,12 @@ def build_ifc(model: BuildingModel, *, project_name: str = "Projeto ConstruPilot
 
     # ---------- Sapatas ----------
     for i, ft in enumerate(model.footings, 1):
-        el = entity("IfcFooting", f"Sapata S{i}", ft.source_id, predefined_type="PAD_FOOTING")
+        label = f"Sapata linear SL{i}" if ft.wall_id else f"Sapata S{i}"
+        el = entity("IfcFooting", label, ft.source_id, predefined_type="STRIP_FOOTING" if ft.wall_id else "PAD_FOOTING")
         prof = api("profile.add_parameterized_profile", f, ifc_class="IfcRectangleProfileDef")
         prof.XDim, prof.YDim = ft.dx, ft.dy
         rep = api("geometry.add_profile_representation", f, context=body, profile=prof, depth=ft.depth)
-        finish(el, _matrix(ft.cx, ft.cy, -slab_depth - ft.depth), rep, "concrete",
+        finish(el, _matrix(ft.cx, ft.cy, -slab_depth - ft.depth, ft.angle), rep, "concrete",
                {"Pset_FootingCommon": {"LoadBearing": True}}, "Qto_FootingBaseQuantities",
                {"Length": ft.dx, "Width": ft.dy, "Height": ft.depth,
                 "GrossVolume": ft.dx * ft.dy * ft.depth},
@@ -254,7 +387,7 @@ def summarize(f) -> dict:
     """Lista dos elementos e totais de quantidades lidos DO PRÓPRIO IFC (não do modelo de origem)."""
     import ifcopenshell.util.element as E  # noqa: PLC0415
 
-    classes = ("IfcWall", "IfcSlab", "IfcColumn", "IfcBeam", "IfcFooting", "IfcDoor", "IfcWindow", "IfcSpace")
+    classes = ("IfcWall", "IfcSlab", "IfcColumn", "IfcBeam", "IfcFooting", "IfcDoor", "IfcWindow", "IfcSpace", "IfcCovering")
     elements, totals = [], {}
     for cls in classes:
         for el in f.by_type(cls):
@@ -263,6 +396,7 @@ def summarize(f) -> dict:
             origin = psets.get("CP_Origem", {})
             elements.append({"guid": el.GlobalId, "ifc_class": cls, "name": el.Name,
                              "source_id": origin.get("IdOrigem"),
+                             **({"finish": psets["CP_Acabamento"]["Revestimento"]} if "Revestimento" in psets.get("CP_Acabamento", {}) else {}),
                              "quantities": {k: v for k, v in qto.items() if k != "id"}})
             t = totals.setdefault(cls, {"count": 0, "volume_m3": 0.0, "area_m2": 0.0, "length_m": 0.0})
             t["count"] += 1
@@ -299,12 +433,20 @@ def validate(f) -> list[str]:
         def emit(self, record):
             self.msgs.append(record.getMessage())
 
-    log = logging.getLogger("construpilot.bim.validate")
+    log = logging.Logger("construpilot.bim.validate")
     log.propagate = False
     h = _Collect()
     log.addHandler(h)
-    try:
-        ifcopenshell.validate.validate(f, log, express_rules=False)
-    finally:
-        log.removeHandler(h)
+    # IfcOpenShell enables derived attribute values through a process-wide
+    # feature switch during validation. Concurrent summary/download requests
+    # must not restore the switch while another model is still being checked.
+    with _SCHEMA_VALIDATION_LOCK:
+        wrapper = ifcopenshell.ifcopenshell_wrapper
+        flag = "use_attribute_value_derived"
+        previous = wrapper.get_feature(flag)
+        try:
+            ifcopenshell.validate.validate(f, log, express_rules=False)
+        finally:
+            wrapper.set_feature(flag, previous)
+            log.removeHandler(h)
     return h.msgs

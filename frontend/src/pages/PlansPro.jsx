@@ -1,6 +1,7 @@
 // Page « Analyse de plan Pro » — upload DWG/RVT/IFC/PDF/PNG + résultat Autodesk + Vision.
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { useSearchParams } from "react-router-dom";
+import { api, loadSavedPlanPdf } from "@/lib/api";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
 import { toast } from "sonner";
 
@@ -15,6 +16,9 @@ const STATUS_TONE = { done: "text-emerald-700", needs_review: "text-amber-700", 
 const HAS_RESULT = ["done", "needs_review", "partial"];
 
 export default function PlansPro() {
+  const [params] = useSearchParams();
+  const selectedPlanId = params.get("plan");
+  const [savedPlan, setSavedPlan] = useState(null);
   const [file, setFile] = useState(null);
   const [job, setJob] = useState(null);
   const [result, setResult] = useState(null);
@@ -25,6 +29,15 @@ export default function PlansPro() {
   const { chantierId, chantier } = useChantierContext();
 
   const loadHistory = () => api.get("/plans-pro/history?limit=8").then(({ data }) => setHistory(data.items || [])).catch(() => {});
+  useEffect(() => {
+    setSavedPlan(null);
+    if (!selectedPlanId) return;
+    let active = true;
+    api.get(`/takeoffs/${encodeURIComponent(selectedPlanId)}`).then(({ data }) => {
+      if (active && data.kind === "pdf") setSavedPlan(data);
+    }).catch(() => { if (active) toast.error("Planta guardada indisponível."); });
+    return () => { active = false; };
+  }, [selectedPlanId]);
 
   useEffect(() => {
     loadHistory();
@@ -61,12 +74,12 @@ export default function PlansPro() {
 
   const upload = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file && !savedPlan) return;
     setResult(null);
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", file || await loadSavedPlanPdf(savedPlan.plan_id, savedPlan.filename));
       if (chantierId) fd.append("chantier_id", chantierId);
       const { data } = await api.post("/plans-pro/upload", fd, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -122,10 +135,11 @@ export default function PlansPro() {
       </header>
 
       <form onSubmit={upload} data-testid="plans-pro-form" className="rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col md:flex-row items-center gap-4">
+        {savedPlan && !file && <p className="text-sm break-all" data-testid="plans-pro-saved-plan"><strong>PDF guardado</strong> · {savedPlan.filename}</p>}
         <input type="file" accept={ACCEPT} data-testid="plans-pro-file-input"
                onChange={(e) => setFile(e.target.files?.[0] || null)}
                className="flex-1 text-sm" />
-        <button type="submit" disabled={!file || uploading} data-testid="plans-pro-submit-btn"
+        <button type="submit" disabled={(!file && !savedPlan) || uploading} data-testid="plans-pro-submit-btn"
                 className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-60">
           {uploading ? "A enviar…" : "Analisar"}
         </button>

@@ -116,6 +116,8 @@ class Footing:
     dx: float
     dy: float
     depth: float
+    angle: float = 0.0
+    wall_id: str | None = None
 
 
 @dataclass
@@ -179,7 +181,7 @@ def _rect(it: dict):
 
 def from_takeoff(structure: dict, ppm: float | None, *, rooms: list | None = None,
                  plan_id: str = "", page_index: int = 0, storey_name: str = "Piso 0",
-                 params: dict | None = None) -> BuildingModel:
+                 params: dict | None = None, origin_structure: dict | None = None) -> BuildingModel:
     """Converte a estrutura de uma página (píxeis) num `BuildingModel` métrico.
 
     `structure` tem o formato devolvido por `plan_structure._to_px` (paredes, vãos, vigas, lajes,
@@ -193,18 +195,19 @@ def from_takeoff(structure: dict, ppm: float | None, *, rooms: list | None = Non
     for k in DEFAULTS:
         p[k] = _num(p[k], DEFAULTS[k])
     structure = structure or {}
+    origin_data = structure if origin_structure is None else origin_structure
     rooms = rooms or []
 
     # Origem: canto inferior esquerdo de toda a geometria, para o modelo ficar perto de (0, 0).
     xs, ys = [], []
     # (os vãos não entram: um vão isolado, sem parede, não deve deslocar a origem)
     for key in ("walls", "beams", "columns", "footings"):
-        for it in structure.get(key) or []:
+        for it in origin_data.get(key) or []:
             r = _rect(it) if isinstance(it, dict) else None
             if r:
                 xs += [r[0], r[2]]
                 ys += [r[1], r[3]]
-    for f in (structure.get("floors") or []) + list(rooms):
+    for f in (origin_data.get("floors") or []) + list(rooms):
         for pt in (f.get("points") or []) if isinstance(f, dict) else []:
             if isinstance(pt, (list, tuple)) and len(pt) >= 2:
                 xs.append(float(pt[0]))
@@ -220,6 +223,8 @@ def from_takeoff(structure: dict, ppm: float | None, *, rooms: list | None = Non
         return round((oy - float(py)) / ppm, 4)
 
     m = BuildingModel(plan_id=plan_id, page_index=page_index, storey_name=storey_name, params=p)
+    if structure.get("verified_outline"):
+        m.params["verified_outline"] = structure["verified_outline"]
 
     for it in structure.get("walls") or []:
         r = _rect(it) if isinstance(it, dict) else None

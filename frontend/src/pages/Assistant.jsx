@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Brain, FileText, Loader2, Mic, Paperclip, Plus, Send, Square, Search, History, SlidersHorizontal, X, Mail, Ruler, ClipboardList, Wrench, ArrowDown, ImagePlus, ChevronDown, Trash2, MessageSquare, ArrowUpRight, Globe, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Check, FolderArchive, Activity } from "lucide-react";
 import { useDossierImport, DossierChips } from "@/components/assistant/DossierImport";
 import { toast } from "sonner";
-import { api, uploadPlan } from "@/lib/api";
+import { api, importAssistantPlan, uploadPlan } from "@/lib/api";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useI18n } from "@/context/I18nContext";
 import { normalizeSearch, useWorkspaceCopy } from "@/components/workspace/copy";
@@ -91,6 +91,7 @@ export default function Assistant() {
   const [busy, setBusy] = useState(false);
   const [rec, setRec] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [importingDoc, setImportingDoc] = useState(null);
   
 
   const loadConvs = () => api.get("/assistant/conversations").then((r) => { setConvs(r.data); setHistoryError(false); }).catch(() => setHistoryError(true));
@@ -160,6 +161,23 @@ export default function Assistant() {
     return () => window.removeEventListener("cp-assistant-prefill", h);
   }, []);
   const navigateTo = useNavigate();
+  const openInPlanEditor = async (id) => {
+    if (importingDoc) return;
+    const conversationId = activeConversation.current;
+    setImportingDoc(id);
+    try {
+      const plan = await importAssistantPlan(id);
+      if (!plan?.plan_id) throw new Error();
+      if (mounted.current && activeConversation.current === conversationId) {
+        navigateTo(`/plan?open=${encodeURIComponent(plan.plan_id)}`);
+      }
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : detail?.message || ui("importError"));
+    } finally {
+      if (mounted.current) setImportingDoc(null);
+    }
+  };
   const jobFollow = useConversationJobs(conv?.conversation_id, (data) => {
     if (activeConversation.current !== data.conversation_id) return;
     setConv(data);
@@ -480,7 +498,27 @@ export default function Assistant() {
         </div></div>}
         <div role="status" aria-live="polite" className={filesLine ? "assistant-files-status" : "sr-only"} data-testid="assistant-files-status">{filesLine && <><Check size={13} aria-hidden="true" /><span>{filesLine}</span></>}</div>
         {(activePlans.length > 0 || activeDocs.length > 0 || dossierImport.dossiers.length > 0) && <div className="assistant-file-chips assistant-file-chips-inline" data-testid="assistant-pending-files">
-          {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids,kind]) => ids.map(id => { const info = composerFiles.find((f) => f.id === id); return <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`} data-cp-attachment={nameOf(id)} data-cp-attachment-kind={info?.kind || kind} data-cp-attachment-new={info?.new ? "1" : undefined} title={info ? `${nameOf(id)} — ${attachmentDetail(info, lang || "pt")}` : nameOf(id)}>{kind === "doc" && docs.find((d) => d.doc_id === id)?.kind === "photo" ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={nameOf(id)} testId={`assistant-selected-photo-${id}`} small /> : <FileText size={12} aria-hidden="true" />}<span title={nameOf(id)}>{nameOf(id)}</span><button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`} aria-label={`${ui("removeFile")} : ${nameOf(id)}`} onClick={() => removeContext(id,kind)}><X size={13} /></button></div>; }))}
+          {[[activePlans, "plan"], [activeDocs, "doc"]].flatMap(([ids, kind]) => ids.map(id => {
+            const info = composerFiles.find((file) => file.id === id);
+            const name = nameOf(id);
+            const canOpenPdf = canPlan && kind === "doc" && info?.mime === "application/pdf";
+            return <div key={id} className="assistant-file-chip" data-testid={`assistant-active-${kind}-${id}`}
+              data-cp-attachment={name} data-cp-attachment-kind={info?.kind || kind}
+              data-cp-attachment-new={info?.new ? "1" : undefined}
+              title={info ? `${name} — ${attachmentDetail(info, lang || "pt")}` : name}>
+              {kind === "doc" && info?.kind === "photo"
+                ? <PrivateImage path={`/assistant/documents/${id}/preview`} title={name} testId={`assistant-selected-photo-${id}`} small />
+                : <FileText size={12} aria-hidden="true" />}
+              <span title={name}>{name}</span>
+              {canOpenPdf && <Button type="button" size="sm" variant="ghost" className="h-auto px-1.5 py-1 text-[11px] text-primary"
+                disabled={!!importingDoc || locked} data-testid={`assistant-open-plan-${id}`}
+                onClick={() => openInPlanEditor(id)}>
+                {importingDoc === id ? studio("importingPlan") : studio("openInPlanEditor")}
+              </Button>}
+              <button type="button" disabled={locked} data-testid={`assistant-remove-${kind}-${id}`}
+                aria-label={`${ui("removeFile")} : ${name}`} onClick={() => removeContext(id, kind)}><X size={13} /></button>
+            </div>;
+          }))}
           <DossierChips dossiers={dossierImport.dossiers} onRemove={dossierImport.remove} disabled={locked} />
         </div>}
         <div className={`assistant-input-box${dragOver ? " assistant-input-box-dragover" : ""}`}

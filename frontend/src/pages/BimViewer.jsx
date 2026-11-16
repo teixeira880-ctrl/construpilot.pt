@@ -9,7 +9,7 @@ import BimEditor from "@/components/bim/BimEditor";
 
 const CLASS_LABELS = {
   IfcWall: "Paredes", IfcSlab: "Lajes", IfcColumn: "Pilares", IfcBeam: "Vigas", IfcFooting: "Sapatas",
-  IfcDoor: "Portas", IfcWindow: "Janelas", IfcSpace: "Divisões",
+  IfcDoor: "Portas", IfcWindow: "Janelas", IfcSpace: "Divisões", IfcCovering: "Pavimentos",
 };
 const WARNING_LABELS = {
   opening_without_wall: "vão sem parede",
@@ -34,12 +34,21 @@ async function blobToText(blob) {
 }
 
 export default function BimViewer() {
-  const [sp] = useSearchParams();
-  const navigate = useNavigate();
+  const [sp, setSp] = useSearchParams();
   const planId = sp.get("plan");
-  const page = Number(sp.get("page") || 0);
+  const requestedPage = Number(sp.get("page") || 0);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
   const query = PARAM_KEYS.filter((k) => sp.get(k)).map((k) => `${k}=${encodeURIComponent(sp.get(k))}`).join("&");
+  const changePage = (index) => {
+    const next = new URLSearchParams(sp);
+    next.set("page", String(index));
+    setSp(next);
+  };
+  return <BimPlanViewer key={`${planId || ""}:${page}:${query}`} planId={planId} page={page} query={query} onPageChange={changePage} />;
+}
 
+function BimPlanViewer({ planId, page, query, onPageChange }) {
+  const navigate = useNavigate();
   const hostRef = useRef(null);
   const viewerRef = useRef(null);
   const fileRef = useRef(null);
@@ -54,7 +63,30 @@ export default function BimViewer() {
   const [ortho, setOrtho] = useState(false);
   const [ifcBytes, setIfcBytes] = useState(null);
   const [modelName, setModelName] = useState(null);
+  const [sourcePlan, setSourcePlan] = useState(null);
+  const [availablePlans, setAvailablePlans] = useState([]);
+  const [studioEnabled, setStudioEnabled] = useState(false);
+  const [studioBusy, setStudioBusy] = useState(false);
   const sectionRef = useRef(false);
+  const selectedRef = useRef(null);
+  const planUrl = planId && `/plan?open=${encodeURIComponent(planId)}&page=${page}`;
+
+  useEffect(() => {
+    let active = true;
+    if (planId) {
+      api.get(`/takeoffs/${encodeURIComponent(planId)}`).then(({ data }) => {
+        if (active) setSourcePlan(data);
+      }).catch(() => {});
+      api.get("/bim/config").then(({ data }) => {
+        if (active) setStudioEnabled(data?.enabled === true);
+      }).catch(() => {});
+    } else {
+      api.get("/takeoffs").then(({ data }) => {
+        if (active) setAvailablePlans(data.plans || []);
+      }).catch(() => {});
+    }
+    return () => { active = false; };
+  }, [planId]);
 
   // Arranque do motor 3D (import dinâmico: That Open Engine + web-ifc só são descarregados nesta página).
   useEffect(() => {
@@ -64,7 +96,10 @@ export default function BimViewer() {
       try {
         const { createBimViewer } = await import("@/components/bim/bimEngine");
         if (disposed || !hostRef.current) return;
-        viewer = await createBimViewer(hostRef.current, { onSelect: setSelected });
+        viewer = await createBimViewer(hostRef.current, { onSelect: (item) => {
+          selectedRef.current = item;
+          setSelected(item);
+        } });
         if (disposed) { viewer.dispose(); return; }
         viewerRef.current = viewer;
         setReady(true);
@@ -76,14 +111,16 @@ export default function BimViewer() {
     return () => { disposed = true; viewerRef.current = null; viewer?.dispose(); };
   }, []);
 
-  const showBytes = useCallback(async (bytes, name) => {
+  const showBytes = useCallback(async (bytes, name, selectedGuid = null) => {
     setBusy(true);
+    selectedRef.current = null;
     setSelected(null);
     try {
       await viewerRef.current.loadIfc(bytes, name);
       setIfcBytes(bytes);
       setModelName(name);
       if (sectionRef.current) viewerRef.current.setSection(SECTION_Z);
+      if (selectedGuid) await viewerRef.current.selectByGuid(selectedGuid);
     } catch (e) {
       console.error(e);
       toast.error("Ficheiro IFC ilegível.");
@@ -91,18 +128,21 @@ export default function BimViewer() {
   }, []);
 
   // Modelo gerado a partir da planta lida.
-  const loadFromPlan = useCallback(async () => {
+  const loadFromPlan = useCallback(async (keepSelection = false) => {
     if (!planId || !viewerRef.current) return;
+    const selectedGuid = keepSelection ? selectedRef.current?.guid : null;
     setBusy(true);
     setError(null);
     try {
       const base = `/bim/takeoffs/${encodeURIComponent(planId)}/${page}`;
+      const suffix = query ? `?${query}` : "";
       const [{ data: sum }, { data: blob }] = await Promise.all([
-        api.get(`${base}/summary${query ? `?${query}` : ""}`),
-        api.get(`${base}/ifc${query ? `?${query}` : ""}`, { responseType: "blob" }),
+        api.get(`${base}/summary${suffix}`),
+        api.get(`${base}/ifc${suffix}`, { responseType: "blob" }),
       ]);
+      if (!viewerRef.current) return;
       setSummary(sum);
-      await showBytes(await blob.arrayBuffer(), `Planta p.${page + 1}`);
+      await showBytes(await blob.arrayBuffer(), `Planta p.${page + 1}`, selectedGuid);
     } catch (e) {
       const data = e?.response?.data;
       const detail = data instanceof Blob ? await blobToText(data) : data?.detail;
@@ -159,6 +199,23 @@ export default function BimViewer() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const copyToStudio = async () => {
+    if (!ifcBytes || studioBusy) return;
+    setStudioBusy(true);
+    try {
+      const name = `${sourcePlan?.filename?.replace(/\.[^.]+$/, "") || "Planta"} · pág. ${page + 1}`;
+      const form = new FormData();
+      form.append("file", new Blob([ifcBytes], { type: "application/x-step" }), "modelo.ifc");
+      form.append("name", name);
+      const { data } = await api.post("/bim/models", form);
+      navigate(`/bim-studio?model=${encodeURIComponent(data.model_id)}&version=${data.version}`);
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Não foi possível copiar o modelo para o BIM Studio.");
+    } finally {
+      setStudioBusy(false);
+    }
+  };
+
   const toggleSection = () => {
     const next = !section;
     sectionRef.current = next;
@@ -173,12 +230,16 @@ export default function BimViewer() {
   };
 
   const totals = summary?.totals || {};
+  const picked = selected?.guid ? summary?.elements?.find((element) => element.guid === selected.guid) : null;
+  const selectedElement = picked?.ifc_class === "IfcCovering"
+    ? summary.elements.find((element) => element.ifc_class === "IfcSlab" && element.source_id === picked.source_id)
+    : picked;
 
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] min-h-[480px]" data-testid="bim-viewer-page">
       <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-background">
         {planId && (
-          <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => navigate(`/plan?open=${encodeURIComponent(planId)}`)}>
+          <Button size="sm" variant="ghost" className="h-8 gap-1" data-testid="bim-back-to-plan" onClick={() => navigate(planUrl)}>
             <ArrowLeft className="h-4 w-4" /> Planta
           </Button>
         )}
@@ -216,7 +277,33 @@ export default function BimViewer() {
         <Button size="sm" className="h-8 gap-1" disabled={!ifcBytes} onClick={download} data-testid="bim-download">
           <Download className="h-4 w-4" /> IFC
         </Button>
+        {planId && studioEnabled && (
+          <Button size="sm" variant="outline" className="h-8" disabled={!ifcBytes || busy || studioBusy} onClick={copyToStudio} data-testid="bim-copy-to-studio">
+            {studioBusy ? "A copiar…" : "Copiar para o BIM Studio"}
+          </Button>
+        )}
       </div>
+      {sourcePlan && (
+        <div className="flex flex-wrap items-center gap-3 border-b bg-background px-3 py-2 text-sm" data-testid="bim-source-plan">
+          <span className="min-w-0 truncate font-medium" title={sourcePlan.filename}>{sourcePlan.filename}</span>
+          <label className="ms-auto flex items-center gap-2">Página
+            <select className="rounded border bg-background p-1" value={page} onChange={(event) => onPageChange(Number(event.target.value))} data-testid="bim-plan-page">
+              {Array.from({ length: sourcePlan.page_count || sourcePlan.pages?.length || 1 }, (_, index) => (
+                <option value={index} key={index}>{index + 1}{sourcePlan.pages?.[index]?.level_label ? ` · ${sourcePlan.pages[index].level_label}` : ""}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      {!planId && availablePlans.length > 0 && (
+        <label className="flex flex-wrap items-center gap-3 border-b bg-background px-3 py-2 text-sm">Planta guardada
+          <select className="min-w-0 rounded border bg-background p-1" value="" data-testid="bim-select-plan"
+            onChange={(event) => { if (event.target.value) navigate(`/bim?plan=${encodeURIComponent(event.target.value)}&page=0`); }}>
+            <option value="">Escolher planta…</option>
+            {availablePlans.map((plan) => <option value={plan.plan_id} key={plan.plan_id}>{plan.filename || plan.plan_id}</option>)}
+          </select>
+        </label>
+      )}
 
       <div className="flex flex-1 min-h-0 flex-col md:flex-row">
         <div className="relative flex-1 min-h-[320px]"
@@ -237,13 +324,26 @@ export default function BimViewer() {
           )}
           {error && (
             <div className="absolute inset-x-4 top-4 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-300" data-testid="bim-error">
-              {error}
+              <p>{error}</p>
+              {planUrl && (
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => navigate(planUrl)}>
+                  Preparar esta página no Editor de Plantas
+                </Button>
+              )}
             </div>
           )}
         </div>
 
         <aside className="md:w-80 border-t md:border-t-0 md:border-l overflow-y-auto p-3 space-y-4 text-sm max-h-[45vh] md:max-h-none" data-testid="bim-panel">
-          {planId && summary && <BimEditor planId={planId} page={page} disabled={busy} onChanged={() => { setAnalysis(null); loadFromPlan(); }} />}
+          {planId && summary && <BimEditor key={`${planId}:${page}`} planId={planId} page={page} disabled={busy}
+            selected={selectedElement} elements={summary.elements} onSelect={(guid) => viewerRef.current?.selectByGuid(guid)}
+            onChanged={() => { setAnalysis(null); loadFromPlan(true); }} />}
+          {summary?.params?.verified_outline && (
+            <section className="text-xs" data-testid="bim-verified-floor-outline">
+              <strong>Área bruta cotada {summary.params.verified_outline.area_m2.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} m²</strong>
+              <p>{summary.params.verified_outline.width_m} × {summary.params.verified_outline.depth_m} m · recorte {summary.params.verified_outline.recess_m.join(" × ")} m</p>
+            </section>
+          )}
           {summary && (
             <section>
               <h2 className="font-semibold mb-2">Elementos</h2>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 
 // Common take-off methods (CLT and traditional construction), the same for every company:
@@ -42,9 +43,12 @@ async function download(path, body, filename) {
 }
 
 export default function MetodosMedicao() {
+  const [searchParams] = useSearchParams();
+  const requestedPlan = searchParams.get("plan") || "";
+  const requestedPage = Number(searchParams.get("page") || 0);
   const [catalogue, setCatalogue] = useState(null);
   const [plans, setPlans] = useState([]);
-  const [planId, setPlanId] = useState("");
+  const [planId, setPlanId] = useState(requestedPlan);
   const [pages, setPages] = useState([]);
   const [meta, setMeta] = useState({ nome: "Estudo", pais: "PT", sistema: "alvenaria_tijolo", lang: "pt" });
   const [project, setProject] = useState(null);
@@ -67,10 +71,13 @@ export default function MetodosMedicao() {
   const plan = useMemo(() => plans.find((p) => p.plan_id === planId), [plans, planId]);
   useEffect(() => {
     if (!plan) return setPages([]);
-    setPages((plan.pages || []).map((pg, i) => ({
-      index: pg.index ?? i, use: i === 0, nome: pg.level_label || (i === 0 ? "RDC" : `Piso ${i}`), nivel: pg.level_index ?? i, altura_m: "",
+    const sourcePages = plan.pages || [];
+    const hasRequestedPage = planId === requestedPlan && sourcePages.some((pg, i) => (pg.index ?? i) === requestedPage);
+    setPages(sourcePages.map((pg, i) => ({
+      index: pg.index ?? i, use: hasRequestedPage ? (pg.index ?? i) === requestedPage : i === 0,
+      nome: pg.level_label || (i === 0 ? "RDC" : `Piso ${i}`), nivel: pg.level_index ?? i, altura_m: "",
     })));
-  }, [plan]);
+  }, [plan, planId, requestedPlan, requestedPage]);
 
   async function run(label, fn) {
     setBusy(label); setError(""); setSaved("");
@@ -97,7 +104,7 @@ export default function MetodosMedicao() {
   const calculate = () => run("estudo", async () => setResult((await api.post(`${base}/estudo`, body())).data));
   const saveParams = () => run("parametros", async () => {
     const valores = {};
-    Object.entries(catalogue.parametros).forEach(([k, v]) => { if (v.origem === "empresa") valores[k] = v.valor; });
+    Object.entries(catalogue.parametros || {}).forEach(([k, v]) => { if (v.origem === "empresa") valores[k] = v.valor; });
     Object.entries(edits).forEach(([k, v]) => { if (v !== "") valores[k] = Number(v); });
     await api.put(`${base}/parametros`, { valores });
     setEdits({}); await load(); setSaved("Parâmetros guardados.");
@@ -113,9 +120,9 @@ export default function MetodosMedicao() {
   });
 
   if (!catalogue) return <div className="p-6 text-sm">{error || "A carregar…"}</div>;
-  const systems = Object.entries(catalogue.sistemas);
+  const systems = Object.entries(catalogue.sistemas || {});
   const groups = {};
-  Object.entries(catalogue.parametros).forEach(([k, v]) => { (groups[k.split(".")[0]] ||= []).push([k, v]); });
+  Object.entries(catalogue.parametros || {}).forEach(([k, v]) => { (groups[k.split(".")[0]] ||= []).push([k, v]); });
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 p-4">

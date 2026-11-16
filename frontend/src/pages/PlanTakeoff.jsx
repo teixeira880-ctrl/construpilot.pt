@@ -737,6 +737,7 @@ export default function PlanTakeoff() {
 
   const rawCalibration = plan?.calibrations?.[String(pageIndex)];
   const currentCalib = finitePositive(rawCalibration?.pixels_per_meter) ? rawCalibration : null;
+  const verifiedOutline = structure?.verified_outline;
   const pageMeasurements = useMemo(
     () => (plan?.measurements || []).filter((m) => m.page_index === pageIndex),
     [plan, pageIndex]
@@ -4584,6 +4585,7 @@ export default function PlanTakeoff() {
       </Dialog>
       <PlanWorkflowHeader filename={plan.filename} pageIndex={pageIndex} pageCount={plan.page_count || 1}
         calibration={currentCalib} busy={analysisBusy || aiBusy} mode={analysisMode} onModeChange={setAnalysisMode}
+        onBim={() => nav(`/bim?plan=${encodeURIComponent(plan.plan_id)}&page=${pageIndex}&wall_height=${wallHeight}&voile_ep=${voileEp}&dalle_ep=${dalleEp}&poutre_l=${poutreL}&poutre_h=${poutreH}`)}
         planKind={planKindChoice} onPlanKindChange={setPlanKindChoice} progress={analysisProgress} hasRecap={!!analysisRecap}
         onAnalyze={analysisMode === "reading" ? runAI : analysisMode === "structure_all" ? analyzeAllPages : analyzePlanFull}
         onCalibrate={() => { setTool(TOOLS.CALIB); setPoints([]); document.querySelector('[data-testid="plan-canvas-surface"]')?.scrollIntoView({ block: "start" }); }}
@@ -4611,8 +4613,11 @@ export default function PlanTakeoff() {
           (plan.structural_metre || plan.kind === "dxf") && { id: "plan-structural-btn", label: "Medição a partir das camadas CAD", run: () => setStructDialog(true) },
           { id: "plan-render-3d-btn", label: "Visualização 3D", run: () => { setRender3dDialog(true); setRender3dImg(null); setVideoUrl(null); setCreditPaywall(null); loadRender3dHistory(); loadVideoHistory(); loadCredits3d(); } },
           { id: "plan-tools-separator", separator: true },
-          { id: "plan-pro-tools", label: "Plantas BIM / Autodesk", run: () => nav("/plans-pro") },
-          { id: "plan-bet-reader", label: "Leitura especializada de engenharia", run: () => nav("/structuro/lecture-plan") },
+          { id: "plan-cotes-tools", label: "Abrir controlo de cotas", run: () => nav(`/controle-cotes?plan=${encodeURIComponent(plan.plan_id)}&page=${pageIndex}`) },
+          { id: "plan-method-tools", label: "Métodos de medição", run: () => nav(`/metodos-medicao?plan=${encodeURIComponent(plan.plan_id)}&page=${pageIndex}`) },
+          { id: "plan-compare-tools", label: "Comparar com outra planta", run: () => nav(`/plan/compare?plan=${encodeURIComponent(plan.plan_id)}`) },
+          { id: "plan-pro-tools", label: "Análise de planta Pro / Autodesk", run: () => nav(plan.kind === "pdf" ? `/plans-pro?plan=${encodeURIComponent(plan.plan_id)}` : "/plans-pro") },
+          { id: "plan-bet-reader", label: "Leitura especializada de engenharia", run: () => nav(plan.kind === "pdf" ? `/structuro/lecture-plan?plan=${encodeURIComponent(plan.plan_id)}` : "/structuro/lecture-plan") },
         ]}>
           <Select value={plan?.plan_id || ""} onValueChange={(v) => {
                     if (!v) return;
@@ -4975,6 +4980,13 @@ export default function PlanTakeoff() {
           </div>
 
           </div>{/* Lot 90 : fin zone de survol */}
+          {verifiedOutline && (
+            <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" data-testid="verified-floor-outline">
+              <strong>Área bruta cotada {verifiedOutline.area_m2.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} m²</strong>
+              <span>{verifiedOutline.width_m} × {verifiedOutline.depth_m} m · recorte {verifiedOutline.recess_m.join(" × ")} m</span>
+              <span>Perímetro {verifiedOutline.perimeter_m} m</span>
+            </div>
+          )}
           {/* CANVAS */}
           <div className={fullscreen ? "relative h-[calc(100vh-24px)]" : planWide ? "relative h-[calc(100vh-96px)] min-h-[520px]" : "relative"}>
           {(pageLoading || loadedPageKey !== pageKey || pageError) && (

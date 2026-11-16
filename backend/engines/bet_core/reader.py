@@ -59,8 +59,9 @@ def fechar_prazo(token) -> None:
 PCMI = {"01": "autre", "02.1": "masse", "02": "plan", "03": "coupe", "04": "notice", "05": "facade"}
 TITLES = [   # ordre = priorité ; les renvois de coupe (« Coupe 1 ») sur les plans ne doivent pas l'emporter sur le titre
     ("g2", r"\bG2\b|g[ée]otechni|sondages?\b|pressiom[eè]tr|estudo geot[eé]cnico|prospe[cç][aã]o geot"),
-    ("masse", r"PLAN DE? ?MASSE|PLAN DE SITUATION|PLANTA DE (IMPLANTA|LOCALIZA)"),
+    ("masse", r"PLAN DE? ?MASSE|PLAN DE SITUATION|PLANTA DE (IMPLANTA|LOCALIZA)|\bIMPLANTAÇÃO ESQUEMÁTICA\b"),
     ("plan", r"\bPLAN (DU |DE |D')?(SOUS[- ]?SOL|RDC|REZ|[ÉE]TAGE|R ?\+ ?\d|COMBLE|NIVEAU)|\bPLANTA (DA |DO |DE )?(CAVE|R/?C|R[ÉE]S|PISO|ANDAR|\d|S[OÓ]T[AÃ]O|COBERTURA)"
+             r"|\bPLANTA DO (PRIMEIRO|SEGUNDO|TERCEIRO|ÚLTIMO) PISO\b"
              # 09/11/2026 : plantas em inglês (« GROUND FLOOR PLAN », « -1 FLOOR PLAN ») e em ucraniano / russo
              r"|\bFLOOR PLANS?\b|\b(BASEMENT|GROUND|FIRST|SECOND|THIRD|UPPER|LOWER|ATTIC|TYPICAL) (FLOOR|LEVEL)\b|\bLEVEL ?-?\d+ PLAN"
              r"|ПЛАН (ПОВЕРХУ|ПІДВАЛУ|ЦОКОЛ|ПЕРШОГО|ДРУГОГО|ТРЕТЬОГО|МАНСАРД|\d|-\d)|ПЛАН (ЭТАЖА|ПОДВАЛА|ПЕРВОГО|ВТОРОГО)"),
@@ -130,6 +131,8 @@ Règles :
 - Unités : mètres, 2 décimales. Lis les COTES ÉCRITES ; ne mesure à l'échelle qu'en dernier recours et signale-le dans "_source".
 - Repère : X = plus grande dimension de l'emprise, Y = l'autre. x = 0 et y = 0 au coin extérieur brut. Les murs le long de X
   sont des côtés d'axe "y" (pos = 0 ou W) ; ceux le long de Y sont d'axe "x" (pos = 0 ou L).
+- "envelope.footprint_shape" : indique "non_rectangular" si une planche montre une empreinte en L, T, U, un décrochement
+  ou des contours différents selon les étages. Ne confonds pas une empreinte découpée avec son rectangle englobant.
 - "sides" : décris les 4 côtés ; type "mitoyen" (mur en limite séparative) ou "facade" ; "on_boundary": true si la façade est
   à l'alignement. Les planchers portent dans le sens Y (entre les deux côtés d'axe "y") sauf indication contraire.
 - "openings" : une entrée par baie et par niveau ; "from"/"to" = position le long du mur depuis l'origine du repère (x pour les
@@ -807,6 +810,9 @@ async def _read_building(docs, hypotheses, country, llm, max_fix, decide_alone, 
     while True:
         try:
             raw = _extract_json(txt)
+            if isinstance(raw, dict) and (raw.get("envelope") or {}).get("footprint_shape") == "non_rectangular":
+                return {"ok": False, "source_geometry_required": True, "model": None, "anomalies": [], "questions": [],
+                        "decisions": [], "decide_alone": decide_alone, "pages": chosen, "attempts": attempts}
             m, anomalies = pipeline.validate(raw)
             if m is not None and not any(a.get("level") == checks.BLOCK for a in anomalies):
                 calc = pipeline.dry_run(m)          # un relevé « valide » qui fait planter un moteur repart en correction
