@@ -25,6 +25,11 @@ GRANTS = [
      "temp_password_env": "GRANT_RUI_PASSWORD",
      "account_type": "pro_business", "plan_id": "pro_business_yearly",
      "valid_days": 90},  # Pro Business gratuito durante 3 meses
+    {"email": "ubi@construpilot.pt", "name": "Universidade da Beira Interior",
+     "company_name": "Universidade da Beira Interior",
+     "temp_password_env": "GRANT_UBI_PASSWORD",
+     "account_type": "pro_business", "plan_id": "pro_business_yearly",
+     "valid_days": 90},  # conta de teste Pro Business (UBI), 3 meses
 ]
 
 
