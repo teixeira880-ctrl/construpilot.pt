@@ -45,7 +45,8 @@ def main(check_only: bool = False) -> int:
         p = BASE / fname
         s = p.read_text(encoding="utf-8")
         for old, new in edits:
-            if new in s:
+            marca = next((l.strip() for l in new.splitlines() if "bet_frame" in l), None)     # ligação já instalada, mesmo que outro código tenha sido inserido antes (ex.: _preserve_geometry)
+            if new in s or (marca and marca in s):
                 continue
             n = s.count(old)
             if n != 1:
