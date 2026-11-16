@@ -95,7 +95,7 @@ COMPANIES = [
         # nem sequer a empreinte. Sem segredo → conta criada sem palavra-passe (não entra) até o segredo existir.
         # v2 (16/11/2026): o fundador definiu nova palavra-passe → reposição ÚNICA a partir do segredo (se existir).
         "temp_password_version": 2,
-        "must_change_password": False,
+        "must_change_password": True,   # troca obrigatória no 1.º acesso (pedido do fundador, 16/11/2026)
         "pro_business_entitlement": True,
         "style_defaults": {"account_type": "pro_business", "brand_doc_layout": "detaille"},
         "photos_version": 1,

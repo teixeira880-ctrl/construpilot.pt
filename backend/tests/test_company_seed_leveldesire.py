@@ -28,7 +28,7 @@ def test_leveldesire_account_created(monkeypatch, tmp_path):
     s1, s2, u, ents = asyncio.run(run())
     assert "created" in s1["jorge.gois@leveldesire.com"] and "+pro_business" in s1["jorge.gois@leveldesire.com"]
     assert s2["jorge.gois@leveldesire.com"] == "exists"
-    assert bcrypt.checkpw(b"Segredo-so-de-teste-1", u["password_hash"].encode()) and u["must_change_password"] is False
+    assert bcrypt.checkpw(b"Segredo-so-de-teste-1", u["password_hash"].encode()) and u["must_change_password"] is True
     assert u["account_type"] == "pro_business" and u["plan"] == "premium" and u["brand_accent_color"] == "#009B95"
     assert u["public_slug"] == "leveldesire" and u["brand_logo_b64"].startswith("data:image/png;base64,")
     assert "Avenida João XXI" in u["brand_address"] and u["public_contact_phone"] == "+351 968 364 515"
@@ -119,4 +119,5 @@ def test_leveldesire_reposicao_unica_com_segredo_v2(monkeypatch, tmp_path):
         return u1, await db.users.find_one({"user_id": "u9"})
     u1, u2 = asyncio.run(run())
     assert bcrypt.checkpw(b"Segredo-so-de-teste-2", u1["password_hash"].encode()) and u1["temp_password_version"] == 2
+    assert u1["must_change_password"] is True
     assert u2["password_hash"] == "MUDADA-PELA-EMPRESA"
