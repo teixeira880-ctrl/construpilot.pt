@@ -93,7 +93,8 @@ COMPANIES = [
         "temp_password_env": "LEVELDESIRE_TEMP_PASSWORD",
         # Palavra-passe SÓ nos segredos (env LEVELDESIRE_TEMP_PASSWORD ou ficheiro privado) : nada no código,
         # nem sequer a empreinte. Sem segredo → conta criada sem palavra-passe (não entra) até o segredo existir.
-        "temp_password_version": 1,
+        # v2 (16/11/2026): o fundador definiu nova palavra-passe → reposição ÚNICA a partir do segredo (se existir).
+        "temp_password_version": 2,
         "must_change_password": False,
         "pro_business_entitlement": True,
         "style_defaults": {"account_type": "pro_business", "brand_doc_layout": "detaille"},

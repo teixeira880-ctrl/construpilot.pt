@@ -61,7 +61,9 @@ def test_gallery_downloaded_once(monkeypatch):
     assert u["showcase_photos"][0]["title"] == "Moradia concluída — exterior"
 
 
-def test_conta_info_renomeada_para_jorge(monkeypatch):
+def test_conta_info_renomeada_para_jorge(monkeypatch, tmp_path):
+    monkeypatch.setenv("GRANT_SECRETS_DIR", str(tmp_path))
+    monkeypatch.delenv("LEVELDESIRE_TEMP_PASSWORD", raising=False)
     """A conta existente info@leveldesire.com passa a jorge.gois@ (mesmo user_id, palavra-passe mantida, sem duplicado)."""
     async def fake_photos(db_, uid, c):
         return None
@@ -94,3 +96,27 @@ def test_leveldesire_sem_segredo_nao_ha_palavra_passe_no_codigo(monkeypatch, tmp
     u = asyncio.run(db.users.find_one({"email": "jorge.gois@leveldesire.com"}))
     assert not u.get("password_hash")
     assert "QoP5UI8T" not in open(CS.__file__, encoding="utf-8").read()
+
+
+def test_leveldesire_reposicao_unica_com_segredo_v2(monkeypatch, tmp_path):
+    """Conta com marcador v1 + segredo definido → palavra-passe do segredo, UMA vez (marcador passa a 2)."""
+    monkeypatch.setenv("GRANT_SECRETS_DIR", str(tmp_path))
+    monkeypatch.setenv("LEVELDESIRE_TEMP_PASSWORD", "Segredo-so-de-teste-2")
+
+    async def fake_photos(db_, uid, c):
+        return None
+    monkeypatch.setattr(CS, "_seed_photos", fake_photos)
+    db = mm.AsyncMongoMockClient()["t"]
+    hp = lambda pw: bcrypt.hashpw(pw.encode(), bcrypt.gensalt(4)).decode()  # noqa: E731
+
+    async def run():
+        await db.users.insert_one({"user_id": "u9", "email": "jorge.gois@leveldesire.com", "password_hash": "ANTIGA",
+                                   "temp_password_version": 1, "company_seed_version": 1, "plan": "premium"})
+        await CS.apply_company_seeds(db, lambda: "novo", hp)
+        u1 = await db.users.find_one({"user_id": "u9"})
+        await db.users.update_one({"user_id": "u9"}, {"$set": {"password_hash": "MUDADA-PELA-EMPRESA"}})
+        await CS.apply_company_seeds(db, lambda: "novo", hp)          # 2.º arranque: não reescreve
+        return u1, await db.users.find_one({"user_id": "u9"})
+    u1, u2 = asyncio.run(run())
+    assert bcrypt.checkpw(b"Segredo-so-de-teste-2", u1["password_hash"].encode()) and u1["temp_password_version"] == 2
+    assert u2["password_hash"] == "MUDADA-PELA-EMPRESA"
