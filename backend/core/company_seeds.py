@@ -83,7 +83,9 @@ COMPANIES = [
         # Potencial cliente (pedido do fundador, 12/11/2026): conta Pro Business de demonstração com a identidade
         # pública da empresa (site leveldesire.com: textos, logótipo, cor #009B95, fotografias das obras).
         "seed_version": 1,
-        "email": "info@leveldesire.com",
+        # Login alterado a pedido do fundador (16/11/2026) : a conta info@ existente é RENOMEADA (sem duplicado).
+        "email": "jorge.gois@leveldesire.com",
+        "legacy_emails": ["info@leveldesire.com"],
         "name": "LevelDesire",
         "account_type": "pro_business",
         "lang": "pt",
