@@ -36,6 +36,10 @@ _NOW = datetime(2026, 10, 24, 21, 0, tzinfo=timezone.utc)
 
 
 def _run(db, monkeypatch, pw="Prov-teste-123"):
+    # Isolamento: os testes nunca dependem de segredos reais do ambiente
+    # (variaveis ou ficheiros em .grant_secrets) — so da conta que testam.
+    monkeypatch.delenv("GRANT_UBI_PASSWORD", raising=False)
+    monkeypatch.setenv("GRANT_SECRETS_DIR", "/nonexistent-grant-secrets-for-tests")
     if pw is None:
         monkeypatch.delenv("GRANT_RUI_PASSWORD", raising=False)
     else:
