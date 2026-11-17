@@ -41,7 +41,7 @@ _ACCEPT_MIME: dict[str, tuple[str, bool]] = {
     ".ifc": ("application/x-step", True),
     ".nwc": ("application/octet-stream", True),
     ".nwd": ("application/octet-stream", True),
-    ".pdf": ("application/pdf", True),
+    ".pdf": ("application/pdf", False),  # rasterisé localement (PyMuPDF), sans Autodesk
     ".png": ("image/png", False),
     ".jpg": ("image/jpeg", False),
     ".jpeg": ("image/jpeg", False),
@@ -61,6 +61,48 @@ STATUS_HELP = {
     "failed": "A análise não produziu nenhum resultado utilizável. Relance-a ou mude de ficheiro.",
     "cancelled": "Análise cancelada.",
 }
+
+
+PDF_MAX_SIDE_PX = 4096
+PDF_MAX_PAGES_SCAN = 40
+
+
+def pdf_to_png(data: bytes) -> tuple[bytes, dict]:
+    """Rasterise la page de plan d'un PDF (vectoriel ou scanné) en PNG, sans service externe.
+
+    Page retenue : celle au contenu graphique le plus lourd parmi les premières pages
+    (cartouche/notice ont peu de tracés). Le plus grand côté est ramené à PDF_MAX_SIDE_PX.
+    """
+    import pymupdf
+
+    try:
+        doc = pymupdf.open(stream=data, filetype="pdf")
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError("PDF ilegível ou corrompido.") from exc
+    try:
+        if doc.needs_pass:
+            raise ValueError("PDF protegido por palavra-passe: remova a proteção e importe-o novamente.")
+        if doc.page_count == 0:
+            raise ValueError("PDF sem páginas.")
+        best, best_weight = 0, -1
+        for i in range(min(doc.page_count, PDF_MAX_PAGES_SCAN)):
+            page = doc[i]
+            try:
+                weight = len(page.read_contents() or b"") + 200_000 * len(page.get_images())
+            except Exception:  # noqa: BLE001
+                weight = 0
+            if weight > best_weight:
+                best, best_weight = i, weight
+        page = doc[best]
+        rect = page.rect
+        longest_pt = max(rect.width, rect.height) or 1
+        zoom = min(PDF_MAX_SIDE_PX / longest_pt, 300 / 72)
+        zoom = max(zoom, 1.0)
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+        return pix.tobytes("png"), {"page_index": best, "page_count": doc.page_count,
+                                    "width_px": pix.width, "height_px": pix.height}
+    finally:
+        doc.close()
 
 
 def _finalize(*, needs_autodesk: bool, autodesk_ok: bool, vision: Optional[dict]) -> tuple[str, list[str]]:
@@ -125,6 +167,16 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
             except Exception as e:
                 logger.exception("Autodesk extract failed for %s", job_id)
                 autodesk_error = str(e)[:300]
+        elif ext == ".pdf":
+            await _upd(status="running_vision", progress="20%")
+            try:
+                png, meta = await asyncio.to_thread(pdf_to_png, file_bytes)
+            except ValueError as exc:
+                await _upd(status="failed", progress="100%", error=str(exc), help=STATUS_HELP["failed"],
+                           checks=["Conversão PDF: falha"], finished_at=datetime.now(timezone.utc))
+                return
+            await _upd(pdf_render=meta)
+            vision_input, vision_mime, vision_source = png, "image/png", "pdf_render"
         else:
             vision_input = file_bytes
             vision_mime = _ACCEPT_MIME.get(ext, ("image/png", False))[0]
