@@ -65,6 +65,7 @@ class AIRouter:
         self._openai_fast = None
         self._openai_vision = None
         self._perplexity = None
+        self._qwen = None
         self._loaded = False
 
     def _lazy_load(self) -> None:
@@ -110,6 +111,15 @@ class AIRouter:
             pass
         except Exception as e:  # noqa: BLE001
             logger.warning("router: perplexity init failed: %s", type(e).__name__)
+        # Qwen (Alibaba Model Studio UE) — fallback 3 + 4.ª fonte independente
+        try:
+            from engines.ai_providers.qwen_provider import QwenProvider
+            self._qwen = QwenProvider()
+            logger.info("router: qwen ready (model=%s)", self._qwen.model)
+        except AIProviderNotConfigured:
+            pass
+        except Exception as e:  # noqa: BLE001
+            logger.warning("router: qwen init failed: %s", type(e).__name__)
         self._loaded = True
 
     def reset(self) -> None:
@@ -117,6 +127,7 @@ class AIRouter:
         self._gemini = None
         self._claude = self._openai_coach = self._openai_fast = None
         self._openai_vision = self._perplexity = None
+        self._qwen = None
         self._loaded = False
 
     # ------------------------------------------------------------------
@@ -151,6 +162,11 @@ class AIRouter:
     def perplexity(self):
         self._lazy_load()
         return self._perplexity
+
+    @property
+    def qwen(self):
+        self._lazy_load()
+        return self._qwen
 
     # ------------------------------------------------------------------
     # Coach: Claude → OpenAI
@@ -273,9 +289,30 @@ class AIRouter:
         else:
             fallback_meta = {"provider": "openai", "error": "not_configured"}
 
-        # 5. Todos falharam
+        # 5. Fallback 3: Qwen
+        qwen_meta: dict[str, Any] = {}
+        if self._qwen:
+            try:
+                r = await self._qwen.ask(
+                    prompt=enriched_prompt, system=system,
+                    max_tokens=max_tokens, temperature=temperature,
+                    history=history,
+                )
+                if not r.is_empty:
+                    if web_citations:
+                        r.citations = web_citations
+                    return r
+                qwen_meta = {"provider": "qwen", "error": "empty_text"}
+            except AIProviderError as e:
+                qwen_meta = e.to_meta()
+                logger.warning("qwen fallback failed: %s", e.code)
+        else:
+            qwen_meta = {"provider": "qwen", "error": "not_configured"}
+        fallback_meta = {**fallback_meta, "fallback_3": qwen_meta}
+
+        # 6. Todos falharam
         raise CoachUnavailableError(
-            "Coach IA indisponível (Gemini + Claude + OpenAI falharam).",
+            "Coach IA indisponível (Gemini + Claude + OpenAI + Qwen falharam).",
             primary_meta={**primary_meta, "secondary": secondary_meta},
             fallback_meta=fallback_meta,
         )
@@ -290,6 +327,7 @@ class AIRouter:
             "primary": os.environ.get("AI_PRIMARY_PROVIDER", "gemini"),
             "fallback": os.environ.get("AI_FALLBACK_PROVIDER", "claude"),
             "fallback_2": os.environ.get("AI_FALLBACK2_PROVIDER", "openai"),
+            "fallback_3": "qwen",
             "web_search": os.environ.get("AI_WEB_SEARCH_PROVIDER", "perplexity"),
             "providers": {},
         }
@@ -298,6 +336,7 @@ class AIRouter:
             ("claude", self._claude),
             ("openai", self._openai_coach),
             ("perplexity", self._perplexity),
+            ("qwen", self._qwen),
         ):
             if not inst:
                 out["providers"][name] = {"configured": False, "ok": False}

@@ -29,11 +29,31 @@ _SYSTEM = (
 _TIMEOUT = float(os.environ.get("CROSS_CHECK_TIMEOUT", "60"))
 
 
+async def _call_qwen(model: str, system: str, prompt: str) -> str:
+    from engines.ai_providers.qwen_provider import QwenProvider
+    r = await QwenProvider(model=model).ask(
+        prompt=prompt, system=system, max_tokens=600, temperature=0.1)
+    return r.text
+
+
+def _models() -> list[tuple[str, str, str]]:
+    """Modelos cruzados; Qwen entra como 4.ª fonte se DASHSCOPE_API_KEY existir."""
+    models = list(_MODELS)
+    if (os.environ.get("DASHSCOPE_API_KEY") or "").strip() and \
+            os.environ.get("CROSS_CHECK_QWEN", "1") != "0":
+        models.append(("qwen", os.environ.get("CROSS_CHECK_QWEN_MODEL", "qwen3.8-max"),
+                       "Qwen 3.8 Max"))
+    return models
+
+
 async def _one(provider: str, model: str, label: str, system: str, prompt: str) -> dict:
     from engines.ai import _call_provider
     try:
-        out = await asyncio.wait_for(
-            _call_provider(provider, model, system, prompt, None, None, "cross_check"), _TIMEOUT)
+        if provider == "qwen":
+            coro = _call_qwen(model, system, prompt)
+        else:
+            coro = _call_provider(provider, model, system, prompt, None, None, "cross_check")
+        out = await asyncio.wait_for(coro, _TIMEOUT)
         answer = (out or "").strip()
         if not answer:
             return {"model": label, "ok": False, "answer": None, "error": "resposta vazia"}
@@ -53,7 +73,7 @@ async def cross_check(question: str, context: str = "", include_web: bool = Fals
         return {"ok": False, "error": "Pergunta vazia: precisar o que deve ser cruzado."}
     prompt = question + (f'\n\nContexto fornecido:\n{context.strip()}' if (context or "").strip() else "")
 
-    tasks = [_one(p, m, lbl, _SYSTEM, prompt) for p, m, lbl in _MODELS]
+    tasks = [_one(p, m, lbl, _SYSTEM, prompt) for p, m, lbl in _models()]
     opinions = list(await asyncio.gather(*tasks))
 
     web = None
