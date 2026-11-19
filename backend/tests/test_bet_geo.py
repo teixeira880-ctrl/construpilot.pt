@@ -167,12 +167,21 @@ def test_estudo_completo_com_ia_simulada(l_pdf, tmp_path):
         return json.dumps({"floor_level": 0.0, "roof_slab_top_level": 3.2, "storeys": 1,
                            "declared_construction_area_m2": 120, "retaining": []})
 
-    res = asyncio.run(run.study([("planta.pdf", l_pdf)], "", "PT", tmp_path / "out", llm=fake_llm))
+    res = asyncio.run(run.study([("planta.pdf", l_pdf)], "Moradia em Évora", "PT", tmp_path / "out", llm=fake_llm))
     assert res["ok"] and res["checks_ok"] in (True, False)
     kinds = [k for k, _, _ in res["files"]]
-    assert kinds == ["pdf", "plans_pdf", "xlsx", "zip"]
+    for k in ("pdf", "plans_pdf", "re2020_pdf", "xlsx", "zip", "render_png"):
+        assert k in kinds, k
+    names = [p.name for _, p, _ in res["files"]]
+    for n in ("Processo_de_estudo.pdf", "Desenhos_de_execucao.pdf", "Estudo_termico_REH.pdf", "Analise_custo_beneficio.pdf",
+              "Especialidades_nota_de_calculo.pdf", "Medicoes_e_orcamento.xlsx"):
+        assert n in names, n
     assert all(p.stat().st_size > 1000 for _, p, _ in res["files"])
     assert res["summary"]["pilares"] >= 6 and res["summary"]["aco_kg"] > 0
+    assert res["summary"]["classe"] and res["summary"]["total_ht"] > 50000
+    assert not any("falhou" in s for s in res["sheets"])
+    import pymupdf
+    assert pymupdf.open(str(tmp_path / "out" / "Desenhos_de_execucao.pdf")).page_count >= 14     # capa + 13 folhas
 
 
 def test_sem_planta_vetorial_devolve_none():
@@ -188,7 +197,7 @@ def test_sem_planta_vetorial_devolve_none():
 
 
 def test_gancho_do_estudo_bet_entrega_artefactos(l_pdf, monkeypatch):
-    """geo_first: estudo entregue com 4 ficheiros e passo final 'done'; BET_GEO_ENGINE=0 desliga."""
+    """geo_first: estudo completo entregue e passo final 'done'; BET_GEO_ENGINE=0 desliga."""
     steps, stored = [], []
 
     async def step(label, **extra):
@@ -202,7 +211,8 @@ def test_gancho_do_estudo_bet_entrega_artefactos(l_pdf, monkeypatch):
         return "{}"                       # IA sem resposta útil: estudo segue com hipóteses por defeito
 
     ok = asyncio.run(run.geo_first(None, "job1", "u", "c", "r", [("p.pdf", l_pdf)], "", "PT", step, store, fake_llm))
-    assert ok and [k for k, _, _ in stored] == ["pdf", "plans_pdf", "xlsx", "zip"]
+    kinds = [k for k, _, _ in stored]
+    assert ok and {"pdf", "plans_pdf", "re2020_pdf", "xlsx", "zip"} <= set(kinds)
     final = steps[-1][1]
     assert final["status"] == "done" and final["geometry_verified"] is True and final["execution_verified"] is False
     assert any("por defeito" in p for p in final["points"])               # aviso: cotas por defeito

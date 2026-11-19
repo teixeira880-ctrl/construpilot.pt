@@ -72,7 +72,12 @@ async def read_any(docs, hypotheses: str, country: str, llm=None):
 
 
 async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None, meta: dict | None = None,
-                on_step=None) -> dict:
+                on_step=None, images_fn=None) -> dict:
+    """Estudo COMPLETO sobre a geometria real: estrutura, arquitetura cotada, cortes, alçados, especialidades,
+    comportamento térmico REH, custo-benefício, medições e orçamento — e as imagens reais em todos os PDF.
+    images_fn: async (Building, slab_h) → {vista: JPEG/PNG} (no Assistente: as mesmas imagens do orçamento)."""
+    from . import costs, covers, drawings, especialidades, rooms
+
     async def step(label):
         if on_step:
             await on_step(label)
@@ -89,34 +94,173 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
     await step("A calcular laje, vigas, pilares, fundações e muros sobre o contorno real")
     R = await asyncio.to_thread(structure.design, b)
     R.warnings = warns + R.warnings
+    slab_h = R.slab["h"]
+    await step("A ler divisões, quadro de áreas e mapa de vãos")
+    lay = await rooms.read_layout(b, docs, llm)
     meta = {"obra": (meta or {}).get("obra") or "Moradia", **(meta or {})}
+    pt = str(country).upper() == "PT"
+    esp: dict = {}
+    if pt:
+        await step("Comportamento térmico REH, custo-benefício e especialidades (eletricidade, águas, AVAC, ventilação)")
+        try:
+            esp = await asyncio.to_thread(especialidades.run_all, b, lay, docs, hypotheses, meta, slab_h)
+        except Exception as exc:  # noqa: BLE001 — o estudo de estrutura e as peças continuam
+            log.warning("bet_geo especialidades failed", exc_info=True)
+            R.warnings.append(f"Estudo térmico/especialidades não produzido ({type(exc).__name__}: {str(exc)[:160]})")
+    if not esp:
+        env = especialidades.envelope(b, lay, slab_h)
+        esp = {"env": env, "solution": especialidades.Solution(100, 120, 100, 1.4, "bc"), "warnings": []}
+    meta.setdefault("local", esp.get("concelho") or "")
+    lines = costs.quote_lines(b, R, lay, esp)
+    await step("A calcular as imagens reais do edifício (geometria real)")
+    images: dict = {}
+    try:
+        images = (await images_fn(b, slab_h)) if images_fn else await asyncio.to_thread(covers.local_views, b, slab_h)
+    except Exception:  # noqa: BLE001 — sem imagens o estudo sai na mesma
+        log.warning("bet_geo study images failed", exc_info=True)
     out_dir.mkdir(parents=True, exist_ok=True)
-    await step("A desenhar plantas de estrutura e fundações, nota de cálculo e quantidades")
+    await step("A desenhar as peças de execução cotadas e a montar o processo")
+    dpath, sheets = await asyncio.to_thread(drawings.write_drawings, b, R, lay, esp, out_dir / "Desenhos_de_execucao.pdf", meta, slab_h)
     report = outputs.write_report_pdf(b, R, out_dir / "Nota_de_calculo_estrutura.pdf", meta)
-    plans = outputs.write_plans_pdf(b, R, out_dir / "Plantas_estrutura_fundacoes.pdf", meta)
-    xlsx = outputs.write_quantities_xlsx(R, out_dir / "Mapa_de_quantidades_estrutura.xlsx", meta)
+    xlsx = outputs.write_full_xlsx(lines, R, lay, out_dir / "Medicoes_e_orcamento.xlsx", meta)
     dxf = outputs.write_dxf(b, R, out_dir / "Estrutura_fundacoes.dxf")
-    zpath = out_dir / "Estrutura_DXF.zip"
+    zpath = out_dir / "Desenhos_DXF.zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(dxf, dxf.name)
-    ok_checks = all(c.get("ok") is not False for c in [*R.checks, *b.checks])
+    total = costs.total(lines)
+    best = esp.get("best") or {}
+    sol = esp["solution"]
+    env = esp["env"]
+    kp_lines = [f"Área de construção {b.footprint.area:.1f} m² · área útil {lay.useful_area:.1f} m²".replace(".", ","),
+                f"Estrutura: laje {slab_h:.2f} m, {len(R.beams)} vigas, {len(R.columns)} pilares, {len(R.footings)} sapatas".replace(".", ",")]
+    if best:
+        kp_lines.append(f"REH: classe {best['classe']} · {especialidades.SYSTEMS[sol.system][0]}")
+    kp_lines.append(f"Orçamento estimado: {total:,.0f} € sem IVA".replace(",", " "))
+    files = []
+
+    def add(kind, path, label, title, subtitle, lines_=(), a3=False):
+        if images:
+            covers.prepend(path, covers.cover_pdf(images, title, subtitle, meta, list(lines_), landscape_a3=a3))
+        files.append((kind, path, label))
+    parts = []
+    summary = _summary_pdf(b, R, lay, esp, lines, meta, sheets)
+    # processo completo (como o dossier anterior: tudo num só PDF)
+    proc = out_dir / "Processo_de_estudo.pdf"
+    gal = covers.gallery_pdf(images, meta) if images else None
+    parts = [summary, gal, report]
+    for k in ("reh_pdf", "mep_pdf", "vent_pdf", "cb_pdf"):
+        if esp.get(k):
+            parts.append(esp[k])
+    parts.append(dpath)
+    covers.merge(parts, proc)
+    add("pdf", proc, "Processo de estudo completo (memória, cálculos, térmica, especialidades, custo-benefício, desenhos)",
+        "Processo de estudo", "Estudo completo sobre a geometria real", kp_lines)
+    add("plans_pdf", dpath, "Desenhos de execução cotados (arquitetura, cortes, alçados, estrutura, especialidades)",
+        "Desenhos de execução", f"{len(sheets)} grupos de folhas A3 cotadas", [s for s in sheets][:12], a3=True)
+    if esp.get("reh_pdf"):
+        p = out_dir / "Estudo_termico_REH.pdf"
+        p.write_bytes(esp["reh_pdf"])
+        add("re2020_pdf", p, "Estudo térmico REH (Portaria 138-I/2021) — pré-certificado", "Comportamento térmico",
+            "REH — DL 101-D/2020, Portaria 138-I/2021", [f"Classe {best.get('classe', '-')} (RNt {best.get('RNt', 0):.2f})".replace(".", ","),
+                                                       f"Concelho: {esp.get('concelho') or 'não indicado (clima admitido)'}"])
+    if esp.get("cb_pdf"):
+        p = out_dir / "Analise_custo_beneficio.pdf"
+        p.write_bytes(esp["cb_pdf"])
+        add("pdf", p, "Análise custo-benefício (isolamento, caixilharia, sistemas, fotovoltaico)", "Custo-benefício",
+            f"{len(esp.get('options') or [])} soluções comparadas em 20 anos",
+            [f"Recomendada: {especialidades.SYSTEMS[sol.system][0]}", f"ETICS {sol.etics} mm · Uw {sol.uw:g} · vidro g {sol.g:g}".replace(".", ",")])
+    if esp.get("mep_pdf"):
+        p = out_dir / "Especialidades_nota_de_calculo.pdf"
+        covers.merge([esp["mep_pdf"], esp.get("vent_pdf")], p)
+        add("pdf", p, "Especialidades: aquecimento, piso radiante, bomba de calor, eletricidade, águas, ventilação",
+            "Especialidades", "Notas de cálculo (EN 12831, EN 1264, RTIEBT, DR 23/95, Portaria 138-I)")
+    add("pdf", report, "Nota de cálculo — estrutura (geometria real)", "Estrutura", "Nota de cálculo e verificações")
+    files.append(("xlsx", xlsx, "Medições e orçamento completos (Excel, fórmulas)"))
+    files.append(("zip", zpath, "Desenhos DXF da estrutura"))
+    for k, data in (images or {}).items():
+        ext = ".png" if data[:4] == b"\x89PNG" else ".jpg"
+        ip = out_dir / f"Imagem_{k}{ext}"
+        ip.write_bytes(data)
+        files.append(("render_png", ip, f"Imagem real do edifício — {covers.LABELS.get(k, k)}"))
+    checks_all = [*R.checks, *b.checks, *lay.checks]
+    ok_checks = all(c.get("ok") is not False for c in checks_all)
     return {
-        "ok": True, "building": b, "result": R, "checks_ok": ok_checks,
-        "files": [("pdf", report, "Nota de cálculo — estrutura (geometria real)"),
-                  ("plans_pdf", plans, "Plantas de estrutura e fundações"),
-                  ("xlsx", xlsx, "Mapa de quantidades — estrutura (Excel)"),
-                  ("zip", zpath, "Desenhos DXF da estrutura")],
+        "ok": True, "building": b, "result": R, "layout": lay, "esp": esp, "lines": lines, "checks_ok": ok_checks,
+        "files": files, "sheets": sheets, "images": images,
         "summary": {
-            "area": round(b.footprint.area, 2), "slab_h": R.slab["h"], "pilares": len(R.columns),
+            "area": round(b.footprint.area, 2), "area_util": lay.useful_area, "slab_h": slab_h, "pilares": len(R.columns),
             "vigas": len(R.beams), "sapatas": len(R.footings), "muros": len(R.retaining),
             "aco_kg": round(sum(q["aco_kg"] for q in R.quantities)),
             "betao_m3": round(sum(q["qtd"] for q in R.quantities if q["un"] == "m³" and "C" in q["item"]), 1),
+            "classe": best.get("classe"), "sistema": especialidades.SYSTEMS[sol.system][0] if best else None,
+            "total_ht": total, "divisoes": len(lay.rooms), "vaos": len(lay.windows),
         },
     }
 
 
+def _summary_pdf(b, R, lay, esp, lines, meta, sheets) -> bytes:
+    """Memória descritiva e justificativa resumida (primeira peça do processo)."""
+    from engines.calc_lots import notes
+
+    from . import costs, especialidades
+    W = notes.W
+    sol, env = esp["solution"], esp["env"]
+    best = esp.get("best") or {}
+    total = costs.total(lines)
+    f = lambda x, d=1: f"{x:,.{d}f}".replace(",", " ").replace(".", ",")  # noqa: E731
+    kp = [{"label": "Área de construção", "value": f(b.footprint.area), "unit": "m²"},
+          {"label": "Área útil aquecida", "value": f(lay.useful_area), "unit": "m²"},
+          {"label": "Classe energética (REH)", "value": best.get("classe") or "—", "ok": best.get("ok", "x") if best else "x"},
+          {"label": "Orçamento estimado", "value": f(total, 0), "unit": "€ s/ IVA"}]
+    lots: dict = {}
+    for l in lines:
+        lots[l["lot"]] = lots.get(l["lot"], 0.0) + l["qty"] * l["pu"]
+    blocs = [("kpis", kp),
+             ("p", "Estudo completo produzido sobre a geometria REAL lida nas peças desenhadas (qualquer forma, pátios descontados): "
+                   "nenhuma envolvente retangular de substituição. Todas as quantidades e todos os desenhos derivam do mesmo modelo."),
+             ("h2", "1. Edifício"),
+             ("table", ["Elemento", "Valor"], [
+                 ["Contorno lido", f"{f(b.footprint.area)} m², {len(b.footprint.interiors)} pátio(s), fachada {f(env.perimeter)} m"],
+                 ["Fontes", "; ".join(b.sources)[:120] or "—"],
+                 ["Cotas", f"pavimento {b.floor_level:+.2f}, laje {b.roof_level:+.2f}, pé-direito livre {env.hsp:.2f} m".replace(".", ",")],
+                 ["Divisões", f"{len(lay.rooms)} ({sum(1 for r in lay.rooms if r.placed)} localizadas na planta)"],
+                 ["Vãos", f"{len(lay.windows)} no mapa de vãos, {f(sum(w.area for w in lay.windows))} m²" if lay.windows else
+                  f"{len(lay.openings)} troços de fachada sem parede"]], [45 * W, 125 * W]),
+             ("h2", "2. Estrutura"),
+             ("p", f"Laje maciça de cobertura C30/37 e = {R.slab['h']:.2f} m; {len(R.beams)} vigas, {len(R.columns)} pilares, "
+                   f"{len(R.footings)} sapatas isoladas, {len(R.tie_beams)} vigas de fundação".replace(".", ",")
+                   + (f", {len(R.retaining)} muros de suporte." if R.retaining else ".")),
+             ("h2", "3. Solução térmica e sistemas (escolhida por custo-benefício, REH)"),
+             ("p", f"{especialidades.SYSTEMS[sol.system][0]}; ETICS EPS {sol.etics} mm, cobertura XPS {sol.roof} mm, pavimento XPS {sol.floor} mm, "
+                   f"caixilharia Uw {str(sol.uw).replace('.', ',')}, vidro g {str(sol.g).replace('.', ',')}."
+                   + (f" Classe {best['classe']} (RNt {best['RNt']:.2f}".replace(".", ",") + ")." if best else " (estudo térmico não produzido)")),
+             ("h2", "4. Orçamento por capítulo"),
+             ("table", ["Capítulo", "Total € s/ IVA"], [[k, f(v, 0)] for k, v in lots.items()] + [["TOTAL", f(total, 0)]], [110 * W, 50 * W]),
+             ("h2", "5. Peças desenhadas"), ("p", " · ".join(s for s in sheets)),
+             ("h2", "6. Confrontações (duas fontes independentes)"),
+             ("controls", [{"ref": c.get("check") or c.get("name") or "confrontação", "exigence": " vs ".join(c.get("sources") or []) or "—",
+                            "valeur": str(c.get("value", "")), "ok": c.get("ok")} for c in [*b.checks, *lay.checks, *R.checks]][:20])]
+    hyp = list(R.warnings) + list(lay.notes) + list(esp.get("warnings") or []) + list((esp.get("reh") or {}).get("hipoteses") or [])[:6]
+    pdf, _ = notes.pdf("Memória descritiva e justificativa", f"{meta.get('obra', 'Moradia')} · {meta.get('local') or ''}", blocs, hyp)
+    return pdf
+
+
+def _obra_name(docs, hypotheses: str) -> str:
+    import re
+    m = re.search(r"(?i)(moradia|habita[çc][ãa]o|edif[ií]cio|maison|immeuble)[^\n.;]{0,60}", hypotheses or "")
+    if m:
+        return m.group(0).strip()[:80]
+    from .rooms import doc_texts
+    for _, _, t in doc_texts(docs)[:5]:
+        m = re.search(r"(?im)^\s*(?:obra|projeto|projecto|designa[çc][ãa]o)\s*[:\-]\s*(.{4,80})$", t)
+        if m:
+            return m.group(1).strip()
+    return "Moradia"
+
+
 async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *, step, store, llm=None) -> bool:
     """Gancho do estudo BET (assistant_tool). True = estudo entregue; False = deixar o fluxo anterior."""
+    import os
     import tempfile
 
     if str(country).upper() not in ("PT", "FR"):
@@ -125,30 +269,67 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
     async def on_step(label):
         await step(label)
 
+    async def images_fn(b, slab_h):
+        """As MESMAS imagens do orçamento (cache por geometria): renderização física da geometria real."""
+        from engines import quote_building
+        wait = float(os.environ.get("STUDY_IMG_WAIT") or 240)
+        geo = {**b.to_dict(), "slab_h": slab_h}
+        return await asyncio.wait_for(quote_building.views(db, {"_geo": geo}, wait), wait + 120)
+
+    meta = {"obra": _obra_name(docs, hypotheses)}
     with tempfile.TemporaryDirectory(prefix="cp_geo_") as tmp:
         try:
-            res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step)
+            res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step, meta=meta, images_fn=images_fn)
         except Exception:  # noqa: BLE001
             log.exception("bet_geo study failed for %s", job_id)
             return False
         if not res.get("ok"):
             log.info("bet_geo: %s", res.get("reason"))
             return False
-        arts = [await store(db, uid, cid, request_id, kind, path, label) for kind, path, label in res["files"]]
-    R, s = res["result"], res["summary"]
+        arts = []
+        for kind, path, label in res["files"]:
+            try:
+                arts.append(await store(db, uid, cid, request_id, kind, path, label))
+            except Exception:  # noqa: BLE001 — um ficheiro grande demais não impede os outros
+                log.warning("bet_geo store %s failed", path.name, exc_info=True)
+    R, s, b = res["result"], res["summary"], res["building"]
+    esp, lay = res["esp"], res["layout"]
     points = [
-        f"Geometria real: {s['area']:.1f} m² lidos nas plantas (forma qualquer, pátios descontados).".replace(".", ","),
-        f"Estrutura proposta: laje maciça e = {s['slab_h']:.2f} m, {s['vigas']} vigas, {s['pilares']} pilares, "
+        f"Geometria real: {s['area']:.1f} m² de construção, {s['area_util']:.1f} m² úteis aquecidos, {s['divisoes']} divisões".replace(".", ",")
+        + (f", {s['vaos']} vãos" if s["vaos"] else "") + ".",
+        f"Estrutura: laje maciça e = {s['slab_h']:.2f} m, {s['vigas']} vigas, {s['pilares']} pilares, "
         f"{s['sapatas']} sapatas" + (f", {s['muros']} muro(s) de suporte" if s["muros"] else "") + ".",
         f"Betão estrutural ≈ {s['betao_m3']:.1f} m³ · aço A500 ≈ {s['aco_kg']} kg.".replace(".", ",", 1),
-    ] + R.warnings
-    review = ("Pré-dimensionamento sobre geometria real — confrontações OK. Projeto de estabilidade a assinar por engenheiro."
+    ]
+    if s.get("classe"):
+        sol = esp["solution"]
+        points.append(f"REH: classe {s['classe']} com {s['sistema']}; ETICS {sol.etics} mm, Uw {str(sol.uw).replace('.', ',')}, "
+                      f"vidro g {str(sol.g).replace('.', ',')} (menor custo a 20 anos entre as soluções que cumprem).")
+    points.append(f"Orçamento estimado (preços de referência): {s['total_ht']:,.0f} € sem IVA.".replace(",", " "))
+    points += R.warnings + lay.notes + list(esp.get("warnings") or [])
+    review = ("Estudo completo sobre geometria real — confrontações OK. Projetos a assinar pelos técnicos responsáveis."
               if res["checks_ok"] else
-              "Pré-dimensionamento sobre geometria real — há confrontações a rever (ver avisos).")
-    await step("Estudo de estrutura concluído (geometria real)", status="done", review_status=review, artifacts=arts,
+              "Estudo completo sobre geometria real — há confrontações a rever (ver avisos).")
+    geo = {**b.to_dict(), "slab_h": R.slab["h"]}
+    extra = {"thermal": {"classe": s.get("classe"), "RNt": (esp.get("best") or {}).get("RNt"), "concelho": esp.get("concelho")}
+             if s.get("classe") else None}
+    await step("Estudo completo concluído (geometria real)", status="done", review_status=review, artifacts=arts,
                points=points, questions=[], geometry_verified=True, execution_verified=False,
-               geo_engine={"summary": s, "checks": R.checks, "geometry_checks": res["building"].checks},
-               geo_building={**res["building"].to_dict(), "slab_h": R.slab["h"]})
+               geo_engine={"summary": s, "checks": R.checks, "geometry_checks": b.checks, "layout_checks": lay.checks,
+                           "rooms": [r.to_dict() for r in lay.rooms], "sheets": res["sheets"]},
+               geo_building=geo, devis_ht=s["total_ht"], **extra)
+    # orçamento OFICIAL (PDF/Excel do orçamento e da medição, com as imagens reais) a partir das mesmas linhas
+    try:
+        from engines.bet_core.assistant_tool import study_quote
+        name = meta["obra"] + (f" — {esp.get('concelho')}" if esp.get("concelho") else "")
+        qid, qarts = await asyncio.wait_for(
+            study_quote(db, uid, cid, job_id, {"lines": res["lines"], "lang": "pt" if str(country).upper() == "PT" else "fr"},
+                        country, {"project": {"name": name}}, building_model={"_geo": geo}),
+            float(os.environ.get("BET_QUOTE_TIMEOUT") or 300))
+        if qid:
+            await step("Estudo completo concluído (geometria real)", artifacts=arts + list(qarts), quote_doc_id=qid)
+    except Exception:  # noqa: BLE001 — o orçamento oficial nunca bloqueia o estudo já entregue
+        log.warning("bet_geo study quote failed for %s", job_id, exc_info=True)
     return True
 
 

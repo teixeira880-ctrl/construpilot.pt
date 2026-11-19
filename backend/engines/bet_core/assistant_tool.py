@@ -166,7 +166,7 @@ def _vat_pct(v, country) -> float:
     return round(x * 100, 2) if 0 < x <= 1 else x
 
 
-async def study_quote(db, uid, cid, job_id, res, country, raw) -> tuple[str | None, list]:
+async def study_quote(db, uid, cid, job_id, res, country, raw, building_model=None) -> tuple[str | None, list]:
     """Cria (ou reutiliza) o orçamento oficial a partir das linhas DETERMINÍSTICAS do estudo: mesmos documentos →
     mesmo métré → mesmo orçamento. Junta os 5 ficheiros (orçamento PDF/Excel, medição PDF/Excel, dossier económico)."""
     from engines.assistant_quote_exports import attach_quote_exports
@@ -201,7 +201,8 @@ async def study_quote(db, uid, cid, job_id, res, country, raw) -> tuple[str | No
     if not doc_id:
         return None, []
     await db.pro_documents.update_one({"doc_id": doc_id, "user_id": uid},
-                                      {"$set": {"assistant_conversation_id": cid, "bet_study_job_id": job_id, "source": "bet_study"}})
+                                      {"$set": {"assistant_conversation_id": cid, "bet_study_job_id": job_id, "source": "bet_study",
+                                                **({"building_model": building_model} if building_model else {})}})
     files = await attach_quote_exports(doc_id, user, conv)
     return doc_id, files
 

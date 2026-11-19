@@ -218,19 +218,22 @@ def test_estudo_guarda_a_geometria_para_o_orcamento(tmp_path):
     async def store(db, uid, cid, rid, kind, path, title):
         return {"kind": kind}
 
-    async def fake_study(docs, hyp, country, out_dir, *, llm=None, meta=None, on_step=None):
+    async def fake_study(docs, hyp, country, out_dir, *, llm=None, meta=None, on_step=None, images_fn=None):
+        from engines.bet_geo.rooms import Layout
         b = _house()
         R = structure.design(b)
-        return {"ok": True, "building": b, "result": R, "checks_ok": True, "files": [],
-                "summary": {"area": b.footprint.area, "slab_h": R.slab["h"], "pilares": 1, "vigas": 1, "sapatas": 1,
-                            "muros": 0, "aco_kg": 1, "betao_m3": 1.0}}
+        return {"ok": True, "building": b, "result": R, "checks_ok": True, "files": [], "layout": Layout(), "esp": {},
+                "lines": [], "sheets": [],
+                "summary": {"area": b.footprint.area, "area_util": 100.0, "slab_h": R.slab["h"], "pilares": 1, "vigas": 1,
+                            "sapatas": 1, "muros": 0, "aco_kg": 1, "betao_m3": 1.0, "classe": None, "total_ht": 0.0,
+                            "divisoes": 0, "vaos": 0}}
     orig = run.study
     run.study = fake_study
     try:
         assert asyncio.run(run.handle(None, "j", "u", "c", "r", [], "", "PT", step=step, store=store, llm=None))
     finally:
         run.study = orig
-    geo = steps[-1]["geo_building"]
+    geo = next(s for s in steps if "geo_building" in s)["geo_building"]
     assert Building.from_dict(geo).footprint.area == pytest.approx(L_SHAPE.area) and geo["slab_h"] > 0
 
 

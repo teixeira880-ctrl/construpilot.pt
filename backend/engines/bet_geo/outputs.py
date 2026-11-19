@@ -21,7 +21,8 @@ BLUE = colors.HexColor("#1d4ed8")
 RED = colors.HexColor("#c0262d")
 GREY = colors.HexColor("#9aa5b1")
 GREEN = colors.HexColor("#0f766e")
-_SAFE = {"→": "->", "≤": "<=", "≥": ">=", "≈": "~", "−": "-", "’": "'"}
+_SAFE = {"→": "->", "←": "<-", "≤": "<=", "≥": ">=", "≈": "~", "−": "-", "’": "'", "⁻¹": "-1", "⁻": "-", "θ": "t", "Φ": "Phi ",
+         "Δ": "D", "σ": "s", "η": "eta", "λ": "lambda", "★": "*", "·": "·", "Σ": "Soma "}
 
 
 def _t(s) -> str:
@@ -136,9 +137,16 @@ def _pick_scale(b: Building) -> int:
 
 
 def write_plans_pdf(b: Building, R: Result, path: Path, meta: dict) -> Path:
-    scale = _pick_scale(b)
     c = canvas.Canvas(str(path), pagesize=landscape(A3))
     c.setTitle(_t(f"Estrutura - {meta.get('obra', '')}"))
+    draw_structure(c, b, R, meta)
+    c.save()
+    return path
+
+
+def draw_structure(c, b: Building, R: Result, meta: dict) -> None:
+    """E01 + E02 num canvas já aberto (também usado pelo conjunto completo de desenhos)."""
+    scale = _pick_scale(b)
 
     # ---- E01 planta estrutural da cobertura
     s = _Sheet(c, b, scale, "Planta estrutural da cobertura", "E01", meta)
@@ -183,8 +191,6 @@ def write_plans_pdf(b: Building, R: Result, path: Path, meta: dict) -> Path:
               (colors.HexColor("#dbe6fb"), "Viga de fundação 30x40 (paredes)"),
               (colors.HexColor("#7b8794"), "Muro de suporte"), (RED, "Arranque de pilar")])
     c.showPage()
-    c.save()
-    return path
 
 
 def _sq(x, y, a):
@@ -367,4 +373,54 @@ def write_report_pdf(b: Building, R: Result, path: Path, meta: dict) -> Path:
                "elaborado e assinado por engenheiro civil inscrito na Ordem dos Engenheiros."))
     SimpleDocTemplate(str(path), pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm,
                       bottomMargin=14 * mm, title=_t(f"Nota de cálculo - {meta.get('obra', '')}")).build(E)
+    return path
+
+
+def write_full_xlsx(lines: list[dict], R: Result, lay, path: Path, meta: dict) -> Path:
+    """Medições e orçamento completos (todas as especialidades) + quantidades de estrutura + quadro de áreas + mapa de vãos.
+    Totais em fórmulas (o cliente altera um preço e tudo se recalcula)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Medições e orçamento"
+    ws.append([f"Medições e orçamento — {meta.get('obra', '')}"])
+    ws["A1"].font = Font(bold=True, size=13)
+    ws.append(["Quantidades medidas na geometria real e calculadas pelos motores; preços de referência sem IVA (substituir pela biblioteca da empresa)."])
+    ws.append([])
+    ws.append(["Capítulo", "Designação", "Un.", "Quantidade", "Preço unit. (€)", "Total (€)", "Origem da quantidade"])
+    for c in ws[4]:
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = PatternFill("solid", fgColor="0F3D2E")
+    first = ws.max_row + 1
+    for l in lines:
+        r = ws.max_row + 1
+        ws.append([l["lot"], l["label"], l["unit"], l["qty"], l["pu"], f"=D{r}*E{r}", l.get("note", "")])
+    last = ws.max_row
+    ws.append(["", "TOTAL (sem IVA)", "", "", "", f"=SUM(F{first}:F{last})", ""])
+    ws.append(["", "IVA 23 %", "", "", "", f"=F{last + 1}*0.23", "taxa a confirmar (6 % em obras abrangidas pela verba 2.32/2.27 da Lista I do CIVA)"])
+    ws.append(["", "TOTAL (com IVA)", "", "", "", f"=F{last + 1}+F{last + 2}", ""])
+    for rr in range(last + 1, last + 4):
+        ws.cell(rr, 2).font = Font(bold=True)
+        ws.cell(rr, 6).font = Font(bold=True)
+    for col, w in zip("ABCDEFG", (24, 80, 6, 12, 14, 14, 60)):
+        ws.column_dimensions[col].width = w
+    for row in ws.iter_rows(min_row=first, max_row=last + 3, min_col=4, max_col=6):
+        for c in row:
+            c.number_format = "#,##0.00"
+    s2 = wb.create_sheet("Estrutura")
+    s2.append(["Lote", "Artigo", "Un.", "Quantidade", "Aço A500 (kg)", "Nota"])
+    for q in R.quantities:
+        s2.append([q["lote"], q["item"], q["un"], q["qtd"], q["aco_kg"] or None, q.get("nota", "")])
+    s3 = wb.create_sheet("Áreas")
+    s3.append(["N.º", "Divisão", "Área (m²)", "Uso", "Aquecida", "Origem"])
+    for r in lay.rooms:
+        s3.append([r.number, r.name, r.area, r.type, "sim" if r.heated else "não", r.source])
+    if lay.windows:
+        s4 = wb.create_sheet("Vãos")
+        s4.append(["Vão", "Largura (m)", "Altura (m)", "Qtd.", "Área (m²)", "Divisão", "Orientação"])
+        for w in lay.windows:
+            s4.append([w.name, w.w, w.h, w.qty, w.area, w.room, w.orient])
+    wb.save(str(path))
     return path
