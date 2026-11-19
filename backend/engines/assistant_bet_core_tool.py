@@ -189,6 +189,7 @@ def _make_pt_doc_loader(allowed_doc_fn: AllowedDocFn) -> Callable[..., Awaitable
     async def loader(_db, ids: list[str], user_id: str) -> list:
         # 14/11 (DWG de Valpaços): uma planta DWG/DXF metida no Assistente fica no módulo Plantas (plan_…) ou como
         # anexo CAD — o estudo lê as folhas desenhadas, como no .fr, em vez de «Documento inacessível» / «não é PDF».
+        import asyncio
         from engines.bet_core.assistant_tool import _plan_as_doc, _cad_to_pdf
         docs: list = []
         for did in ids:
@@ -200,33 +201,32 @@ def _make_pt_doc_loader(allowed_doc_fn: AllowedDocFn) -> Callable[..., Awaitable
                     raise PermissionError("Documento inacessível para esta conta") from None
             mime = (d.get("mime") or "").lower()
             name = d.get("filename") or did
-            cad = name.lower().endswith((".dwg", ".dxf"))
-            if mime != "application/pdf" and not name.lower().endswith(".pdf") and not cad:
+            cad = name.lower().endswith((".dwg", ".dxf", ".ifc"))
+            from engines.bet_geo import sources as _src
+            image = mime.startswith("image/") or name.lower().endswith(_src.IMAGE_EXT)
+            if mime != "application/pdf" and not name.lower().endswith(".pdf") and not cad and not image:
                 raise ValueError(
-                    f"{name} não é PDF nem DWG/DXF — apenas plantas em PDF, DWG ou DXF são lidas pelo estudo BET."
+                    f"{name} não é uma planta legível — o estudo BET lê PDF, imagem/fotografia, DWG, DXF ou IFC."
                 )
             data_b64 = d.get("data_b64")
             if not data_b64:
                 raise ValueError(f"Documento {name} sem dados utilizáveis.")
             data = base64.b64decode(data_b64)
-            if cad and not data.startswith(b"%PDF"):
+            raw = base64.b64decode(d["raw_b64"]) if d.get("raw_b64") else data
+            kind = _src.kind_of(d.get("raw_name") or name, raw)
+            if kind == "image" and not data.startswith(b"%PDF"):
+                data = await asyncio.to_thread(_src.image_to_pdf, data)
+            elif kind == "ifc" and not data.startswith(b"%PDF"):
+                data = await asyncio.to_thread(_src.ifc_preview_pdf, raw)
+            elif cad and not data.startswith(b"%PDF"):
                 try:
                     data, name = await _cad_to_pdf(data, name, user_id)
                 except ValueError:
                     raise ValueError(f"{name}: desenho DWG/DXF ilegível — exporte a planta em PDF ou DXF.") from None
             if not data.startswith(b"%PDF"):
                 raise ValueError(f"{name} não é um PDF legível — reimporte o ficheiro.")
-            docs.append((name, data))
-        seen: set[str] = set()
-        uniq: list = []
-        for name, data in docs:
-            h = hashlib.sha256(data).hexdigest()
-            if h in seen:
-                log.info("bet_core doc_loader: dedup %s (sha256=%s…)", name, h[:12])
-                continue
-            seen.add(h)
-            uniq.append((name, data))
-        return uniq
+            docs.append(_src.make(name, data, raw if kind in ("image", "dxf", "dwg", "ifc") else None, kind))
+        return _src.dedupe(docs)        # anexos repetidos → um só (original CAD/BIM/imagem conservado)
 
     return loader
 

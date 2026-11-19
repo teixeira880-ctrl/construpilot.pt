@@ -78,3 +78,16 @@ class Building:
             checks=list(raw.get("checks") or []),
             sources=list(raw.get("sources") or []),
         )
+
+
+def split_by_boundary(line: LineString, fp, tol: float = 0.35, min_len: float = 0.45):
+    """Parte uma parede em troços de fachada (a < tol do contorno/pátios) e troços interiores."""
+    from shapely.ops import unary_union as _u
+
+    edge = _u([fp.exterior, *fp.interiors]).buffer(tol, cap_style=2)
+    out = []
+    for geom, ext in ((line.intersection(edge), True), (line.difference(edge), False)):
+        for g in getattr(geom, "geoms", [geom]):
+            if g.geom_type == "LineString" and g.length >= min_len:
+                out.append((g, ext))
+    return out or [(line, line.distance(fp.exterior) < tol)]

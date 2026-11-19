@@ -65,16 +65,27 @@ def test_dedup_duplicate_docs():
     assert names == ["copia1.pdf", "distinto.pdf"], names
 
 
-def test_rejects_non_pdf_mime():
+def test_fotografia_da_planta_aceite_e_imagem_corrompida_com_erro_claro():
+    """19/11: o motor de geometria real lê fotografias/digitalizações — a imagem entra no estudo (PDF + original)."""
+    import io
+    from PIL import Image
     from engines.assistant_bet_core_tool import _make_pt_doc_loader
 
-    docs = {"d1": {"filename": "foto.jpg", "mime": "image/jpeg", "data_b64": base64.b64encode(b"\xff\xd8\xff").decode()}}
+    buf = io.BytesIO()
+    Image.new("L", (400, 300), 255).save(buf, format="JPEG")
+    docs = {"d1": {"filename": "foto.jpg", "mime": "image/jpeg", "data_b64": base64.b64encode(buf.getvalue()).decode()},
+            "d2": {"filename": "estragada.jpg", "mime": "image/jpeg", "data_b64": base64.b64encode(b"\xff\xd8\xff").decode()},
+            "d3": {"filename": "notas.txt", "mime": "text/plain", "data_b64": base64.b64encode(b"ola").decode()}}
 
     async def allowed(did, uid, with_data=True):
         return docs[did]
 
-    with pytest.raises(ValueError, match="não é PDF"):
-        _run(_make_pt_doc_loader(allowed)(None, ["d1"], "u-x"))
+    out = _run(_make_pt_doc_loader(allowed)(None, ["d1"], "u-x"))
+    assert out[0][1].startswith(b"%PDF") and out[0].kind == "image" and out[0].raw == buf.getvalue()
+    with pytest.raises(ValueError, match="imagem ilegível"):
+        _run(_make_pt_doc_loader(allowed)(None, ["d2"], "u-x"))
+    with pytest.raises(ValueError, match="não é uma planta legível"):
+        _run(_make_pt_doc_loader(allowed)(None, ["d3"], "u-x"))
 
 
 def test_rejects_corrupt_pdf_without_magic_bytes():

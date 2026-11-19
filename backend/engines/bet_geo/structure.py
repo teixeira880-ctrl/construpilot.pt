@@ -124,7 +124,7 @@ def support_lines(b: Building, prm: dict) -> tuple[list[LineString], list[Polygo
             lines += [ln for ln in _boundary_lines(c) if ln.distance(b.footprint.exterior) > 0.05
                       or not ln.within(b.footprint.exterior.buffer(0.05))]
     fp_edges = unary_union(lines)
-    for w in sorted(b.walls, key=lambda w: -w.length):
+    for w in sorted(_join_through_doors(b.walls), key=lambda w: -w.length):
         if w.exterior or w.t < 0.14 or w.length < 1.0:
             continue
         ln = w.line
@@ -173,6 +173,46 @@ def _dedupe(lines: list[LineString], fp, dist: float) -> list[LineString]:
         kept.append(g)
     out = unary_union(kept)
     return [g for g in getattr(out, "geoms", [out]) if g.length > 0.05]
+
+
+def _join_through_doors(walls, gap=1.2, tol=0.12):
+    """Troços colineares da mesma parede, separados por portas (≤ 1,2 m), formam uma só linha de apoio."""
+    from .model import Wall
+
+    groups: list[list] = []
+    for w in walls:
+        if w.exterior or w.t < 0.14:
+            continue
+        (ax, ay), (bx, by) = w.a, w.b
+        ang = math.atan2(by - ay, bx - ax) % math.pi
+        for g in groups:
+            ref = g[0]
+            (cx, cy), (dx, dy) = ref.a, ref.b
+            a2 = math.atan2(dy - cy, dx - cx) % math.pi
+            if min(abs(ang - a2), math.pi - abs(ang - a2)) > math.radians(3):
+                continue
+            ux, uy = math.cos(a2), math.sin(a2)
+            perp = max(abs((p[0] - cx) * -uy + (p[1] - cy) * ux) for p in (w.a, w.b))
+            if perp > tol:
+                continue
+            ts = [((p[0] - cx) * ux + (p[1] - cy) * uy) for q in g for p in (q.a, q.b)]
+            tw = sorted(((p[0] - cx) * ux + (p[1] - cy) * uy) for p in (w.a, w.b))
+            if tw[0] <= max(ts) + gap and tw[1] >= min(ts) - gap:
+                g.append(w)
+                break
+        else:
+            groups.append([w])
+    out = [w for w in walls if w.exterior or w.t < 0.14]
+    for g in groups:
+        ref = g[0]
+        (cx, cy), (dx, dy) = ref.a, ref.b
+        a2 = math.atan2(dy - cy, dx - cx)
+        ux, uy = math.cos(a2), math.sin(a2)
+        ts = [((p[0] - cx) * ux + (p[1] - cy) * uy) for q in g for p in (q.a, q.b)]
+        t = max(q.t for q in g)
+        out.append(Wall((cx + ux * min(ts), cy + uy * min(ts)), (cx + ux * max(ts), cy + uy * max(ts)), t,
+                        ref.material, False, max(q.retained_height for q in g), ref.source))
+    return out
 
 
 def _parallel_near(ln: LineString, lines: list[LineString], dist: float) -> bool:

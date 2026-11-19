@@ -21,7 +21,7 @@ from shapely.affinity import affine_transform
 from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
-from .model import Building, Wall
+from .model import Building, Wall, split_by_boundary
 
 PT_PER_M_PAPER = 72 / 0.0254
 SCALE_RX = re.compile(r"\b1\s*[:/]\s*(20|25|50|75|100|150|200|250|500)\b")
@@ -291,9 +291,10 @@ def read(docs, hypotheses: str = "", country: str = "PT") -> Building | None:
             continue
         if not fp.buffer(0.6).contains(L):        # muros do lote, vedações: fora do edifício
             continue
-        ext = L.distance(fp.exterior) < 0.35 or any(L.distance(h) < 0.35 for h in fp.interiors)
-        walls.append(Wall((round(ax, 3), round(ay, 3)), (round(bx, 3), round(by, 3)),
-                          round(min(max(t, 0.10), 0.40), 2), exterior=bool(ext), source="vetorial"))
+        for piece, ext in split_by_boundary(L, fp):
+            (ax, ay), (bx, by) = piece.coords[0], piece.coords[-1]
+            walls.append(Wall((round(ax, 3), round(ay, 3)), (round(bx, 3), round(by, 3)),
+                              round(min(max(t, 0.10), 0.40), 2), exterior=bool(ext), source="vetorial"))
     walls = snap_directions(walls, fp)
     b = Building(footprint=fp, covered=covered, walls=walls, country=country,
                  sources=[f"planta vetorial (doc {sheet.index + 1}, escala 1:{sheet.scale})"])

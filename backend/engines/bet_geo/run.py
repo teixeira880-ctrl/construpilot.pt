@@ -19,18 +19,73 @@ def _plan_page(docs):
     return plans[0].page if plans else None
 
 
+async def read_any(docs, hypotheses: str, country: str, llm=None):
+    """Melhor leitor disponível, por ordem de exatidão: IFC → DWG/DXF → PDF vetorial → raster (scan/imagem/foto)."""
+    from . import cad, raster
+
+    def raw(kind):
+        return [d for d in docs if getattr(d, "kind", None) == kind and getattr(d, "raw", None)]
+
+    for d in raw("ifc"):
+        try:
+            b = await asyncio.to_thread(cad.read_ifc, d.raw, country, d[0])
+            if b is not None and b.footprint.area >= 20:
+                return b
+        except Exception:  # noqa: BLE001
+            log.warning("bet_geo: IFC %s ilegível", d[0], exc_info=True)
+    for kind, fn in (("dxf", cad.read_dxf), ("dwg", cad.read_dwg)):
+        for d in raw(kind):
+            try:
+                b = await fn(d.raw, llm=llm, country=country, name=d[0])
+                if b is not None and b.footprint.area >= 20:
+                    return b
+            except Exception:  # noqa: BLE001
+                log.warning("bet_geo: %s %s ilegível", kind.upper(), d[0], exc_info=True)
+    b = await asyncio.to_thread(pdf_vector.read, docs, hypotheses, country)
+    if b is not None and b.footprint.area >= 20:
+        return b
+    # raster: imagens anexadas e páginas sem desenho vetorial (digitalizações), a IA escolhe a planta
+    if llm is None:
+        return None
+    import pymupdf
+
+    candidates = [(d[0], d.raw, 0) for d in raw("image")]
+    for name, data in docs:
+        try:
+            pdf = pymupdf.open(stream=data, filetype="pdf")
+        except Exception:  # noqa: BLE001
+            continue
+        for i, page in enumerate(pdf):
+            if len(page.get_drawings()) < 50:              # página sem desenho vetorial → raster
+                candidates.append((name, data, i))
+    for name, data, i in candidates[:10]:
+        try:
+            img, _ = raster.load_gray(data, i, dpi=110)
+            lay = await raster.ask_layout(llm, img)
+            if lay.get("is_floor_plan") and lay.get("outline"):
+                b = await raster.read(data, llm=llm, page_index=i, country=country, name=name, layout=lay)
+                if b is not None and b.footprint.area >= 20:
+                    return b
+        except Exception:  # noqa: BLE001
+            log.warning("bet_geo: raster %s p.%d ilegível", name, i + 1, exc_info=True)
+    return None
+
+
 async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None, meta: dict | None = None,
                 on_step=None) -> dict:
     async def step(label):
         if on_step:
             await on_step(label)
 
-    await step("A ler a geometria real nas plantas vetoriais (contorno, pátios, paredes)")
-    b = await asyncio.to_thread(pdf_vector.read, docs, hypotheses, country)
+    await step("A ler a geometria real das plantas (IFC, DWG/DXF, PDF vetorial, digitalização ou fotografia)")
+    b = await read_any(docs, hypotheses, country, llm)
     if b is None or b.footprint.area < 20:
-        return {"ok": False, "reason": "geometria não legível nas plantas (sem planta vetorial à escala)"}
+        return {"ok": False, "reason": "geometria não legível em nenhum dos formatos recebidos"}
     await step("A ler cotas e terras suportadas nos cortes")
-    warns = await levels_ai.read_levels(b, docs, llm, _plan_page(docs))
+    if b.hypotheses.get("_reader") == "ifc":
+        warns = ["Cotas lidas no modelo IFC. Terras suportadas não constam do modelo: confirmar muros de suporte."]
+    else:
+        warns = await levels_ai.read_levels(b, docs, llm, _plan_page(docs))
     await step("A calcular laje, vigas, pilares, fundações e muros sobre o contorno real")
     R = await asyncio.to_thread(structure.design, b)
     R.warnings = warns + R.warnings
@@ -108,7 +163,8 @@ async def geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country,
     if str(os.environ.get("BET_GEO_ENGINE", "1")).lower() in ("0", "false", "no"):
         return False
     try:
-        if when_irregular_only:
+        exact = any(getattr(d, "kind", None) in ("ifc", "dxf", "dwg") for d in docs)
+        if when_irregular_only and not exact:
             from engines.bet_core import geometry_review as _gr
             if await asyncio.to_thread(_gr.inspect, docs, hypotheses) is None:
                 return False

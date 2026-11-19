@@ -664,7 +664,7 @@ async def _plan_as_doc(db, plan_id, uid):
         if not pdf:
             raise ValueError(f"{name} : planta sem folhas desenhadas no servidor — reimporte o DWG/DXF.")
         return {"filename": name.rsplit(".", 1)[0] + ".pdf", "mime": "application/pdf",
-                "data_b64": base64.b64encode(pdf).decode()}
+                "data_b64": base64.b64encode(pdf).decode(), "raw_b64": src["data_b64"], "raw_name": name}
     if not name.lower().endswith(".pdf"):
         name = name.rsplit(".", 1)[0] + ".pdf"
     return {"filename": name, "mime": "application/pdf", "data_b64": src["data_b64"]}
@@ -694,7 +694,9 @@ async def _cad_to_pdf(data: bytes, name: str, uid) -> tuple[bytes, str]:
     if name.lower().endswith(".dwg"):
         from engines.dwg_convert import dwg_to_dxf
         try:
-            data = await dwg_to_dxf(data, name, user_id=uid)
+            dwg, data = data, await dwg_to_dxf(data, name, user_id=uid)
+            from engines.bet_geo.sources import remember_dxf
+            remember_dxf(dwg, data)
         except RuntimeError as exc:
             raise ValueError(f"{name} : conversion DWG impossible ({exc}). Exportez le plan en PDF ou DXF.") from None
     from engines.plan_dxf import process_dxf
@@ -722,9 +724,11 @@ async def _load_assistant_docs(db, ids, uid):
         if not d:
             raise PermissionError(f"Document {did} inaccessible pour ce compte")
         name = d.get("filename") or did
-        cad = name.lower().endswith((".dwg", ".dxf"))
-        if (d.get("mime") or "") != "application/pdf" and not name.lower().endswith(".pdf") and not cad:
-            raise ValueError(f"{name} n'est pas un PDF : seuls les PDF de plans et d'études de sol sont lus.")
+        cad = name.lower().endswith((".dwg", ".dxf", ".ifc"))
+        from engines.bet_geo import sources as _src
+        image = (d.get("mime") or "").startswith("image/") or name.lower().endswith(_src.IMAGE_EXT)
+        if (d.get("mime") or "") != "application/pdf" and not name.lower().endswith(".pdf") and not cad and not image:
+            raise ValueError(f"{name} n'est pas un plan lisible : PDF, image, DWG, DXF ou IFC.")
         if d.get("data_b64"):
             data = base64.b64decode(d["data_b64"])
         elif d.get("chunk_count"):
@@ -734,18 +738,18 @@ async def _load_assistant_docs(db, ids, uid):
             data = b"".join(base64.b64decode(c["data_b64"]) for c in chunks)
         else:
             raise ValueError(f"{name} est vide sur le serveur : réimportez le fichier.")
-        if cad and not data.startswith(b"%PDF"):
+        raw = base64.b64decode(d["raw_b64"]) if d.get("raw_b64") else data
+        kind = _src.kind_of(d.get("raw_name") or name, raw)
+        if kind == "image" and not data.startswith(b"%PDF"):
+            data = await asyncio.to_thread(_src.image_to_pdf, data)
+        elif kind == "ifc" and not data.startswith(b"%PDF"):
+            data = await asyncio.to_thread(_src.ifc_preview_pdf, raw)
+        elif cad and not data.startswith(b"%PDF"):
             data, name = await _cad_to_pdf(data, name, uid)
         if not data.startswith(b"%PDF"):
             raise ValueError(f"{name} n'est pas un PDF lisible : réimportez-le.")
-        docs.append((name, data))
-    seen, uniq = set(), []                    # même pièce jointe deux fois (doublons dans la conversation) → une seule
-    for name, data in docs:
-        h = hashlib.sha256(data).hexdigest()
-        if h not in seen:
-            seen.add(h)
-            uniq.append((name, data))
-    return uniq
+        docs.append(_src.make(name, data, raw if kind in ("image", "dxf", "dwg", "ifc") else None, kind))
+    return _src.dedupe(docs)                  # même pièce jointe deux fois → une seule (original conservé)
 
 
 def _age_s(ts) -> float:

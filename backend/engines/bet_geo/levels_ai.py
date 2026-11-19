@@ -94,6 +94,17 @@ def section_pages(docs, limit=4):
                 out.append(page)
             if len(out) >= limit:
                 return out
+    if not out:                                   # processo digitalizado: páginas sem texto vão à IA (ela diz se são cortes)
+        for _, data in docs:
+            try:
+                pdf = pymupdf.open(stream=data, filetype="pdf")
+            except Exception:  # noqa: BLE001
+                continue
+            for page in pdf:
+                if len(page.get_text().strip()) < 40 and len(page.get_drawings()) < 50:
+                    out.append(page)
+                if len(out) >= limit:
+                    return out
     return out
 
 
@@ -117,6 +128,8 @@ def apply(b: Building, data: dict) -> list[str]:
         decl = float(data.get("declared_construction_area_m2")) if data.get("declared_construction_area_m2") else None
     except (TypeError, ValueError):
         decl = None
+    if decl and any(c.get("item", "").startswith("área declarada") for c in b.checks):
+        decl = None                                   # já confrontada pelo leitor (não repetir)
     if decl:
         diff = (b.footprint.area - decl) / decl
         ok = abs(diff) <= 0.05

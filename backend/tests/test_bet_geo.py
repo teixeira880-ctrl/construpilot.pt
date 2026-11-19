@@ -209,3 +209,186 @@ def test_gancho_do_estudo_bet_entrega_artefactos(l_pdf, monkeypatch):
 
     monkeypatch.setenv("BET_GEO_ENGINE", "0")
     assert asyncio.run(run.geo_first(None, "j", "u", "c", "r", [("p.pdf", l_pdf)], "", "PT", step, store, fake_llm)) is False
+
+
+# ============================================================================= todos os formatos
+def _scan_of(pdf_bytes: bytes, dpi=150) -> bytes:
+    """Digitalização simulada: só imagem, sem texto nem vetores, mesmo formato de papel."""
+    import pymupdf
+    src = pymupdf.open(stream=pdf_bytes, filetype="pdf")[0]
+    pix = src.get_pixmap(dpi=dpi, colorspace=pymupdf.csGRAY)
+    out = pymupdf.open()
+    pg = out.new_page(width=src.rect.width, height=src.rect.height)
+    pg.insert_image(pg.rect, stream=pix.tobytes("png"))
+    return out.tobytes()
+
+
+def _l_layout(page_w_pt, page_h_pt, noise=4.0, transform=None):
+    """Resposta simulada da IA de visão (coordenadas 0–1000, com erro de leitura)."""
+    import random
+    random.seed(3)
+    k = 72 / 0.0254 / 100
+    ox, oy = 100, 100
+    def n(x, y):
+        X, Y = ox + x * k, page_h_pt - (oy + y * k)
+        if transform:
+            X, Y = transform(X, Y)
+        return [X / page_w_pt * 1000 + random.uniform(-noise, noise), Y / page_h_pt * 1000 + random.uniform(-noise, noise)]
+    outer = [(0, 0), (14, 0), (14, 6), (6, 6), (6, 12), (0, 12)]
+    return {"is_floor_plan": True, "scale": "1:100", "outline": [n(x, y) for x, y in outer], "courtyards": [],
+            "covered_outside": [], "declared_area_m2": 120,
+            "overall_dims": [{"value_m": 14.0, "from": n(0, -1), "to": n(14, -1)},
+                             {"value_m": 12.0, "from": n(-1, 0), "to": n(-1, 12)}]}
+
+
+def test_planta_digitalizada(l_pdf):
+    from reportlab.lib.pagesizes import A3, landscape
+    from engines.bet_geo import raster
+    W, H = landscape(A3)
+    scan = _scan_of(l_pdf)
+    b = asyncio.run(raster.read(scan, layout=_l_layout(W, H)))
+    assert b is not None
+    assert b.footprint.area == pytest.approx(120, rel=0.04)
+    assert all(c.get("ok") is not False for c in b.checks), b.checks
+    R = structure.design(b)
+    _invariants(b, R)
+
+
+def test_fotografia_torta_com_sombra(l_pdf):
+    """Fotografia: sem tamanho de papel (escala pelas cotas), rodada 1,5°, reduzida, JPEG, sombra."""
+    import cv2
+    import numpy as np
+    from reportlab.lib.pagesizes import A3, landscape
+    from engines.bet_geo import raster
+    W, H = landscape(A3)
+    img, _ = raster.load_gray(_scan_of(l_pdf, dpi=150))
+    h, w = img.shape
+    M = cv2.getRotationMatrix2D((w / 2, h / 2), 1.5, 0.85)
+    ph = cv2.warpAffine(img, M, (w, h), borderValue=255)
+    ph = np.clip(ph.astype(np.float32) - np.tile(np.linspace(0, 50, w), (h, 1)), 0, 255).astype(np.uint8)
+    ok, buf = cv2.imencode(".jpg", ph, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
+    def tr(X, Y):
+        px, py = X / W * w, Y / H * h
+        return ((M[0, 0] * px + M[0, 1] * py + M[0, 2]) / w * W, (M[1, 0] * px + M[1, 1] * py + M[1, 2]) / h * H)
+    lay = _l_layout(W, H, transform=tr)
+    lay["scale"] = None
+    b = asyncio.run(raster.read(buf.tobytes(), layout=lay))
+    assert b is not None and any("cota" in c["metodo"] for c in b.checks if c["item"] == "escala")
+    assert b.footprint.area == pytest.approx(120, rel=0.05)
+
+
+def _l_dxf() -> bytes:
+    import ezdxf, io
+    doc = ezdxf.new("R2018")
+    doc.header["$INSUNITS"] = 4
+    msp = doc.modelspace()
+    pts = [(0, 0), (14, 0), (14, 6), (6, 6), (6, 12), (0, 12)]
+    walls = [(pts[i], pts[(i + 1) % 6], 0.25) for i in range(6)] + [((6, 0), (6, 6), 0.15)]
+    for a, b_, t in walls:
+        band = LineString([a, b_]).buffer(t / 2, cap_style=3 if t > 0.2 else 2)
+        ring = [(x * 1000, y * 1000) for x, y in band.exterior.coords]
+        msp.add_lwpolyline(ring, close=True)
+        h = msp.add_hatch()
+        h.set_pattern_fill("ANSI31", scale=12)
+        h.paths.add_polyline_path(ring, is_closed=True)
+    msp.add_text("SALA 44,80 m2", dxfattribs={"height": 250, "insert": (2000, 3000)})
+    s = io.StringIO()
+    doc.write(s)
+    return s.getvalue().encode()
+
+
+def test_dxf_escala_exata_sem_ia():
+    from engines.bet_geo import cad
+    b = asyncio.run(cad.read_dxf(_l_dxf(), llm=None, name="casa.dxf"))
+    assert b is not None
+    exp = Polygon([(-.125, -.125), (14.125, -.125), (14.125, 6.125), (6.125, 6.125), (6.125, 12.125), (-.125, 12.125)]).area
+    assert b.footprint.area == pytest.approx(exp, rel=0.01)
+    assert any(not w.exterior for w in b.walls)                          # parede interior reconhecida
+    R = structure.design(b)
+    _invariants(b, R)
+    assert all(c["ok"] for c in R.checks)
+
+
+def _l_ifc() -> bytes | None:
+    try:
+        import ifcopenshell
+        import numpy as np
+        from ifcopenshell.api import aggregate, context, geometry, material, pset, root, spatial, unit
+    except Exception:  # noqa: BLE001
+        return None
+    f = ifcopenshell.file(schema="IFC4")
+    proj = root.create_entity(f, ifc_class="IfcProject", name="Casa L")
+    unit.assign_unit(f)
+    ctx = context.add_context(f, context_type="Model")
+    body = context.add_context(f, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=ctx)
+    site, bld = root.create_entity(f, ifc_class="IfcSite"), root.create_entity(f, ifc_class="IfcBuilding")
+    st = root.create_entity(f, ifc_class="IfcBuildingStorey")
+    aggregate.assign_object(f, relating_object=proj, products=[site])
+    aggregate.assign_object(f, relating_object=site, products=[bld])
+    aggregate.assign_object(f, relating_object=bld, products=[st])
+    conc = material.add_material(f, name="Betão C30/37")
+
+    def wall(x0, y0, x1, y1, t, ext=True):
+        w = root.create_entity(f, ifc_class="IfcWall")
+        L, ang = float(np.hypot(x1 - x0, y1 - y0)), np.arctan2(y1 - y0, x1 - x0)
+        M = np.eye(4)
+        M[:2, :2] = [[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]]
+        M[0, 3], M[1, 3] = x0 + np.sin(ang) * t / 2, y0 - np.cos(ang) * t / 2
+        geometry.assign_representation(f, product=w, representation=geometry.add_wall_representation(
+            f, context=body, length=L, height=3.3, thickness=t))
+        geometry.edit_object_placement(f, product=w, matrix=M)
+        spatial.assign_container(f, relating_structure=st, products=[w])
+        material.assign_material(f, products=[w], material=conc)
+        ps = pset.add_pset(f, product=w, name="Pset_WallCommon")
+        pset.edit_pset(f, pset=ps, properties={"IsExternal": ext})
+    pts = [(0, 0), (14, 0), (14, 6), (6, 6), (6, 12), (0, 12)]
+    for i in range(6):
+        wall(*pts[i], *pts[(i + 1) % 6], 0.25)
+    wall(6, 0, 6, 6, 0.15, ext=False)
+    s = root.create_entity(f, ifc_class="IfcSlab")
+    geometry.assign_representation(f, product=s, representation=geometry.add_slab_representation(
+        f, context=body, depth=0.22, polyline=[(-.125, -1.125), (14.125, -1.125), (14.125, 6.125), (6.125, 6.125),
+                                                 (6.125, 12.125), (-.125, 12.125)]))
+    M = np.eye(4)
+    M[2, 3] = 3.3
+    geometry.edit_object_placement(f, product=s, matrix=M)
+    spatial.assign_container(f, relating_structure=st, products=[s])
+    return f.to_string().encode()
+
+
+def test_ifc_exato():
+    from engines.bet_geo import cad
+    data = _l_ifc()
+    if data is None:
+        pytest.skip("ifcopenshell.api indisponível")
+    b = cad.read_ifc(data, name="casa.ifc")
+    assert b is not None
+    assert b.footprint.area == pytest.approx(126.56, rel=0.005)
+    assert b.covered and sum(c.area for c in b.covered) == pytest.approx(14.25, rel=0.05)    # pala de 1 m
+    assert b.roof_level == pytest.approx(3.52, abs=0.02)
+    assert all(w.material == "betao" for w in b.walls)
+    assert any(not w.exterior for w in b.walls)
+    R = structure.design(b)
+    _invariants(b, R)
+
+
+def test_entrada_do_estudo_aceita_imagem_e_ifc(l_pdf):
+    """read_any: o original agarrado ao documento é lido pelo leitor certo."""
+    from engines.bet_geo import sources
+    data = _l_ifc()
+    if data is None:
+        pytest.skip("ifcopenshell.api indisponível")
+    doc = sources.make("casa.ifc", sources.ifc_preview_pdf(data), data, "ifc")
+    name, pdf = doc                                                     # compatível com (nome, pdf)
+    assert pdf.startswith(b"%PDF") and doc.kind == "ifc"
+    b = asyncio.run(run.read_any([doc], "", "PT", None))
+    assert b is not None and b.hypotheses.get("_reader") == "ifc"
+    # imagem: convertida em PDF para o resto do estudo, original guardado
+    import cv2
+    from engines.bet_geo import raster
+    img, _ = raster.load_gray(_scan_of(l_pdf))
+    ok, png = cv2.imencode(".png", img)
+    assert sources.kind_of("planta.png", png.tobytes()) == "image"
+    assert sources.image_to_pdf(png.tobytes()).startswith(b"%PDF")
+    assert len(sources.dedupe([doc, doc])) == 1 and sources.dedupe([doc, doc])[0].kind == "ifc"
