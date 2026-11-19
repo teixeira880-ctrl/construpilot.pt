@@ -79,12 +79,14 @@ def geometry_key(raw: dict) -> str:
     return hashlib.sha1(json.dumps(g, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
 
 
-def _jpeg(png: bytes, side: int = 1600) -> bytes:
+def _jpeg(png: bytes, side: int = 0) -> bytes:
+    import os
+    side = side or int(os.environ.get("QUOTE_IMG_SIDE") or 2560)      # alta definição no PDF (antes 1600)
     from PIL import Image
     im = Image.open(io.BytesIO(png)).convert("RGB")
     im.thumbnail((side, side), Image.LANCZOS)
     b = io.BytesIO()
-    im.save(b, "JPEG", quality=86)
+    im.save(b, "JPEG", quality=90)
     return b.getvalue()
 
 
@@ -192,13 +194,16 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
                 for k in VIEW_KEYS:
                     if raw.get("_geo"):                                  # geometria real do motor bet_geo (qualquer forma)
                         from engines.bet_geo import views as GV
-                        png = await asyncio.to_thread(GV.render_pbr, _geo(raw), k, 1600, 900, int(os.environ.get("QUOTE_PBR_SPP") or 16))
+                        hi = k == "main"                                 # alta definição: principal 2560×1440, outras Full HD
+                        w_, h_ = (2560, 1440) if hi else (1920, 1080)
+                        spp_ = int(os.environ.get("QUOTE_GEO_SPP_MAIN" if hi else "QUOTE_GEO_SPP") or 48)
+                        png = await asyncio.to_thread(GV.render_pbr, _geo(raw), k, w_, h_, spp_)
                     else:
                         png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 1600), int(os.environ.get("QUOTE_PBR_H") or 900), k, int(os.environ.get("QUOTE_PBR_SPP") or 16))
                     if png:
                         got_pbr[k] = (png, "pbr_mitsuba")
                         if k == "main":
-                            await _save(db, key, base, got_pbr, "pbr")       # a vista principal fica logo disponível
+                            await _save(db, key, base, got_pbr, "pbr_partial")   # a principal fica logo disponível
                 if got_pbr.get("main"):
                     await _save(db, key, base, got_pbr, "pbr")
                     log.info("house renders %s: physical render %s/%d", key[:10], len(got_pbr), len(VIEW_KEYS))
@@ -243,7 +248,9 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
             return None
 
     def final(h):          # imagem definitiva: foto IA verificada, ou renderização física se a IA estiver desligada
-        return bool(h and h.get("views") and h.get("geometry_checked") and (not ai_on or h.get("quality") not in ("pbr", None)))
+        q = h.get("quality") if h else None
+        return bool(h and h.get("views") and h.get("geometry_checked") and q != "pbr_partial"
+                    and (not ai_on or q not in ("pbr", None)))
 
     hit = await cached()
     if final(hit):

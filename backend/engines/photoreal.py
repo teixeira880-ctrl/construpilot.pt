@@ -171,8 +171,10 @@ async def render(base: bytes, prompt: str, *, style_ref: bytes | None = None, ti
                 from engines import kling_client
                 if not kling_client.configured():
                     continue
-                data = await asyncio.wait_for(kling_client.render(prompt, base, style_ref, timeout=timeout), timeout + 30)
-                if data:
+                for _try in range(max(1, int(os.environ.get("KLING_TRIES") or 2))):   # nova tentativa se falhar o controlo
+                    data = await asyncio.wait_for(kling_client.render(prompt, base, style_ref, timeout=timeout), timeout + 30)
+                    if not data:
+                        break
                     await _meter(os.environ.get("KLING_IMAGE_MODEL") or "kling-v3-omni", feature, session_id, provider="kling")
                     hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
                     ok = await accept(hd, "kling")

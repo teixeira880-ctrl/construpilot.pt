@@ -160,8 +160,16 @@ def test_kling_so_entra_se_respeitar_a_geometria(monkeypatch):
     monkeypatch.setattr(K, "render", good)
     r = asyncio.run(PR.render(base, "x", engines=["kling"], verify=lambda img: G.check(img, base, mask)))
     assert r and r[1] == "kling"
+    calls = []
+
+    async def bad_then_good(prompt, b_, style=None, timeout=0, model=None):
+        calls.append(1)
+        return wrong if len(calls) == 1 else base
     monkeypatch.setattr(K, "render", bad)
     assert asyncio.run(PR.render(base, "x", engines=["kling"], verify=lambda img: G.check(img, base, mask))) is None
+    monkeypatch.setattr(K, "render", bad_then_good)                  # 1.ª foto falha o controlo → 2.ª tentativa aceite
+    r = asyncio.run(PR.render(base, "x", engines=["kling"], verify=lambda img: G.check(img, base, mask)))
+    assert r and len(calls) == 2
 
 
 # ----------------------------------------------------------------------------- orçamento
@@ -224,3 +232,34 @@ def test_estudo_guarda_a_geometria_para_o_orcamento(tmp_path):
         run.study = orig
     geo = steps[-1]["geo_building"]
     assert Building.from_dict(geo).footprint.area == pytest.approx(L_SHAPE.area) and geo["slab_h"] > 0
+
+
+def test_orcamento_sem_ia_usa_motores_internos_em_alta_definicao(monkeypatch):
+    """Escolha do Martinho (19/11): sem Kling/IA — as 4 vistas do orçamento são a renderização física da geometria real."""
+    mm = pytest.importorskip("mongomock_motor")
+    from engines import house_pbr
+    from engines import quote_building as QB
+    monkeypatch.setenv("QUOTE_HOUSE_PHOTO", "1")
+    monkeypatch.setenv("CP_3D_IMAGES", "1")
+    monkeypatch.delenv("QUOTE_PHOTO_AI", raising=False)
+    monkeypatch.setattr(house_pbr, "available", lambda: True)
+    sizes = {}
+
+    def fake_pbr(b, view, w, h, spp):
+        sizes[view] = (w, h, spp)
+        return GV.computed_and_mask(b, view, w // 4, h // 4)[0]
+    monkeypatch.setattr(GV, "render_pbr", fake_pbr)
+    db = mm.AsyncMongoMockClient()["t"]
+    b = _house()
+
+    async def run():
+        QB._PENDING.clear()
+        await db.bet_study_jobs.insert_one({"user_id": "u", "conversation_id": "c2", "created_at": "2026-11-19",
+                                            "geo_building": {**b.to_dict(), "slab_h": 0.22}})
+        return await QB.enrich(db, {"doc_type": "quote", "assistant_conversation_id": "c2", "lines": []}, "u", wait=10)
+    out = asyncio.run(run())
+    assert out["_house_views_meta"]["quality"] == "pbr" and set(out["_house_views"]) >= {"main", "side", "rear", "aerial"}
+    assert sizes["main"][:2] == (2560, 1440) and sizes["side"][:2] == (1920, 1080)      # alta definição
+    fl = GV.quote_flowables(out["_building_model"]["_geo"], out["_house_views"], out["_house_views_meta"])
+    from reportlab.platypus import Paragraph
+    assert "Renderização física (sem IA)" in " ".join(p.text for p in fl if isinstance(p, Paragraph))

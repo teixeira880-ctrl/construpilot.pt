@@ -27,8 +27,9 @@ GLASS_TONE = 40
 
 
 # ----------------------------------------------------------------------------- geometria 3D
-def faces(b: Building, slab_h: float = 0.25, parapet: float | None = None) -> list[tuple[list, str, tuple]]:
-    """[(vértices 3D, tipo, normal exterior)] — tipos: wall, glass, lintel, slab_edge, parapet, roof."""
+def faces(b: Building, slab_h: float = 0.25, parapet: float | None = None, details: bool = False) -> list[tuple[list, str, tuple]]:
+    """[(vértices 3D, tipo, normal exterior)] — tipos: wall, glass, lintel, slab_edge, parapet, roof
+    (+ frame, sill, plinth com details=True: só na imagem, nunca na máscara de controlo)."""
     H = max(2.4, b.storey_height)
     par = parapet if parapet is not None else float(b.hypotheses.get("parapet_m", 0.5))
     out: list = []
@@ -36,6 +37,7 @@ def faces(b: Building, slab_h: float = 0.25, parapet: float | None = None) -> li
     ext_walls = [w for w in b.walls if w.exterior]
     zone = unary_union([w.line.buffer(max(w.t / 2, 0.08) + 0.25, cap_style=2) for w in ext_walls]) if ext_walls else None
     glass_top = H - slab_h - 0.10
+    Hw = H - slab_h                                       # parede até à face inferior da laje (o bordo da laje cobre o resto)
     for ring in [fp.exterior, *fp.interiors]:
         cs = list(ring.simplify(0.05).coords)
         for (x0, y0), (x1, y1) in zip(cs, cs[1:]):
@@ -72,12 +74,27 @@ def faces(b: Building, slab_h: float = 0.25, parapet: float | None = None) -> li
 
             def P(t, z):
                 return (x0 + ux * t, y0 + uy * t, z)
+            def Q(t, z, off):                            # ponto ligeiramente à frente do plano da fachada
+                return (x0 + ux * t + nrm[0] * off, y0 + uy * t + nrm[1] * off, z)
             for a, c, is_wall in segs:
                 if is_wall or (c - a) > 9.0 or (c - a) < 0.5:
-                    out.append(([P(a, 0), P(c, 0), P(c, H), P(a, H)], "wall", nrm))
+                    out.append(([P(a, 0), P(c, 0), P(c, Hw), P(a, Hw)], "wall", nrm))
+                    if details:                          # soco (0,30 m) em pedra/cimento
+                        out.append(([Q(a, 0, 0.012), Q(c, 0, 0.012), Q(c, 0.30, 0.012), Q(a, 0.30, 0.012)], "plinth", nrm))
                 else:
                     out.append(([P(a, 0), P(c, 0), P(c, glass_top), P(a, glass_top)], "glass", nrm))
-                    out.append(([P(a, glass_top), P(c, glass_top), P(c, H), P(a, H)], "lintel", nrm))
+                    out.append(([P(a, glass_top), P(c, glass_top), P(c, Hw), P(a, Hw)], "lintel", nrm))
+                    if details:                          # caixilharia: aro + montantes a cada ≤ 1,6 m + soleira
+                        fw, o = 0.06, 0.025
+                        out.append(([Q(a, 0, o), Q(c, 0, o), Q(c, fw, o), Q(a, fw, o)], "frame", nrm))
+                        out.append(([Q(a, glass_top - fw, o), Q(c, glass_top - fw, o), Q(c, glass_top, o), Q(a, glass_top, o)], "frame", nrm))
+                        n_m = max(1, math.ceil((c - a) / 1.6))
+                        for k in range(n_m + 1):
+                            t = a + (c - a) * k / n_m
+                            t0, t1 = (t, t + fw) if k == 0 else (t - fw, t) if k == n_m else (t - fw / 2, t + fw / 2)
+                            out.append(([Q(t0, 0, o), Q(t1, 0, o), Q(t1, glass_top, o), Q(t0, glass_top, o)], "frame", nrm))
+                        out.append(([Q(a - 0.03, -0.02, 0.06), Q(c + 0.03, -0.02, 0.06), Q(c + 0.03, 0.02, 0.06),
+                                     Q(a - 0.03, 0.02, 0.06)], "sill", nrm))
     # laje de cobertura (com palas): bordo + face superior; platibanda sobre o contorno do edifício
     slab = b.roof_slab
     for poly in getattr(slab, "geoms", [slab]):
@@ -93,7 +110,13 @@ def faces(b: Building, slab_h: float = 0.25, parapet: float | None = None) -> li
                 top = H + (par if on_fp and par > 0 else 0.0)
                 out.append(([(x0, y0, H - slab_h), (x1, y1, H - slab_h), (x1, y1, top), (x0, y0, top)],
                             "parapet" if top > H else "slab_edge", n))
-        out.append(([(x, y, H) for x, y in list(poly.exterior.coords)[:-1]], "roof", (0.0, 0.0, 1.0)))
+        # cobertura e face inferior das palas: triangulação restrita (formas côncavas e pátios corretos)
+        from shapely import constrained_delaunay_triangles
+        for tri in constrained_delaunay_triangles(poly).geoms:
+            t = orient(tri, 1.0)
+            cs = list(t.exterior.coords)[:-1]
+            out.append(([(x, y, H) for x, y in cs], "roof", (0.0, 0.0, 1.0)))
+            out.append(([(x, y, H - slab_h) for x, y in reversed(cs)], "soffit", (0.0, 0.0, -1.0)))
     return out
 
 
@@ -141,7 +164,8 @@ def _project(eye, tgt, width, height):
 
 
 COLORS = {"wall": (236, 233, 226), "lintel": (236, 233, 226), "glass": (58, 70, 80), "slab_edge": (222, 220, 214),
-          "parapet": (228, 226, 220), "roof": (150, 148, 142)}
+          "parapet": (228, 226, 220), "roof": (150, 148, 142), "frame": (40, 40, 44), "sill": (200, 196, 188),
+          "plinth": (120, 118, 114), "soffit": (214, 212, 206)}
 
 
 def computed_and_mask(b: Building, view: str, width: int = 1600, height: int = 900) -> tuple[bytes, bytes]:
@@ -158,12 +182,12 @@ def computed_and_mask(b: Building, view: str, width: int = 1600, height: int = 9
         img[yy, :] = (int(235 - 40 * t), int(222 - 30 * t), int(200 - 20 * t)) if yy < height * 0.55 else (178, 186, 180)
     mask = np.zeros((height, width), np.uint8)
     items = []
-    for verts, kind, nrm in faces(b):
+    for verts, kind, nrm in faces(b, details=True):
         pts = [proj(p) for p in verts]
         if any(p[2] <= 0.1 for p in pts):
             continue
         view_dir = np.mean(np.asarray(verts, float), axis=0) - eye
-        if kind != "roof" and float(np.dot(view_dir, nrm)) > 0:   # face de costas para a câmara
+        if float(np.dot(view_dir, nrm)) > 0:                       # face de costas para a câmara
             continue
         items.append((max(p[2] for p in pts), pts, kind, nrm))
     items.sort(key=lambda it: -it[0])                     # pintor: do mais longe para o mais perto
@@ -173,9 +197,14 @@ def computed_and_mask(b: Building, view: str, width: int = 1600, height: int = 9
         shade = 0.55 + 0.45 * max(0.0, float(np.dot(np.asarray(nrm, float), sun)))
         col = tuple(int(c * shade) for c in COLORS[kind])
         cv2.fillPoly(img, [poly], col[::-1], lineType=cv2.LINE_AA)
-        cv2.polylines(img, [poly], True, (60, 60, 60), 1, cv2.LINE_AA)
+        if kind not in ("roof", "soffit"):                         # sem costuras de triangulação
+            cv2.polylines(img, [poly], True, (60, 60, 60), 1, cv2.LINE_AA)
+        if kind in ("frame", "sill", "plinth"):
+            continue                                     # pormenores: só na imagem, não no controlo geométrico
         if kind == "glass":
             cv2.fillPoly(mask, [poly], GLASS_TONE)
+        elif kind in ("roof", "soffit"):                           # um só tom por superfície (sem arestas falsas)
+            cv2.fillPoly(mask, [poly], 235 if kind == "roof" else 225)
         else:
             tone = 60 + ((tone - 60 + 23) % 190)
             if tone == GLASS_TONE:
@@ -198,13 +227,21 @@ def render_pbr(b: Building, view: str, width: int = 1600, height: int = 900, spp
     mi = house_pbr._mi()
     eye, tgt = camera(b, view, width, height)
     groups: dict[str, list] = {}
-    for verts, kind, _n in faces(b):
+    for verts, kind, _n in faces(b, details=True):
         groups.setdefault(kind, []).append(verts)
-        if kind in ("parapet", "slab_edge"):                       # visível dos dois lados (face interior da platibanda)
-            groups[kind].append(list(reversed(verts)))
-    mat_of = {"wall": "reboco", "lintel": "reboco", "glass": "vidro", "slab_edge": "reboco", "parapet": "reboco", "roof": "seixo"}
+        if kind == "parapet":                                       # face interior da platibanda (espessura 0,15 m)
+            v = np.asarray(verts, float)
+            inner = v - np.array([_n[0], _n[1], 0.0]) * 0.15
+            groups[kind].append([tuple(p) for p in inner[::-1]])
+            groups[kind].append([tuple(v[3]), tuple(v[2]), tuple(inner[2]), tuple(inner[3])])   # capeamento
+    mat_of = {"wall": "reboco", "lintel": "reboco", "glass": "vidro", "slab_edge": "reboco", "parapet": "reboco", "roof": "seixo",
+              "frame": "caixilho", "sill": "pedra", "plinth": "soco", "soffit": "reboco"}
     with tempfile.TemporaryDirectory() as tmp:
         mats = R3._materiais(tmp)
+        mats["soco"] = {"type": "principled", "base_color": {"type": "rgb", "value": [0.30, 0.29, 0.28]}, "roughness": 0.9}
+        mats["pedra"] = {"type": "principled", "base_color": {"type": "rgb", "value": [0.74, 0.72, 0.68]}, "roughness": 0.7}
+        mats["vidro"] = {"type": "principled", "base_color": {"type": "rgb", "value": [0.13, 0.16, 0.18]},
+                         "roughness": 0.08, "specular": 0.9, "metallic": 0.25}
         sc = {"type": "scene", "integrator": {"type": "path", "max_depth": 6},
               "sensor": {"type": "perspective", "fov": FOV,
                          "to_world": mi.ScalarTransform4f().look_at(origin=eye.tolist(), target=tgt.tolist(), up=[0, 0, 1]),
@@ -235,9 +272,18 @@ def render_pbr(b: Building, view: str, width: int = 1600, height: int = 900, spp
         img = mi.render(mi.load_dict(sc), spp=int(spp))
         img = house_pbr._oidn(img, spp)
         rgb = R3._tonemap(img)
-    from PIL import Image
+    from PIL import Image, ImageFilter
+    px = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+    try:
+        import cv2
+        med = cv2.medianBlur(px, 3)                         # "fireflies" (pontos brancos isolados do path tracing)
+        lum = px.astype(np.int16).sum(2) - med.astype(np.int16).sum(2)
+        px[lum > 120] = med[lum > 120]
+        px = cv2.bilateralFilter(px, 7, 30, 5)            # tira o grão sem amaciar as arestas reais
+    except ImportError:
+        pass
     out = io.BytesIO()
-    Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).save(out, "PNG", optimize=True)
+    Image.fromarray(px).filter(ImageFilter.UnsharpMask(radius=0.9, percent=40, threshold=3)).save(out, "PNG", optimize=True)
     return out.getvalue()
 
 
@@ -279,7 +325,7 @@ def quote_flowables(geo: dict, views: dict, meta: dict | None = None, accent: st
                   "contrôlée : volumes, toiture et baies au même endroit que le modèle calculé." if fr else
                   f"Imagem gerada por IA ({'Kling AI' if eng == 'kling' else eng}) a partir da geometria real e verificada: "
                   "volumes, cobertura e vãos no mesmo sítio que o modelo calculado.")
-    elif meta.get("quality") == "pbr":
+    elif str(meta.get("quality") or "").startswith("pbr"):
         origin = ("Rendu physique (sans IA) de la géométrie réelle lue sur les plans." if fr else
                   "Renderização física (sem IA) da geometria real lida nas plantas.")
     else:
