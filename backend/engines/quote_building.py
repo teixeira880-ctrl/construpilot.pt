@@ -56,6 +56,10 @@ async def model_for_quote(db, doc: dict, uid: str) -> dict | None:
                                                  sort=[("created_at", -1)])
             if j and j.get("model"):
                 return j["model"]
+            g = await db.bet_study_jobs.find_one({"user_id": uid, "conversation_id": conv, "geo_building": {"$type": "object"}},
+                                                 {"_id": 0, "geo_building": 1}, sort=[("created_at", -1)])
+            if g and g.get("geo_building"):
+                return {"_geo": g["geo_building"]}              # geometria real (qualquer forma) do motor bet_geo
         ids = list(_ids_in(doc))
         if ids:
             j = await db.bet_study_jobs.find_one({"user_id": uid, "document_ids": {"$in": ids}, "model": {"$type": "object"}}, proj,
@@ -68,6 +72,9 @@ async def model_for_quote(db, doc: dict, uid: str) -> dict | None:
 
 
 def geometry_key(raw: dict) -> str:
+    if raw.get("_geo"):
+        from engines.bet_geo import views as GV
+        return GV.geometry_key(raw["_geo"])
     g = {k: raw.get(k) for k in ("envelope", "sides", "levels", "roof", "openings")}
     return hashlib.sha1(json.dumps(g, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
 
@@ -98,13 +105,26 @@ def _engines(var: str, default: str) -> list[str]:
     return [m.strip() for m in (os.environ.get(var) or default).split(",") if m.strip()]
 
 
+def _geo(raw: dict):
+    from engines.bet_geo.model import Building
+    return Building.from_dict(raw["_geo"])
+
+
 def computed_masks(raw: dict) -> dict[str, bytes]:
     """Máscaras de geometria (mesma câmara que as vistas) para verificar as fotos (engines.geometry_lock)."""
+    if raw.get("_geo"):
+        from engines.bet_geo import views as GV
+        b = _geo(raw)
+        return {k: GV.computed_and_mask(b, k, 1600, 900)[1] for k in VIEW_KEYS}
     from engines import house3d
     return {k: house3d.render_png(raw, 1600, 900, k, mask=True) for k in VIEW_KEYS}
 
 
 def computed_views(raw: dict) -> dict[str, bytes]:
+    if raw.get("_geo"):
+        from engines.bet_geo import views as GV
+        b = _geo(raw)
+        return {k: _jpeg(GV.computed_and_mask(b, k, 1600, 900)[0]) for k in VIEW_KEYS}
     from engines import house3d
     out = {k: _jpeg(house3d.render_png(raw, 1600, 900, k)) for k in VIEW_KEYS}
     for i, f in enumerate(house3d.takeoff(raw)):
@@ -163,14 +183,18 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
     def verifier(k):
         m = masks.get(k) or G.mask_from_render(base[k])
         return lambda img: G.check(img, base[k], m)
+    got_pbr: dict = {}
     try:
         # 1) Renderização FÍSICA da geometria real (Mitsuba: sol, céu, materiais) — sem IA, geometria exata por construção
         if raw is not None:
             from engines import house_pbr
             if house_pbr.available():
-                got_pbr = {}
                 for k in VIEW_KEYS:
-                    png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 1600), int(os.environ.get("QUOTE_PBR_H") or 900), k, int(os.environ.get("QUOTE_PBR_SPP") or 16))
+                    if raw.get("_geo"):                                  # geometria real do motor bet_geo (qualquer forma)
+                        from engines.bet_geo import views as GV
+                        png = await asyncio.to_thread(GV.render_pbr, _geo(raw), k, 1600, 900, int(os.environ.get("QUOTE_PBR_SPP") or 16))
+                    else:
+                        png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 1600), int(os.environ.get("QUOTE_PBR_H") or 900), k, int(os.environ.get("QUOTE_PBR_SPP") or 16))
                     if png:
                         got_pbr[k] = (png, "pbr_mitsuba")
                         if k == "main":
@@ -181,8 +205,11 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
                     if str(os.environ.get("QUOTE_PHOTO_AI") or "").lower() not in ("1", "true", "yes"):
                         return                                            # sem IA (pedido do Martinho): imagens reais calculadas
         fast_t = float(os.environ.get("QUOTE_PHOTO_FAST_TIMEOUT") or 60)
-        got = await _pass(base, verifier, _engines("QUOTE_PHOTO_FAST", FAST_ENGINES), fast_t)
-        current = await _save(db, key, base, got, "fast") if got.get("main") else None
+        ai_base = dict(base)
+        ai_base.update({k: v[0] for k, v in got_pbr.items()})          # a IA parte da renderização física (mesma câmara)
+        best_prev = {k: _jpeg(v) for k, v in ai_base.items()}          # vistas sem foto aceite ficam com a física/calculada
+        got = await _pass(ai_base, verifier, _engines("QUOTE_PHOTO_FAST", FAST_ENGINES), fast_t)
+        current = await _save(db, key, base, got, "fast", previous=best_prev) if got.get("main") else None
         log.info("house renders %s: fast %s/%d", key[:10], len(got), len(base))
         up = _engines("QUOTE_PHOTO_UPGRADE", UPGRADE_ENGINES)
         if "openai" in up and not llm_keys.openai_direct_active():
@@ -202,37 +229,45 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
 
 
 async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
+    """{vista: JPEG} para o orçamento. Ordem de qualidade: foto IA verificada (Kling…) > renderização física > vista
+    calculada — TODAS com a geometria real. Com a IA ligada, espera até `wait` s pela foto verificada; depois sai com a
+    melhor imagem já pronta e a foto entra nos PDF seguintes (cache por geometria)."""
+    import os
     key = geometry_key(raw)
-    try:
-        hit = await db.house_renders.find_one({"key": key}, {"_id": 0})
-    except Exception:  # noqa: BLE001
-        hit = None
-    if hit and hit.get("photoreal") and hit.get("geometry_checked") and hit.get("views"):
+    ai_on = str(os.environ.get("QUOTE_PHOTO_AI") or "").lower() in ("1", "true", "yes")
+
+    async def cached():
+        try:
+            return await db.house_renders.find_one({"key": key}, {"_id": 0})
+        except Exception:  # noqa: BLE001
+            return None
+
+    def final(h):          # imagem definitiva: foto IA verificada, ou renderização física se a IA estiver desligada
+        return bool(h and h.get("views") and h.get("geometry_checked") and (not ai_on or h.get("quality") not in ("pbr", None)))
+
+    hit = await cached()
+    if final(hit):
         return {k: base64.b64decode(v) for k, v in hit["views"].items()}
     base = await asyncio.to_thread(computed_views, raw)
-    masks = await asyncio.to_thread(computed_masks, raw)
-    import os
     if str(os.environ.get("QUOTE_HOUSE_PHOTO") or "").lower() not in ("1", "true", "yes"):
         return base          # sem imagens fotorrealistas/3D pesadas (pedido do Martinho 12/11: «esquece as imagens»)
+    masks = await asyncio.to_thread(computed_masks, raw)
     if key not in _PENDING:
         _PENDING.add(key)
-        task = asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks, raw))
-        # espera só pela passagem RÁPIDA (como na conta CLT); a melhoria OpenAI continua em segundo plano
-        loop = asyncio.get_running_loop()
-        end = loop.time() + max(0.0, wait)
-        while loop.time() < end and not task.done():
-            await asyncio.sleep(min(1.0, max(0.05, end - loop.time())))
-            try:
-                hit = await db.house_renders.find_one({"key": key}, {"_id": 0})
-            except Exception:  # noqa: BLE001
-                hit = None
-            if hit and hit.get("views"):
-                return {k: base64.b64decode(v) for k, v in hit["views"].items()}
-        if wait > 0 and task.done():
-            hit = await db.house_renders.find_one({"key": key}, {"_id": 0})
-            if hit and hit.get("views"):
-                return {k: base64.b64decode(v) for k, v in hit["views"].items()}
-    return base                                     # tempo esgotado: vistas calculadas (geometria exata) agora
+        asyncio.get_running_loop().create_task(_photoreal_all(db, key, base, masks, raw))
+    loop = asyncio.get_running_loop()
+    end = loop.time() + max(0.0, wait)
+    while loop.time() < end:
+        await asyncio.sleep(min(1.5, max(0.05, end - loop.time())))
+        hit = await cached()
+        if final(hit):
+            return {k: base64.b64decode(v) for k, v in hit["views"].items()}
+        if key not in _PENDING:
+            break                                    # tarefa terminada (sem foto aceite): fica a melhor imagem pronta
+    hit = await cached()
+    if hit and hit.get("views"):
+        return {k: base64.b64decode(v) for k, v in hit["views"].items()}
+    return base                                      # vistas calculadas (geometria exata) agora
 
 
 PLAN_HINT = ("plan", "planta", "plantas", "pc", "permis", "projet", "projeto", "alçado", "alcado", "façade", "facade", "corte", "coupe",
@@ -343,6 +378,11 @@ async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
     """Cópia do orçamento com o modelo do edifício e as vistas 3D (para pdf_docs / pdf_premium)."""
     if (doc or {}).get("doc_type") != "quote":
         return doc
+    import os
+    try:                                            # espera configurável pela foto IA verificada (Kling ~30–90 s)
+        wait = max(wait, float(os.environ.get("QUOTE_PHOTO_WAIT") or 0))
+    except ValueError:
+        pass
     raw = await model_for_quote(db, doc, uid)
     plans = await plan_images(db, doc, uid)
     from engines import images3d
@@ -360,4 +400,11 @@ async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
     except Exception:  # noqa: BLE001
         log.warning("house views failed", exc_info=True)
         v = {}
-    return {**doc, "_building_model": raw, "_house_views": v, **({"_plan_images": plans} if plans else {})}
+    meta = {}
+    try:
+        meta = await db.house_renders.find_one({"key": geometry_key(raw)}, {"_id": 0, "engine": 1, "quality": 1,
+                                                                            "geometry_checked": 1}) or {}
+    except Exception:  # noqa: BLE001
+        meta = {}
+    return {**doc, "_building_model": raw, "_house_views": v, "_house_views_meta": meta,
+            **({"_plan_images": plans} if plans else {})}

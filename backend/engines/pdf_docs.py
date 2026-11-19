@@ -856,7 +856,16 @@ def build_document_pdf(doc: dict, branding: dict | None = None,
             except Exception:  # noqa: BLE001
                 import logging
                 logging.getLogger("pdf_docs").warning("plan pages failed", exc_info=True)
-        if isinstance(doc.get("_building_model"), dict):  # moradia lida nas plantas: perspetivas + paredes calculadas (como na conta CLT)
+        if isinstance(doc.get("_building_model"), dict) and doc["_building_model"].get("_geo"):   # geometria real (bet_geo)
+            try:
+                from engines.bet_geo import views as _gv
+                extra = _gv.quote_flowables(doc["_building_model"]["_geo"], doc.get("_house_views") or {},
+                                            doc.get("_house_views_meta"), pdf_premium.cor_empresa(branding), lang or "")
+                appendix = (list(appendix) + extra) if appendix else extra[1:]
+            except Exception:  # noqa: BLE001 — embeleza, nunca bloqueia o orçamento
+                import logging
+                logging.getLogger("pdf_docs").warning("geo house pages failed", exc_info=True)
+        elif isinstance(doc.get("_building_model"), dict):  # moradia lida nas plantas: perspetivas + paredes calculadas (como na conta CLT)
             try:
                 from engines import house3d
                 extra = house3d.walls_flowables(doc["_building_model"], pdf_premium.cor_empresa(branding), lang or "",

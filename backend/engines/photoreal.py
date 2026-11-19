@@ -4,7 +4,8 @@ Cascade de moteurs (le premier qui répond gagne ; la géométrie de la référe
   1. GPT Image 2 (OpenAI) via Runway — 2560×1440, qualité « high » (agrandi en 4K par image_hd : plus rapide) ;
   2. Gemini 3 Pro Image (Nano Banana Pro) via Runway — 1344×768 ;
   3. Runway Gen-4 Image — 1920×1080 ;
-  4. Nano Banana 3.1 via la clé universelle Emergent (engines.image_studio).
+  4. Nano Banana 3.1 via la clé universelle Emergent (engines.image_studio) ;
+  « kling » : Kling AI (engines.kling_client, clés KLING_* dans les Secrets) — même verrou géométrique que les autres.
 L'ordre se règle par la variable PHOTOREAL_MODELS (ex. "gpt_image_2,gemini_image3_pro,gen4_image,emergent").
 Chaque image retenue passe par engines.image_hd (Full HD affiné, PHOTOREAL_LONG). Aucune exception ne remonte : None si tout échoue.
 
@@ -163,6 +164,18 @@ async def render(base: bytes, prompt: str, *, style_ref: bytes | None = None, ti
                     await _meter("gpt-image", feature, session_id, provider="openai")
                     hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
                     ok = await accept(hd, "openai_gpt_image")
+                    if ok:
+                        return ok
+                continue
+            if model == "kling":
+                from engines import kling_client
+                if not kling_client.configured():
+                    continue
+                data = await asyncio.wait_for(kling_client.render(prompt, base, style_ref, timeout=timeout), timeout + 30)
+                if data:
+                    await _meter(os.environ.get("KLING_IMAGE_MODEL") or "kling-v3-omni", feature, session_id, provider="kling")
+                    hd, _ = await asyncio.to_thread(image_hd.sharpen, data, "image/png", long_side=LONG_SIDE)
+                    ok = await accept(hd, "kling")
                     if ok:
                         return ok
                 continue

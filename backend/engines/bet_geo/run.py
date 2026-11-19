@@ -147,7 +147,8 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
               "Pré-dimensionamento sobre geometria real — há confrontações a rever (ver avisos).")
     await step("Estudo de estrutura concluído (geometria real)", status="done", review_status=review, artifacts=arts,
                points=points, questions=[], geometry_verified=True, execution_verified=False,
-               geo_engine={"summary": s, "checks": R.checks, "geometry_checks": res["building"].checks})
+               geo_engine={"summary": s, "checks": R.checks, "geometry_checks": res["building"].checks},
+               geo_building={**res["building"].to_dict(), "slab_h": R.slab["h"]})
     return True
 
 
