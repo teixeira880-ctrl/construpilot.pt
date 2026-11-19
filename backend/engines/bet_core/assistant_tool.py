@@ -452,6 +452,10 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             await step("Échec", status="failed", error=f"{type(exc).__name__}: {exc}"[:1200], trace=traceback.format_exc()[-3000:])
         return
     try:
+        from engines.bet_geo.run import geo_first as _geo_first      # geometria real (qualquer forma)
+        if await _geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, _store, llm,
+                            when_irregular_only=True):
+            return
         if await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step):
             return
         from engines.bet_frame import hook as _frame_hook       # bet_frame : immeubles, bureaux, parkings, ERP (ossature BA)
@@ -478,6 +482,10 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 rd = {"ok": False, "model": None, "anomalies": [], "pages": [], "attempts": 0, "questions": [], "decisions": [],
                       "read_timeout": True}
             if rd.get("source_geometry_required"):
+                # planta não retangular: motor de geometria real (cálculos completos); só se falhar, peças de origem
+                from engines.bet_geo.run import geo_first as _geo_first
+                if await _geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, _store, llm):
+                    return
                 await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, force=True)
                 return
             if rd["ok"] and not rd.get("demo"):
