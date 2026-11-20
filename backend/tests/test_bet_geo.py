@@ -441,3 +441,19 @@ def test_pt_planta_retangular_vai_ao_motor_de_geometria_real_e_varios_pisos_volt
     ok2 = asyncio.run(run.geo_first(None, "j2", "u", "c", "r", [("r.pdf", pdf)], "", "PT", step, store, llm_storeys(2),
                                     when_irregular_only=True))
     assert ok2 is False and any("pisos" in lab and "motor anterior" in lab for lab, _ in steps)
+
+
+def test_falha_no_estudo_completo_entrega_conjunto_de_base(l_pdf, tmp_path, monkeypatch):
+    """0 retrocesso (20/11): se uma etapa do estudo completo rebentar, sai na mesma a estrutura — nunca o motor anterior."""
+    async def fake_llm(system, text, images=None, max_tokens=0, **k):
+        return json.dumps({"floor_level": 0.0, "roof_slab_top_level": 3.2, "storeys": 1, "retaining": []})
+
+    async def boom(*a, **k):
+        raise RuntimeError("etapa partida")
+
+    monkeypatch.setattr(run, "_complete", boom)
+    res = asyncio.run(run.study([("planta.pdf", l_pdf)], "Moradia em Évora", "PT", tmp_path / "out", llm=fake_llm))
+    assert res["ok"] and res.get("basic")
+    assert {k for k, _, _ in res["files"]} >= {"pdf", "plans_pdf", "xlsx", "zip"}
+    assert any("Estudo completo incompleto" in w for w in res["result"].warnings)
+    assert run._points(res["result"], res["summary"], res["esp"], res["layout"])

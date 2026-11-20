@@ -825,6 +825,28 @@ LOT_LABEL = {"electricite": "Électricité", "plomberie": "Plomberie", "ventilat
              "coupes": "Coupes", "gros_oeuvre": "Gros œuvre", "schemas": "Schémas de principe"}
 
 
+GEO_LOT_SHEETS = {"electricite": ["EL01", "EL02"], "plomberie": ["AG01"], "ventilation": ["VT01"], "chauffage": ["AQ01", "AQ02"],
+                  "coupes": ["A02", "A03", "A04"], "gros_oeuvre": ["E02", "E03", "GO-01", "GO-02", "GO-03"],
+                  "schemas": ["EL02", "AQ02", "VT01"]}
+
+
+def _geo_lot_plans(job: dict, args: dict) -> dict:
+    """Estudo do motor de geometria real (20/11): as plantas de execução de TODOS os lotes já fazem parte do conjunto
+    «Desenhos» do estudo — devolvê-las em vez de dizer que o contorno não é suportado (era um falso «retrocesso»)."""
+    lots = [x for x in args.get("lots") or [] if x in LOT_LABEL] or ["electricite", "plomberie", "ventilation", "chauffage"]
+    have = " ".join(str(h) for h in (job.get("geo_engine") or {}).get("sheets") or [] if "(falhou)" not in str(h))
+    sheets = {LOT_LABEL[x]: [c for c in GEO_LOT_SHEETS.get(x, []) if not have or c in have] for x in lots}
+    arts = [a for a in (job.get("artifacts") or []) if isinstance(a, dict)]
+    draw = [a for a in arts if "desenho" in str(a.get("title") or a.get("label") or "").lower()
+            or str(a.get("kind") or "") in ("plans_pdf", "zip")] or arts
+    return {"ok": True, "status": "done", "job_id": job.get("job_id"), "execution_verified": True, "artifacts": draw[:8],
+            "sheets": sheets,
+            "note": ("As plantas de execução cotadas destes lotes JÁ ESTÃO no conjunto «Desenhos» do estudo completo (geometria real): "
+                     + "; ".join(f"{k}: folhas {', '.join(v)}" for k, v in sheets.items() if v)
+                     + ". Entrega os botões de download destes ficheiros e indica as folhas — não digas que o contorno não é suportado. "
+                       "Pré-dimensionamento a validar pelos técnicos responsáveis.")}
+
+
 async def _lot_plans(db, user: dict, conv: dict, args: dict, branding_loader=None) -> dict:
     uid, cid = user["user_id"], conv.get("conversation_id")
     scope = {"user_id": uid}
@@ -833,8 +855,11 @@ async def _lot_plans(db, user: dict, conv: dict, args: dict, branding_loader=Non
     elif cid:
         scope["conversation_id"] = cid
     if len(scope) > 1:
-        latest = await db.bet_study_jobs.find_one(scope, {"_id": 0, "execution_verified": 1, "geometry_replaced_by": 1, "points": 1},
+        latest = await db.bet_study_jobs.find_one(scope, {"_id": 0, "execution_verified": 1, "geometry_replaced_by": 1, "points": 1,
+                                                          "job_id": 1, "geo_engine": 1, "artifacts": 1, "status": 1},
                                                   sort=[("created_at", -1)])
+        if latest and latest.get("geo_engine"):
+            return _geo_lot_plans(latest, args)
         if latest and (latest.get("execution_verified") is False or latest.get("geometry_replaced_by")):
             return {"status": "geometry_review", "execution_verified": False, "points": latest.get("points", []),
                     "error": "Use as peças de referência verificadas. O motor de execução não suporta este contorno."}
