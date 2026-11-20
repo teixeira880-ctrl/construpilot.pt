@@ -46,9 +46,18 @@ def friendly_error(exc: Exception) -> str:
     return "O assistente está momentaneamente indisponível. Tente novamente dentro de instantes."
 
 
+def _on(pid: str) -> bool:
+    """Interruptor Admin → IA → «Todas as IA e API» (desligado = família de modelos não usada, nem pela chave Emergent)."""
+    try:
+        from engines import api_control
+        return api_control.is_enabled(pid)
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def claude_available() -> bool:
     """Chave Claude (direta ou universal) e modelos configurados."""
-    return bool((os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
+    return _on("anthropic") and bool((os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
                 and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST") and os.environ.get("ASSISTANT_CLAUDE_MODEL_THOROUGH"))
 
 
@@ -56,7 +65,7 @@ def primary_provider() -> str:
     """14/11 (Martinho): o Claude passa a motor principal do Assistente sempre que está configurado; o OpenAI fica como
     recurso. ASSISTANT_PROVIDER, quando definido, continua a mandar (openai | anthropic | gemini)."""
     explicit = (os.environ.get("ASSISTANT_PROVIDER") or "").strip().lower()
-    if explicit:
+    if explicit and _on({"openai": "openai", "anthropic": "anthropic", "gemini": "gemini"}.get(explicit, explicit)):
         return explicit
     return "anthropic" if claude_available() else "openai"
 
@@ -67,12 +76,12 @@ def openai_failover_available() -> bool:
 
 
 def fallback_available() -> bool:
-    return bool(os.environ.get("EMERGENT_LLM_KEY") and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST"))
+    return _on("anthropic") and bool(os.environ.get("EMERGENT_LLM_KEY") and os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST"))
 
 
 def gemini_fallback_available() -> bool:
     """Dernier recours du chat : Gemini (clé Google directe ou clé universelle) quand Claude a échoué lui aussi."""
-    return bool((os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
+    return _on("gemini") and bool((os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
                 and os.environ.get("ASSISTANT_GEMINI_MODEL_FAST"))
 
 

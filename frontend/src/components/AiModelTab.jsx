@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionTitle } from "@/components/Bits";
+import ApiControlPanel from "@/components/ApiControlPanel";
 
 function Rating({ icon: Icon, label, value }) {
   return (
@@ -207,6 +208,9 @@ export default function AiModelTab() {
       <p className="text-xs text-muted-foreground" data-testid="admin-ai-current">
         Modelo ativo: <strong>{data.options.find((o) => o.tier === data.current)?.label}</strong>. A alteração é imediata para todos os próximos pedidos IA.
       </p>
+
+      {/* --- Todas as IA e API : ligar / desligar + crédito --- */}
+      <ApiControlPanel />
 
       {/* --- Backend Gemini : Emergent vs Google natif --- */}
       {gemini && (

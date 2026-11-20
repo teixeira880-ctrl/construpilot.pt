@@ -41,6 +41,12 @@ def is_credit_error(exc: BaseException) -> bool:
 
 
 async def load_state() -> dict:
+    try:   # Admin → IA → «Todas as IA e API»: aplica no arranque os interruptores guardados (e mantém-nos sincronizados)
+        from engines import api_control
+        await api_control.load()
+        api_control.start_sync()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("api_control load skipped: %s", e)
     doc = await db.app_settings.find_one({"_id": _SETTINGS_ID}) or {}
     _STATE.update({"loaded": True, "disabled": bool(doc.get("disabled")), "reason": doc.get("reason"),
                    "since": doc.get("since"), "alerted": bool(doc.get("alerted"))})

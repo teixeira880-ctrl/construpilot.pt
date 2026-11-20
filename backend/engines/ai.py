@@ -121,6 +121,16 @@ async def _text_provider_model() -> tuple[str, str]:
     cfg = AI_TEXT_MODELS[tier]
     if cfg["provider"] == "openai" and not openai_direct_active():
         cfg = AI_TEXT_MODELS[FALLBACK_TIER]
+    try:   # família desligada em Admin → IA → «Todas as IA e API»: primeiro nível de uma família ligada
+        from engines import api_control
+        if not api_control.is_enabled(cfg["provider"]):
+            for t in (FALLBACK_TIER, "gemini_pro", "gpt_terra", *AI_TEXT_MODELS):
+                c = AI_TEXT_MODELS[t]
+                if api_control.is_enabled(c["provider"]) and (c["provider"] != "openai" or openai_direct_active()):
+                    cfg = c
+                    break
+    except Exception:  # noqa: BLE001
+        pass
     return cfg["provider"], cfg["model"]
 
 
@@ -141,6 +151,9 @@ async def _log_usage(feature: str, provider: str, model: str) -> None:
             {"feature": feature, "provider": provider, "model": model},
             {"$inc": {"calls": 1}, "$set": {"last_used": now.isoformat()}},
             upsert=True)
+        await db.ai_usage_monthly.update_one(
+            {"_id": f"{now.strftime('%Y-%m')}:{provider}"},
+            {"$inc": {"calls": 1}, "$set": {"month": now.strftime("%Y-%m"), "provider": provider}}, upsert=True)
         day = now.date().isoformat()
         await db.ai_usage_daily.update_one(
             {"_id": day}, {"$inc": {"calls": 1}}, upsert=True)

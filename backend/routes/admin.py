@@ -1046,6 +1046,51 @@ async def disable_openai_key() -> dict:
     return llm_keys.status()
 
 
+# ---------- Todas as IA e API : ligar / desligar e crédito de cada uma ----------
+
+class ApiToggleIn(BaseModel):
+    enabled: bool
+
+
+class ApiLimitIn(BaseModel):
+    monthly_limit_eur: float | None = None
+    note: str | None = None
+
+
+@router.get("/apis")
+async def list_apis(fresh: bool = False) -> dict:
+    from engines import api_control
+    return await api_control.overview(fresh=fresh)
+
+
+@router.put("/apis/{pid}")
+async def toggle_api(pid: str, body: ApiToggleIn, user=Depends(current_user)) -> dict:
+    from engines import api_control
+    try:
+        return await api_control.set_enabled(pid, body.enabled, who=user.get("email") or user.get("user_id"))
+    except KeyError:
+        raise HTTPException(404, "API desconhecida")
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
+@router.put("/apis/{pid}/limit")
+async def set_api_limit(pid: str, body: ApiLimitIn) -> dict:
+    from engines import api_control
+    try:
+        return await api_control.set_limit(pid, body.monthly_limit_eur, body.note)
+    except KeyError:
+        raise HTTPException(404, "API desconhecida")
+
+
+@router.get("/apis/{pid}/credit")
+async def api_credit(pid: str) -> dict:
+    from engines import api_control
+    if pid not in api_control.PROVIDERS:
+        raise HTTPException(404, "API desconhecida")
+    return await api_control.balance(pid, fresh=True)
+
+
 # ---------- Backend Gemini : clé Emergent vs SDK Google natif ----------
 
 class GeminiBackendIn(BaseModel):
