@@ -7,4 +7,6 @@ import os
 
 
 def enabled() -> bool:
-    return str(os.environ.get("CP_3D_IMAGES") or "").strip().lower() in ("1", "true", "yes", "on")
+    """Ligadas por defeito desde 19/11 (decisão do Martinho: imagens reais dos motores internos em cada orçamento).
+    Desligar sem deploy: CP_3D_IMAGES=0."""
+    return str(os.environ.get("CP_3D_IMAGES") or "1").strip().lower() in ("1", "true", "yes", "on")

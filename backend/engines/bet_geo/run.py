@@ -182,6 +182,15 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
         ip = out_dir / f"Imagem_{k}{ext}"
         ip.write_bytes(data)
         files.append(("render_png", ip, f"Imagem real do edifício — {covers.LABELS.get(k, k)}"))
+    # PDF com mais de 30 folhas → também um ZIP (PDF completo + partes de 30 folhas) — pedido de 20/11
+    from engines.pdf_parts import split_zip
+    for kind, path, label in list(files):
+        if path.suffix.lower() == ".pdf":
+            z = split_zip(path.read_bytes(), path.name, lang="pt" if pt else "fr")
+            if z:
+                zp = path.with_suffix(".zip")
+                zp.write_bytes(z)
+                files.append(("zip", zp, f"{label} — ZIP (completo + partes de 30 folhas)"))
     checks_all = [*R.checks, *b.checks, *lay.checks]
     ok_checks = all(c.get("ok") is not False for c in checks_all)
     return {

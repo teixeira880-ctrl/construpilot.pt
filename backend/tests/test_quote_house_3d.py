@@ -17,6 +17,7 @@ CASES = Path(__file__).parents[1] / "engines/bet_core/cases"
 def _with_3d(monkeypatch):
     """Estes testes cobrem as imagens 3D quando LIGADAS (CP_3D_IMAGES=1); desligadas por defeito desde 12/11."""
     monkeypatch.setenv("CP_3D_IMAGES", "1")
+    monkeypatch.setenv("QUOTE_PHOTO_WAIT", "0")          # espera por defeito = 90 s (20/11); aqui sem espera
 
 
 def _raw(name="moradia_pt_demo.json"):

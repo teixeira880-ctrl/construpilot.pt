@@ -391,6 +391,21 @@ def build_metre_pdf(doc, branding=None, lang="fr") -> bytes:
     return PP.acabar(raw, capa, PP.com_cor(branding) if branding is not None else {}, lg, paginas="completo")
 
 
+def _export_lang(doc, branding, ui_lang) -> str:
+    """Língua dos ficheiros do orçamento: a do DOCUMENTO e da EMPRESA, não a do telemóvel (20/11: orçamento português saía
+    com cabeçalhos em francês porque o ecrã estava em francês). Ecrã em inglês/ucraniano continua a mandar."""
+    if str(ui_lang or "").startswith(("en", "uk")):
+        return ui_lang
+    if doc.get("lang") in ("fr", "pt"):
+        return doc["lang"]
+    country = str((branding or {}).get("country") or "").upper()
+    if country == "FR":
+        return "fr"
+    if country == "PT" or not country:
+        return "pt"
+    return ui_lang or "pt"
+
+
 async def _context(doc, user):
     from routes.company_page import pdf_customization
     from routes.documents import _doc_lang
@@ -400,7 +415,7 @@ async def _context(doc, user):
         branding = {**branding, **await pdf_customization(user["user_id"])}
     except Exception:  # noqa: BLE001 — personnalisation facultative
         pass
-    lang = await _doc_lang(doc, branding)
+    lang = _export_lang(doc, branding, await _doc_lang(doc, branding))
     try:                                   # moradia lida nas plantas (Estudo BET): perspetivas 3D + paredes calculadas no PDF
         from engines import quote_building
         doc = await quote_building.enrich(db, doc, user["user_id"], wait=40)
@@ -456,9 +471,10 @@ async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
     kinds = ("quote_pdf", "quote_xlsx", "metre_pdf", "metre_xlsx", "economic_pdf")
     ids = {k: f"qx_{version}_{k}" for k in kinds}
     existing = {a["artifact_id"]: a async for a in db.assistant_artifacts.find(
-        {"artifact_id": {"$in": list(ids.values())}, "user_id": uid}, {"_id": 0, "data_b64": 0, "body": 0})}
+        {"artifact_id": {"$in": list(ids.values()) + [v + "_zip" for v in ids.values()]}, "user_id": uid},
+        {"_id": 0, "data_b64": 0, "body": 0})}
     if all(ids[k] in existing for k in kinds):
-        return [public_artifact(existing[ids[k]]) for k in kinds]
+        return [public_artifact(existing[i]) for k in kinds for i in (ids[k], ids[k] + "_zip") if i in existing]
     src, branding, lang = await _context(doc, user)
     try:
         economic = await _economic_builder(doc, uid)
@@ -474,6 +490,8 @@ async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
     for k in kinds:
         if ids[k] in existing:
             out.append(public_artifact(existing[ids[k]]))
+            if ids[k] + "_zip" in existing:
+                out.append(public_artifact(existing[ids[k] + "_zip"]))
             continue
         fn, ext = builders[k]
         if fn is None:
@@ -496,6 +514,21 @@ async def attach_quote_exports(doc_id, user, conv) -> list[dict]:
                "download": f"/assistant/artifacts/{ids[k]}/content"}
         await db.assistant_artifacts.update_one({"artifact_id": ids[k], "user_id": uid}, {"$setOnInsert": art}, upsert=True)
         out.append(public_artifact(art))
+        if ext == "pdf":                                   # > 30 folhas → também um ZIP (completo + partes de 30)
+            try:
+                from engines.pdf_parts import split_zip
+                z = await asyncio.to_thread(split_zip, data, art["filename"], 30, _lang(lang))
+                if z:
+                    zid = ids[k] + "_zip"
+                    zart = {**art, "artifact_id": zid, "title": art["title"] + " — ZIP", "format": "zip", "mime": "application/zip",
+                            "filename": art["filename"].rsplit(".", 1)[0] + ".zip", "size": len(z),
+                            "data_b64": base64.b64encode(z).decode(), "quote_export": k + "_zip",
+                            "download": f"/assistant/artifacts/{zid}/content"}
+                    await db.assistant_artifacts.update_one({"artifact_id": zid, "user_id": uid}, {"$setOnInsert": zart}, upsert=True)
+                    out.append(public_artifact(zart))
+            except Exception:  # noqa: BLE001
+                import logging
+                logging.getLogger(__name__).warning("quote zip split failed", exc_info=True)
     return out
 
 

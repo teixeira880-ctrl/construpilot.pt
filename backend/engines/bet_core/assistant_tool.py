@@ -202,6 +202,7 @@ async def study_quote(db, uid, cid, job_id, res, country, raw, building_model=No
         return None, []
     await db.pro_documents.update_one({"doc_id": doc_id, "user_id": uid},
                                       {"$set": {"assistant_conversation_id": cid, "bet_study_job_id": job_id, "source": "bet_study",
+                                                "lang": "pt" if lang == "pt" else "fr",
                                                 **({"building_model": building_model} if building_model else {})}})
     files = await attach_quote_exports(doc_id, user, conv)
     return doc_id, files
@@ -597,6 +598,20 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
                 if res["files"].get(kind):
                     arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
+            try:                                  # PDF com mais de 30 folhas → também um ZIP (completo + partes de 30)
+                from engines.pdf_parts import split_zip
+                for kind in ("pdf", "plans_pdf", "re2020_pdf"):
+                    fp_ = res["files"].get(kind)
+                    if fp_ and str(fp_).lower().endswith(".pdf"):
+                        z = split_zip(Path(fp_).read_bytes(), Path(fp_).name, lang="pt" if country == "PT" else "fr")
+                        if z:
+                            zp = Path(fp_).with_suffix(".partes.zip")
+                            zp.write_bytes(z)
+                            arts.append(await _store(db, uid, cid, request_id, "zip", zp,
+                                                     labels[kind] + (" — ZIP (completo + partes de 30 folhas)" if country == "PT"
+                                                                     else " — ZIP (complet + parties de 30 pages)")))
+            except Exception:  # noqa: BLE001 — o ZIP nunca impede a entrega
+                log.warning("bet study zip split failed", exc_info=True)
             if res["files"].get("pdf") and _images3d_on():
                 # o estudo NUNCA espera pelas imagens: entrega já, as perspetivas 3D entram depois no mesmo dossier (12/11)
                 import shutil as _sh

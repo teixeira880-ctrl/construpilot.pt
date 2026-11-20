@@ -256,7 +256,7 @@ async def views(db, raw: dict, wait: float = 0) -> dict[str, bytes]:
     if final(hit):
         return {k: base64.b64decode(v) for k, v in hit["views"].items()}
     base = await asyncio.to_thread(computed_views, raw)
-    if str(os.environ.get("QUOTE_HOUSE_PHOTO") or "").lower() not in ("1", "true", "yes"):
+    if str(os.environ.get("QUOTE_HOUSE_PHOTO") or "1").lower() not in ("1", "true", "yes"):
         return base          # sem imagens fotorrealistas/3D pesadas (pedido do Martinho 12/11: «esquece as imagens»)
     masks = await asyncio.to_thread(computed_masks, raw)
     if key not in _PENDING:
@@ -387,7 +387,7 @@ async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
         return doc
     import os
     try:                                            # espera configurável pela foto IA verificada (Kling ~30–90 s)
-        wait = max(wait, float(os.environ.get("QUOTE_PHOTO_WAIT") or 0))
+        wait = max(wait, float(os.environ.get("QUOTE_PHOTO_WAIT") or 90))
     except ValueError:
         pass
     raw = await model_for_quote(db, doc, uid)
