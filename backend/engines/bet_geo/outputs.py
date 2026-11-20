@@ -144,8 +144,8 @@ def write_plans_pdf(b: Building, R: Result, path: Path, meta: dict) -> Path:
     return path
 
 
-def draw_structure(c, b: Building, R: Result, meta: dict) -> None:
-    """E01 + E02 num canvas já aberto (também usado pelo conjunto completo de desenhos)."""
+def draw_structure(c, b: Building, R: Result, meta: dict, foundations: bool = True) -> None:
+    """E01 + E02 num canvas já aberto (o conjunto completo de desenhos usa a sua própria E02 cotada)."""
     scale = _pick_scale(b)
 
     # ---- E01 planta estrutural da cobertura
@@ -173,6 +173,8 @@ def draw_structure(c, b: Building, R: Result, meta: dict) -> None:
               (GREEN, "Painel de laje e armaduras (A500 NR)")])
     c.showPage()
 
+    if not foundations:
+        return
     # ---- E02 planta de fundações
     s = _Sheet(c, b, scale, "Planta de fundações", "E02", meta)
     s.poly(b.footprint, stroke=GREY, width=0.5, dash=[3, 2])

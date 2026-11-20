@@ -120,7 +120,7 @@ def test_desenhos_completos_e_capa_com_imagem(tmp_path):
     esp = E.run_all(b, lay, docs, "Évora", {"obra": "teste"}, 0.22)
     R = structure.design(b)
     p, done = drawings.write_drawings(b, R, lay, esp, tmp_path / "d.pdf", {"obra": "teste"}, R.slab["h"])
-    assert not any("falhou" in s for s in done) and len(done) == 9
+    assert not any("falhou" in s for s in done) and len(done) == 12
     import pymupdf
     n = pymupdf.open(str(p)).page_count
     assert n >= 14                                                              # + plantas parciais 1:50

@@ -118,7 +118,7 @@ class Frame:
                 path.close()
             c.setStrokeColor(stroke)
             c.setLineWidth(width)
-            c.setDash(*(dash or []))
+            c.setDash(list(dash)) if dash else c.setDash()
             if fill is not None:
                 c.setFillColor(fill)
             c.drawPath(path, stroke=1 if width > 0 else 0, fill=1 if fill is not None else 0, fillMode=0)
@@ -129,7 +129,7 @@ class Frame:
         cs = [self.p(*q) for q in (pts.coords if hasattr(pts, "coords") else pts)]
         c.setStrokeColor(stroke)
         c.setLineWidth(width)
-        c.setDash(*(dash or []))
+        c.setDash(list(dash)) if dash else c.setDash()
         path = c.beginPath()
         path.moveTo(*cs[0])
         for q in cs[1:]:
@@ -575,7 +575,23 @@ def sheet_elevations(c, b: Building, esp: dict, meta: dict, slab_h: float):
                            (b.roof_level + 0.5, f"{b.roof_level + 0.5:+.2f}".replace(".", ","))):
                 f.text(mxx + 1.0, oz + z, lab, 5.6, INK, align="l")
                 f.line([(mxx + 0.2, oz + z), (mxx + 0.9, oz + z)], INK, 0.3)
-            f.dim((0, oz - 0.6), (mxx, oz - 0.6), -0.0)
+            glass = sorted((min(p[0] for p in pr) - mnx, max(p[0] for p in pr) - mnx, min(p[1] for p in pr), max(p[1] for p in pr))
+                           for _, pr, kind, _ in polys if kind == "glass")
+            pts = [0.0]
+            for g0, g1, _, _ in glass:
+                if g0 > pts[-1] + 0.05:
+                    pts += [g0, g1]
+                elif g1 > pts[-1]:
+                    pts[-1] = g1
+            pts.append(mxx)
+            pts = sorted(set(round(v, 3) for v in pts))
+            for a_, b_ in zip(pts, pts[1:]):
+                if b_ - a_ > 0.15:
+                    f.dim((a_, oz - 0.2), (b_, oz - 0.2), -0.6, _n(b_ - a_), size=5.0)
+            if glass:
+                g0, g1, z0, z1 = max(glass, key=lambda g: g[1] - g[0])
+                f.dim((g0 - 0.1, z0 + oz - b.floor_level * 0), (g0 - 0.1, z1 + oz), 0.4, _n(z1 - z0), size=5.0, color=BLUE)
+            f.dim((0, oz - 0.8), (mxx, oz - 0.8), -0.6, _n(mxx), size=6.0)
             f.text(mxx / 2, oz + H + 0.4, "ALÇADO " + {"S": "SUL", "N": "NORTE", "E": "NASCENTE", "O": "POENTE"}[v], 8.5, INK, True)
         f.legend([(colors.HexColor("#f2efe8"), "Reboco / ETICS acabamento areado", "box"),
                   (colors.HexColor("#5b7fa6"), "Vão envidraçado (caixilharia alumínio RPT)", "box"),
@@ -583,6 +599,171 @@ def sheet_elevations(c, b: Building, esp: dict, meta: dict, slab_h: float):
         f.para(["Projeção ortogonal do modelo 3D construído com a geometria real lida nas plantas.",
                 "Orientações segundo o Norte do desenho (a confirmar pela planta de implantação)."])
         c.showPage()
+
+
+# ----------------------------------------------------------------------------- E02 fundações cotadas
+def _axes(vals, tol=0.06):
+    out = []
+    for v in sorted(vals):
+        if out and v - out[-1][-1] <= tol:
+            out[-1].append(v)
+        else:
+            out.append([v])
+    return [round(sum(g) / len(g), 3) for g in out]
+
+
+def _letters(i):
+    s = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _found_draw(f: "Frame", b: Building, R, ax, ay, big=False):
+    fp = b.footprint
+    x0, y0, x1, y1 = fp.bounds
+    ts = 6.4 if big else 5.4
+    f.poly(fp, GREY, 0.5, dash=[3, 2])
+    for q in b.hypotheses.get("faces") or []:
+        f.line([(q[0], q[1]), (q[2], q[3])], LIGHT, 0.25)
+    # eixos (fiadas de sapatas)
+    for i, x in enumerate(ax):
+        f.line([(x, y0 - 2.6), (x, y1 + 2.6)], GREY, 0.3, dash=[6, 2, 1, 2])
+        for yy in (y0 - 3.1, y1 + 3.1):
+            f.circle(x, yy, 2.6 if big else 2.2, INK, colors.white, 0.5)
+            f.text(x, yy - 0.08, _letters(i), ts + 0.6, INK, True)
+    for j, y in enumerate(ay):
+        f.line([(x0 - 2.6, y), (x1 + 2.6, y)], GREY, 0.3, dash=[6, 2, 1, 2])
+        for xx in (x0 - 3.1, x1 + 3.1):
+            f.circle(xx, y, 2.6 if big else 2.2, INK, colors.white, 0.5)
+            f.text(xx, y - 0.08, str(j + 1), ts + 0.6, INK, True)
+    # elementos
+    for v in R.tie_beams:
+        f.poly(v["geom"].buffer(v["b"] / 2, cap_style=2), BLUE, 0.3, fill=colors.HexColor("#dbe6fb"))
+    for m in R.retaining:
+        f.poly(m["geom"].buffer(m["t"] / 2, cap_style=2), INK, 0.5, fill=colors.HexColor("#7b8794"))
+    for s_ in R.footings:
+        B = s_["B"]
+        f.poly(box(s_["x"] - B / 2, s_["y"] - B / 2, s_["x"] + B / 2, s_["y"] + B / 2), INK, 0.6, fill=colors.HexColor("#fde68a"))
+    for col in R.columns:
+        a = col["a"]
+        f.poly(box(col["x"] - a / 2, col["y"] - a / 2, col["x"] + a / 2, col["y"] + a / 2), RED, 0.3, fill=RED)
+    # cotas de cada sapata: largura (B) e altura no rótulo; posição pelos eixos
+    for s_ in R.footings:
+        B, x, y = s_["B"], s_["x"], s_["y"]
+        f.dim((x - B / 2, y - B / 2), (x + B / 2, y - B / 2), -0.35, _n(B), size=ts - 0.4, color=INK)
+        f.dim((x + B / 2, y - B / 2), (x + B / 2, y + B / 2), -0.35, _n(B), size=ts - 0.4, color=INK)
+        f.text(x, y + B / 2 + 0.15, f"{s_['id']}  h={_n(s_['h'])}", ts - 0.2, INK, True)
+    # cadeias de cotas entre eixos (com o contorno) — por cima e à esquerda + totais
+    xs = [x0] + ax + [x1]
+    for a_, b_ in zip(xs, xs[1:]):
+        if b_ - a_ > 0.02:
+            f.dim((a_, y1), (b_, y1), 1.8, _n(b_ - a_), size=ts, color=INK)
+    f.dim((x0, y1), (x1, y1), 2.4, _n(x1 - x0), size=ts + 0.4, color=INK)
+    ys = [y0] + ay + [y1]
+    for a_, b_ in zip(ys, ys[1:]):
+        if b_ - a_ > 0.02:
+            f.dim((x0, a_), (x0, b_), -1.8, _n(b_ - a_), size=ts, color=INK)
+    f.dim((x0, y0), (x0, y1), -2.4, _n(y1 - y0), size=ts + 0.4, color=INK)
+    # vigas de fundação: secção
+    for v in R.tie_beams[: (60 if big else 25)]:
+        m = v["geom"].interpolate(0.5, normalized=True)
+        f.text(m.x, m.y + 0.12, f"{v['id']} {int(v['b'] * 100)}×{int(v['h'] * 100)}", ts - 1.2, BLUE, angle=outputs._angle(v["geom"]))
+    # origem
+    f.circle(x0, y0, 1.0, RED, RED)
+    f.text(x0 + 0.25, y0 - 0.35, "0,00 / 0,00", ts - 0.6, RED, align="l")
+
+
+def _footing_detail(f: "Frame", R, top_y):
+    """Pormenor tipo da maior sapata (corte), desenhado na coluna direita."""
+    if not R.footings:
+        return
+    c = f.c
+    s_ = max(R.footings, key=lambda s: s["B"])
+    B, h = s_["B"], s_["h"]
+    col = next((p for p in R.columns if p["id"] == s_.get("pilar")), R.columns[0] if R.columns else {"a": 0.25})
+    k = min(70 * mm / (B + 0.4), 32 * mm / (h + 0.9))
+    X0, Y0 = f.W - 112 * mm, top_y - 42 * mm
+
+    def P(x, y):
+        return X0 + (x + 0.2) * k, Y0 + (y + 0.1) * k
+    c.setStrokeColor(INK)
+    c.setLineWidth(0.4)
+    c.setFillColor(colors.HexColor("#e5e7eb"))
+    c.rect(*P(-0.05, -0.10), (B + 0.10) * k, 0.10 * k, stroke=1, fill=1)               # betão de limpeza
+    c.setFillColor(colors.HexColor("#fde68a"))
+    c.rect(*P(0, 0), B * k, h * k, stroke=1, fill=1)                                   # sapata
+    a = col["a"]
+    c.setFillColor(colors.HexColor("#fca5a5"))
+    c.rect(*P(B / 2 - a / 2, h), a * k, 0.7 * k, stroke=1, fill=1)                     # arranque do pilar
+    c.setStrokeColor(RED)
+    c.setLineWidth(0.8)
+    c.line(*P(0.05, 0.06), *P(B - 0.05, 0.06))                                         # armadura inferior
+    c.line(*P(0.05, 0.06), *P(0.05, h - 0.05))
+    c.line(*P(B - 0.05, 0.06), *P(B - 0.05, h - 0.05))
+    for xx in (B / 2 - a / 2 + 0.05, B / 2 + a / 2 - 0.05):                             # arranques
+        c.line(*P(xx, 0.07), *P(xx, h + 0.7))
+    c.setFillColor(INK)
+    c.setFont("Helvetica", 6.4)
+    c.drawString(P(B + 0.05, h / 2)[0] + 2, P(0, h / 2)[1], _t(f"h = {_n(h)}"))
+    c.drawCentredString(P(B / 2, 0)[0], P(0, -0.10)[1] - 9, _t(f"B = {_n(B)} m · betão de limpeza 0,10"))
+    c.drawString(P(B + 0.05, 0.06)[0] + 2, P(0, 0.06)[1] - 3, _t(f"{s_['armadura']}"))
+    c.drawString(P(B / 2 + a / 2, h + 0.5)[0] + 3, P(0, h + 0.5)[1], _t(f"arranque {s_.get('pilar', '')} (recobr. 40 mm)"))
+    f.col_y = Y0 - 16 * mm
+
+
+def sheet_foundations(c, b: Building, R, meta: dict):
+    fp = b.footprint
+    ax = _axes([s_["x"] for s_ in R.footings], 0.30)
+    ay = _axes([s_["y"] for s_ in R.footings], 0.30)
+    f = Frame(c, "Planta de fundações (cotada)", "E02", meta, _bounds(b, 4.0))
+    f.clip_on()
+    _found_draw(f, b, R, ax, ay)
+    f.clip_off()
+    f.heading("Pormenor tipo — sapata isolada (corte)")
+    _footing_detail(f, R, f.col_y)
+    f.legend([(colors.HexColor("#fde68a"), "Sapata isolada (cotas B, h em m)", "box"),
+              (colors.HexColor("#dbe6fb"), "Viga de fundação (b × h cm)", "box"),
+              (colors.HexColor("#7b8794"), "Muro de suporte", "box"), (RED, "Arranque de pilar", "box"),
+              (GREY, "Eixos das fiadas de sapatas (A, B… / 1, 2…)", "dash")])
+    f.heading("Quadro de sapatas (coordenadas a partir da origem 0,00/0,00)")
+    rows = []
+    for s_ in R.footings:
+        i = min(range(len(ax)), key=lambda i: abs(ax[i] - s_["x"]))
+        j = min(range(len(ay)), key=lambda j: abs(ay[j] - s_["y"]))
+        rows.append([s_["id"], f"{_letters(i)}{j + 1}", _n(s_["x"]), _n(s_["y"]), f"{_n(s_['B'])}×{_n(s_['B'])}", _n(s_["h"]),
+                     str(s_.get("armadura") or "")[:22]])
+    f.table(["Sap.", "Eixo", "x m", "y m", "B×B m", "h m", "Armadura"], rows, [10, 10, 12, 12, 17, 10, 36], size=5.6, max_rows=34)
+    f.para(["Cota de assentamento: −0,80 m (a confirmar com o estudo geotécnico).",
+            f"σ adm em hipótese {b.hypotheses.get('sigma_adm_kpa', 200)} kPa — validar no terreno."])
+    c.showPage()
+    # parciais 1:50
+    W, H = landscape(A3)
+    aw, ah = (W - 145 * mm) / mm * 50 / 1000, (H - 30 * mm) / mm * 50 / 1000
+    x0, y0, x1, y1 = fp.bounds
+    x0, y0, x1, y1 = x0 - 3.5, y0 - 3.5, x1 + 3.5, y1 + 3.5
+    nx, ny = max(1, math.ceil((x1 - x0) / aw)), max(1, math.ceil((y1 - y0) / ah))
+    tw, th = (x1 - x0) / nx, (y1 - y0) / ny
+    k = 0
+    for j in range(ny - 1, -1, -1):
+        for i in range(nx):
+            tile = box(x0 + i * tw, y0 + j * th, x0 + (i + 1) * tw, y0 + (j + 1) * th)
+            if not tile.intersects(fp):
+                continue
+            k += 1
+            g = Frame(c, f"Fundações — planta parcial {k}, 1:50 (cotada)", f"E02.{k}", meta, tile.bounds, scale=50)
+            g.clip_on()
+            _found_draw(g, b, R, ax, ay, big=True)
+            g.clip_off()
+            _key_plan(g, b, tile)
+            inside = [s_ for s_ in R.footings if tile.contains(Point(s_["x"], s_["y"]))]
+            g.heading("Sapatas nesta folha")
+            g.table(["Sap.", "x m", "y m", "B×B×h m", "Armadura"],
+                    [[s_["id"], _n(s_["x"]), _n(s_["y"]), f"{_n(s_['B'])}×{_n(s_['B'])}×{_n(s_['h'])}", str(s_.get("armadura") or "")[:24]]
+                     for s_ in inside], [12, 14, 14, 26, 40], size=6.0, max_rows=34)
+            c.showPage()
 
 
 # ----------------------------------------------------------------------------- E03 quadros de armaduras
@@ -887,6 +1068,11 @@ def sheet_heating(c, b, lay, esp, meta):
 
 
 # ----------------------------------------------------------------------------- tudo
+def _ex():
+    from . import exec_sheets
+    return exec_sheets
+
+
 def write_drawings(b: Building, R, lay: Layout, esp: dict, path: Path, meta: dict, slab_h: float) -> tuple[Path, list[str]]:
     c = canvas.Canvas(str(path), pagesize=landscape(A3))
     c.setTitle(_t(f"Desenhos de execução - {meta.get('obra', '')}"))
@@ -894,8 +1080,11 @@ def write_drawings(b: Building, R, lay: Layout, esp: dict, path: Path, meta: dic
     steps = [("A01 Planta de arquitetura cotada", lambda: sheet_architecture(c, b, lay, esp, meta)),
              ("A02 Cortes", lambda: sheet_sections(c, b, R, esp, meta, slab_h)),
              ("A03/A04 Alçados", lambda: sheet_elevations(c, b, esp, meta, slab_h)),
-             ("E01/E02 Estrutura e fundações", lambda: outputs.draw_structure(c, b, R, meta)),
+             ("GO-01 Estrutura e alvenarias cotada", lambda: _ex().sheet_structure_masonry(c, b, R, lay, meta, slab_h)),
+             ("GO-02 Montagem e cofragem da laje cotada", lambda: _ex().sheet_slab_formwork(c, b, R, meta, slab_h)),
+             ("E02 Fundações cotadas", lambda: sheet_foundations(c, b, R, meta)),
              ("E03 Quadros de armaduras", lambda: sheet_rebar(c, b, R, meta)),
+             ("GO-03 Pormenores de execução 1:20", lambda: _ex().sheet_details(c, b, R, meta, slab_h)),
              ("EL01/EL02 Eletricidade", lambda: sheet_electrical(c, b, lay, esp, meta)),
              ("AG01 Águas e esgotos", lambda: sheet_plumbing(c, b, lay, esp, meta)),
              ("VT01 Ventilação", lambda: sheet_ventilation(c, b, lay, esp, meta)),
