@@ -55,22 +55,54 @@ class Frame:
         self.ox = ax0 + ((ax1 - ax0) - (x1 - x0) * self.k) / 2 - x0 * self.k
         self.oy = ay0 + ((ay1 - ay0) - (y1 - y0) * self.k) / 2 - y0 * self.k
         self.col_y = H - 15 * mm                       # cursor da coluna direita (de cima para baixo)
+        self.col_min = 11 * mm + 78 * mm               # não descer para o bloco da empresa / carimbo
         self._frame(title, number, meta)
 
     # ---- moldura e carimbo
     def _frame(self, title, number, meta):
         c, W, H = self.c, self.W, self.H
+        br = meta.get("brand")
+        acc = getattr(br, "accent", None) or colors.HexColor("#0f3d2e")
         c.setStrokeColor(INK)
         c.setLineWidth(0.9)
         c.rect(8 * mm, 8 * mm, W - 16 * mm, H - 16 * mm)
         c.setLineWidth(0.4)
         c.line(W - 123 * mm, 8 * mm, W - 123 * mm, H - 8 * mm)
         bx, by = W - 120 * mm, 11 * mm
-        c.setFillColor(colors.HexColor("#0f3d2e"))
+        # bloco da empresa: logótipo + nome + contactos + imagem real do edifício (como os desenhos de referência)
+        top = by + 49 * mm
+        c.setFillColor(colors.white)
+        c.rect(bx, top, 109 * mm, 26 * mm, stroke=1, fill=1)
+        thumb = meta.get("thumb")
+        if thumb:
+            try:
+                from reportlab.lib.utils import ImageReader
+                import io as _io
+                ir = ImageReader(_io.BytesIO(thumb))
+                iw, ih = ir.getSize()
+                h_ = 24 * mm
+                w_ = min(40 * mm, h_ * iw / ih)
+                c.drawImage(ir, bx + 1 * mm, top + 1 * mm, w_, h_, preserveAspectRatio=True, anchor="c")
+            except Exception:  # noqa: BLE001
+                thumb = None
+        lx = bx + (43 * mm if thumb else 3 * mm)
+        if br is not None:
+            try:
+                from engines.bet_core import brand as _brand
+                _brand.draw_logo(c, lx, top + 15 * mm, 60 * mm, 9 * mm, br)
+            except Exception:  # noqa: BLE001
+                pass
+        c.setFillColor(INK)
+        c.setFont("Helvetica-Bold", 7.6)
+        c.drawString(lx, top + 11 * mm, _t((getattr(br, "name", "") or meta.get("company") or "ConstruPilot"))[:48])
+        c.setFont("Helvetica", 6.2)
+        for i, ln in enumerate((getattr(br, "lines", None) or [])[:3]):
+            c.drawString(lx, top + (7.6 - 3.2 * i) * mm, _t(ln)[:62])
+        c.setFillColor(acc)
         c.rect(bx, by + 40 * mm, 109 * mm, 9 * mm, stroke=0, fill=1)
         c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(bx + 3 * mm, by + 43 * mm, _t(meta.get("company") or "ConstruPilot"))
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(bx + 3 * mm, by + 43 * mm, _t("Desenho de execução"))
         c.setFont("Helvetica-Bold", 16)
         c.drawRightString(bx + 106 * mm, by + 42.5 * mm, number)
         c.setFillColor(INK)
@@ -82,11 +114,14 @@ class Frame:
         c.setFont("Helvetica", 7.6)
         rows = [f"Obra: {meta.get('obra', '-')}"[:80],
                 f"Local: {meta.get('local') or '-'}"[:80],
-                f"Escala 1:{self.scale}   ·   Data {_dt.date.today().strftime('%d/%m/%Y')}   ·   Fase: projeto de execução (pré-dim.)",
-                "Geometria real lida das peças do cliente — cotas em metros",
-                "A validar e assinar pelos técnicos autores dos projetos de especialidade"]
-        for i, s in enumerate(rows):
-            c.drawString(bx + 3 * mm, by + (27 - 5.2 * i) * mm, _t(s))
+                f"Escala 1:{self.scale}   ·   Data {_dt.date.today().strftime('%d/%m/%Y')}   ·   Rev. A",
+                "Geometria real lida das peças do cliente — cotas em metros"]
+        for i, s_ in enumerate(rows):
+            c.drawString(bx + 3 * mm, by + (27 - 5.0 * i) * mm, _t(s_))
+        c.setFillColor(RED)
+        c.setFont("Helvetica-Bold", 6.4)
+        c.drawString(bx + 3 * mm, by + 6.5 * mm, _t("PRÉ-DIMENSIONAMENTO — A VERIFICAR E ASSINAR PELOS TÉCNICOS RESPONSÁVEIS ANTES DA EXECUÇÃO"))
+        c.setFillColor(INK)
         c.rect(bx, by, 109 * mm, 49 * mm)
 
     # ---- recorte da área de desenho
@@ -195,6 +230,11 @@ class Frame:
         c.setFillColor(colors.HexColor("#e8efe9"))
         c.rect(x0, y - lh, sum(widths_mm) * mm, lh, stroke=0, fill=1)
         for i, row in enumerate([header] + rows):
+            if y - lh < getattr(self, "col_min", 0):
+                c.setFont("Helvetica-Oblique", size)
+                c.drawString(x0 + 0.8 * mm, y - lh + 1.6, _t(f"… +{len(rows) - i + 1} linhas no quadro completo (E03 / Excel)"))
+                y -= lh
+                break
             x = x0
             c.setFont("Helvetica-Bold" if i == 0 else "Helvetica", size)
             c.setFillColor(INK)
@@ -215,6 +255,8 @@ class Frame:
         x0 = self.W - 120 * mm
         for col, txt, kind in items:
             y = self.col_y - 3 * mm
+            if y < getattr(self, "col_min", 0):
+                break
             c.setStrokeColor(col)
             c.setFillColor(col)
             if kind == "line":
@@ -240,6 +282,8 @@ class Frame:
         c.setFont("Helvetica", size)
         c.setFillColor(INK)
         for s in lines:
+            if self.col_y - 3 * mm < getattr(self, "col_min", 0):
+                break
             c.drawString(self.W - 120 * mm, self.col_y - 3 * mm, _t(s)[:95])
             self.col_y -= size * 1.45
         self.col_y -= 2 * mm

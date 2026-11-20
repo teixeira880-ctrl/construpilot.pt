@@ -456,7 +456,7 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
     try:
         from engines.bet_geo.run import geo_first as _geo_first      # geometria real (qualquer forma)
         if await _geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, _store, llm,
-                            when_irregular_only=True):
+                            when_irregular_only=True, branding=branding):
             return
         if await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step):
             return
@@ -486,7 +486,8 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
             if rd.get("source_geometry_required"):
                 # planta não retangular: motor de geometria real (cálculos completos); só se falhar, peças de origem
                 from engines.bet_geo.run import geo_first as _geo_first
-                if await _geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, _store, llm):
+                if await _geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, _store, llm,
+                                    branding=branding):
                     return
                 await _preserve_geometry(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, force=True)
                 return

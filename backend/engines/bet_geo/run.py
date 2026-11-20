@@ -120,6 +120,12 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
         log.warning("bet_geo study images failed", exc_info=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     await step("A desenhar as peças de execução cotadas e a montar o processo")
+    try:
+        from engines.bet_core import brand as _brand
+        meta["brand"] = _brand.from_branding(meta.get("branding"), "PT" if pt else "FR")
+    except Exception:  # noqa: BLE001
+        meta["brand"] = None
+    meta["thumb"] = (images or {}).get("main")
     dpath, sheets = await asyncio.to_thread(drawings.write_drawings, b, R, lay, esp, out_dir / "Desenhos_de_execucao.pdf", meta, slab_h)
     report = outputs.write_report_pdf(b, R, out_dir / "Nota_de_calculo_estrutura.pdf", meta)
     xlsx = outputs.write_full_xlsx(lines, R, lay, out_dir / "Medicoes_e_orcamento.xlsx", meta)
@@ -138,9 +144,40 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
     kp_lines.append(f"Orçamento estimado: {total:,.0f} € sem IVA".replace(",", " "))
     files = []
 
+    from engines import pdf_premium as PP
+    branding = meta.get("branding")
+    kpis = [("Área de construção", f"{b.footprint.area:.1f}".replace(".", ","), "m²"),
+            ("Área útil aquecida", f"{lay.useful_area:.1f}".replace(".", ","), "m²"),
+            ("Classe energética (REH)", best.get("classe") or "—", ""),
+            ("Orçamento estimado", f"{total:,.0f}".replace(",", " "), "€ s/ IVA"),
+            ("Pilares / vigas / sapatas", f"{len(R.columns)} / {len(R.beams)} / {len(R.footings)}", ""),
+            ("Laje maciça", f"{slab_h:.2f}".replace(".", ","), "m"),
+            ("Divisões / vãos", f"{len(lay.rooms)} / {len(lay.windows)}", ""),
+            ("Folhas de desenho", str(len(sheets)), "grupos A3")]
+    INDICE = ["Memória descritiva e justificativa", "Imagens do edifício — geometria real", "Nota de cálculo — pré-dimensionamento estrutural",
+              "Pré-certificado energético (REH", "especialidades técnicas da habitação",
+              str((esp.get("vent") or {}).get("titre") or "Ventilação"), "Análise custo-benefício — envolvente",
+              "Planta de arquitetura — piso térreo (cotada)", "Planta parcial 1 — 1:50", "Cortes AA' e BB'", "Alçados Sul e Norte",
+              "Alçados Nascente e Poente", "Desenho de execução da estrutura e alvenarias", "Planta de montagem e cofragem — laje",
+              "Planta de fundações (cotada)", "Quadros de armaduras e betões", "Pormenores de execução — fundações",
+              "Eletricidade — tomadas", "Esquema unifilar do quadro", "Águas (AF/AQ) e esgotos", "Ventilação — admissão e extração",
+              "Aquecimento — piso radiante", "Esquema hidráulico de princípio"]
+
     def add(kind, path, label, title, subtitle, lines_=(), a3=False):
-        if images:
+        """Acabamento IGUAL ao dos orçamentos e do dossier anterior: capa com a imagem real e indicadores, índice,
+        logótipo da empresa no rodapé, MARCA D'ÁGUA da empresa em todas as folhas, numeração."""
+        data = path.read_bytes()
+        capa = {"tipo": title, "titulo": meta.get("obra") or title, "subtitulo": subtitle + (" · " + " · ".join(lines_[:2]) if lines_ else ""),
+                "local": meta.get("local") or "", "data": __import__("datetime").date.today().strftime("%d/%m/%Y"),
+                "kpis": kpis, "indice": INDICE, "imagem": (images or {}).get("main")}
+        try:
+            out = PP.acabar(data, capa, PP.com_cor(branding) if branding is not None else {}, "pt" if pt else "fr", paginas="completo")
+        except Exception:  # noqa: BLE001
+            out = data
+        if out is data and images:                   # acabamento desligado pela empresa: capa simples com a imagem
             covers.prepend(path, covers.cover_pdf(images, title, subtitle, meta, list(lines_), landscape_a3=a3))
+        else:
+            path.write_bytes(out)
         files.append((kind, path, label))
     parts = []
     summary = _summary_pdf(b, R, lay, esp, lines, meta, sheets)
@@ -267,7 +304,7 @@ def _obra_name(docs, hypotheses: str) -> str:
     return "Moradia"
 
 
-async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *, step, store, llm=None) -> bool:
+async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *, step, store, llm=None, branding=None) -> bool:
     """Gancho do estudo BET (assistant_tool). True = estudo entregue; False = deixar o fluxo anterior."""
     import os
     import tempfile
@@ -285,7 +322,7 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
         geo = {**b.to_dict(), "slab_h": slab_h}
         return await asyncio.wait_for(quote_building.views(db, {"_geo": geo}, wait), wait + 120)
 
-    meta = {"obra": _obra_name(docs, hypotheses)}
+    meta = {"obra": _obra_name(docs, hypotheses), "branding": branding}
     with tempfile.TemporaryDirectory(prefix="cp_geo_") as tmp:
         try:
             res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step, meta=meta, images_fn=images_fn)
@@ -343,7 +380,7 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
 
 
 async def geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, store, llm=None, *,
-                    when_irregular_only=False) -> bool:
+                    when_irregular_only=False, branding=None) -> bool:
     """Ponto de entrada no estudo BET. False = seguir o fluxo anterior; nunca levanta exceção.
 
     when_irregular_only: só atua se a planta não for retangular (o motor bet_core trata os retângulos).
@@ -361,7 +398,7 @@ async def geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country,
                 return False
         if llm is None:
             from engines.bet_core.reader import _default_llm as llm
-        return await handle(db, job_id, uid, cid, request_id, docs, hypotheses, country,
+        return await handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, branding=branding,
                             step=step, store=store, llm=llm)
     except Exception:  # noqa: BLE001 — nunca estraga o estudo: volta ao fluxo anterior
         log.warning("bet_geo failed for %s", job_id, exc_info=True)

@@ -145,3 +145,25 @@ def test_cotas_escritas_confirmadas_pelas_faces_desenhadas():
     walls = [[0.0, 5.0, 3.0, 5.0], [0.0, 5.2, 3.0, 5.2]]                            # duas faces de uma parede
     kept = _drop_patterns(floor + walls)
     assert all(q in kept for q in walls) and sum(q in kept for q in floor) <= 2
+
+
+def test_carimbo_dos_desenhos_com_logotipo_da_empresa_e_imagem(tmp_path):
+    """0 retrocesso: os desenhos levam o logótipo e o nome da empresa e a imagem real no carimbo (como antes)."""
+    import base64
+    import io
+
+    import pymupdf
+    from PIL import Image
+
+    from engines.bet_core import brand
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 100), (20, 80, 140)).save(buf, "PNG")
+    br = brand.from_branding({"company_name": "Empresa Exemplo", "logo_b64": base64.b64encode(buf.getvalue()).decode()}, "PT")
+    b = _building()
+    lay, docs = _layout(b)
+    esp = E.run_all(b, lay, docs, "Évora", {"obra": "teste"}, 0.22)
+    R = structure.design(b)
+    meta = {"obra": "teste", "brand": br, "thumb": covers.local_views(b, R.slab["h"], ("main",))["main"]}
+    p, _ = drawings.write_drawings(b, R, lay, esp, tmp_path / "d.pdf", meta, R.slab["h"])
+    pg = pymupdf.open(str(p))[0]
+    assert len(pg.get_images()) >= 2 and "Empresa Exemplo" in pg.get_text()

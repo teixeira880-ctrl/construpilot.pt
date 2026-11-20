@@ -387,7 +387,8 @@ def write_full_xlsx(lines: list[dict], R: Result, lay, path: Path, meta: dict) -
     wb = Workbook()
     ws = wb.active
     ws.title = "Medições e orçamento"
-    ws.append([f"Medições e orçamento — {meta.get('obra', '')}"])
+    ws.append([f"Medições e orçamento — {meta.get('obra', '')}"
+               + (f" · {(meta.get('branding') or {}).get('company_name')}" if (meta.get("branding") or {}).get("company_name") else "")])
     ws["A1"].font = Font(bold=True, size=13)
     ws.append(["Quantidades medidas na geometria real e calculadas pelos motores; preços de referência sem IVA (substituir pela biblioteca da empresa)."])
     ws.append([])
