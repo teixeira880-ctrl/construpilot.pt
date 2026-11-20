@@ -25,6 +25,10 @@ GRANTS = [
      "temp_password_env": "GRANT_RUI_PASSWORD",
      "account_type": "pro_business", "plan_id": "pro_business_yearly",
      "valid_days": 90},  # Pro Business gratuito durante 3 meses
+    {"email": "mcphersn@gmail.com", "name": "McPherson",
+     "temp_password_env": "GRANT_MCPHERSN_PASSWORD",
+     "account_type": "pro_business", "plan_id": "pro_business_yearly",
+     "valid_days": 365},  # 20/11 (Martinho): conta Pro Business
 ]
 
 

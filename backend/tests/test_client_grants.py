@@ -91,3 +91,12 @@ def test_conta_ja_registada_recebe_so_o_acesso(monkeypatch):
 def test_sem_password_em_claro_no_modulo():
     src = open(cg.__file__, encoding="utf-8").read()
     assert "os.environ.get" in src and "GRANT_RUI_PASSWORD" in src
+
+
+def test_conta_mcphersn_pro_business_sem_password_no_codigo():
+    import inspect
+
+    from core import client_grants as cg
+    g = next(x for x in cg.GRANTS if x["email"] == "mcphersn@gmail.com")
+    assert g["account_type"] == "pro_business" and g["temp_password_env"] == "GRANT_MCPHERSN_PASSWORD"
+    assert "ConstroPilot" not in inspect.getsource(cg)
