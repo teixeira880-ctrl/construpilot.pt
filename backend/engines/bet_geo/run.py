@@ -5,6 +5,7 @@ Usado pelo estudo BET do Assistente quando a planta não é retangular (antes: s
 from __future__ import annotations
 
 import asyncio
+import os
 import logging
 import zipfile
 from pathlib import Path
@@ -91,6 +92,8 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
         warns = ["Cotas lidas no modelo IFC. Terras suportadas não constam do modelo: confirmar muros de suporte."]
     else:
         warns = await levels_ai.read_levels(b, docs, llm, _plan_page(docs))
+    if b.storeys > 1 and str(os.environ.get("BET_GEO_MULTI") or "").lower() not in ("1", "true", "yes"):
+        return {"ok": False, "reason": f"edifício com {b.storeys} pisos: motor de geometria real ainda só de 1 piso"}
     await step("A calcular laje, vigas, pilares, fundações e muros sobre o contorno real")
     R = await asyncio.to_thread(structure.design, b)
     R.warnings = warns + R.warnings
@@ -344,7 +347,8 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
         if main:
             out["main"] = main
         try:                                       # vistas HD do orçamento: em segundo plano, nunca esperadas aqui
-            await asyncio.wait_for(quote_building.views(db, raw, 0), 30)
+            if db is not None:
+                await asyncio.wait_for(quote_building.views(db, raw, 0), 30)
         except Exception:  # noqa: BLE001
             log.warning("bet_geo: arranque das vistas HD falhou", exc_info=True)
         return out
@@ -353,11 +357,15 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
     with tempfile.TemporaryDirectory(prefix="cp_geo_") as tmp:
         try:
             res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step, meta=meta, images_fn=images_fn)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             log.exception("bet_geo study failed for %s", job_id)
+            await step(f"Motor de geometria real: erro ({type(exc).__name__}: {str(exc)[:160]}) — a usar o motor anterior",
+                       geo_engine_error=f"{type(exc).__name__}: {str(exc)[:400]}")
             return False
         if not res.get("ok"):
             log.info("bet_geo: %s", res.get("reason"))
+            await step(f"Motor de geometria real: {res.get('reason')} — a usar o motor anterior",
+                       geo_engine_error=str(res.get("reason"))[:400])
             return False
         arts = []
         for kind, path, label in res["files"]:
@@ -419,6 +427,10 @@ async def geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country,
         return False
     try:
         exact = any(getattr(d, "kind", None) in ("ifc", "dxf", "dwg") for d in docs)
+        # PT (20/11): o motor de geometria real entrega o estudo completo para QUALQUER forma de 1 piso; o motor anterior
+        # (leitura IA até 30 min) fica para os edifícios de vários pisos ou quando a geometria não é legível.
+        if str(country).upper() == "PT" and str(os.environ.get("BET_GEO_PT_ALL") or "1").lower() not in ("0", "false", "no"):
+            when_irregular_only = False
         if when_irregular_only and not exact:
             from engines.bet_core import geometry_review as _gr
             if await asyncio.to_thread(_gr.inspect, docs, hypotheses) is None:

@@ -402,3 +402,42 @@ def test_entrada_do_estudo_aceita_imagem_e_ifc(l_pdf):
     assert sources.kind_of("planta.png", png.tobytes()) == "image"
     assert sources.image_to_pdf(png.tobytes()).startswith(b"%PDF")
     assert len(sources.dedupe([doc, doc])) == 1 and sources.dedupe([doc, doc])[0].kind == "ifc"
+
+
+def test_pt_planta_retangular_vai_ao_motor_de_geometria_real_e_varios_pisos_volta_ao_anterior(tmp_path, monkeypatch):
+    """20/11: em PT o estudo completo usa logo o motor de geometria real (qualquer forma de 1 piso), sem os 20–30 min da
+    leitura IA do motor anterior; um edifício de vários pisos volta ao motor anterior, com o motivo visível."""
+    from shapely.geometry import box as _box
+    rect = _box(0, 0, 12, 9)
+    walls = [((0.1, 0.1), (11.9, 0.1), 0.2), ((11.9, 0.1), (11.9, 8.9), 0.2), ((11.9, 8.9), (0.1, 8.9), 0.2),
+             ((0.1, 8.9), (0.1, 0.1), 0.2), ((6.0, 0.1), (6.0, 8.9), 0.15)]
+    pdf = _synthetic_plan_pdf(tmp_path / "r.pdf", rect, walls).read_bytes()
+    steps = []
+
+    async def step(label, **extra):
+        steps.append((label, extra))
+
+    async def store(db, uid, cid, rid, kind, path, title):
+        return {"kind": kind}
+
+    from engines.bet_geo import levels_ai
+    n_storeys = [1]
+
+    async def fake_levels(b, docs, llm, page):
+        b.storeys = n_storeys[0]
+        return []
+    monkeypatch.setattr(levels_ai, "read_levels", fake_levels)
+
+    def llm_storeys(n):
+        n_storeys[0] = n
+
+        async def f(system, text, images=None, max_tokens=0, **k):
+            return "{}"
+        return f
+    ok = asyncio.run(run.geo_first(None, "j1", "u", "c", "r", [("r.pdf", pdf)], "", "PT", step, store, llm_storeys(1),
+                                   when_irregular_only=True))
+    assert ok and steps[-1][1].get("status") in ("done", None)
+    steps.clear()
+    ok2 = asyncio.run(run.geo_first(None, "j2", "u", "c", "r", [("r.pdf", pdf)], "", "PT", step, store, llm_storeys(2),
+                                    when_irregular_only=True))
+    assert ok2 is False and any("pisos" in lab and "motor anterior" in lab for lab, _ in steps)
