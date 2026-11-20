@@ -89,6 +89,17 @@ class Frame:
             c.drawString(bx + 3 * mm, by + (27 - 5.2 * i) * mm, _t(s))
         c.rect(bx, by, 109 * mm, 49 * mm)
 
+    # ---- recorte da área de desenho
+    def clip_on(self):
+        c = self.c
+        c.saveState()
+        p = c.beginPath()
+        p.rect(9 * mm, 9 * mm, self.W - 133 * mm, self.H - 18 * mm)
+        c.clipPath(p, stroke=0, fill=0)
+
+    def clip_off(self):
+        self.c.restoreState()
+
     # ---- mundo → folha
     def p(self, x, y):
         return self.ox + x * self.k, self.oy + y * self.k
@@ -274,9 +285,11 @@ def _base(f: Frame, b: Building, walls_fill=WALL, ghost=False):
 
 
 # ----------------------------------------------------------------------------- A01 arquitetura
-def sheet_architecture(c, b: Building, lay: Layout, esp: dict, meta: dict):
-    f = Frame(c, "Planta de arquitetura — piso térreo (cotada)", "A01", meta, _bounds(b, 4.5))
+def _arch_draw(f: "Frame", b: Building, lay: Layout, esp: dict, label_size=6.2):
+    """Conteúdo da planta de arquitetura (comum à planta geral e às plantas parciais 1:50)."""
     _base(f, b)
+    for q in b.hypotheses.get("faces") or []:                    # traço real do arquiteto (faces de paredes, caixilhos)
+        f.line([(q[0], q[1]), (q[2], q[3])], INK, 0.35)
     for o in lay.openings:                                        # vãos: caixilho (linha dupla fina)
         (x0, y0), (x1, y1) = o.edge.coords[0], o.edge.coords[-1]
         L = o.edge.length
@@ -288,9 +301,18 @@ def sheet_architecture(c, b: Building, lay: Layout, esp: dict, meta: dict):
         if not r.placed:
             continue
         lab = (r.number + ". " if r.number else "") + r.name
-        f.text(r.x, r.y + 0.28, lab, 6.2, INK, True)
-        f.text(r.x, r.y - 0.12, f"{_n(r.area)} m²" + ("" if r.type == "exterior" else f" · p.d. {_n(hsp)}"), 5.6, GREEN)
-    # cotas parciais de cada aresta + totais
+        f.text(r.x, r.y + 0.28, lab, label_size, INK, True)
+        f.text(r.x, r.y - 0.12, f"{_n(r.area)} m²" + ("" if r.type == "exterior" else f" · p.d. {_n(hsp)}"), label_size - 0.6, GREEN)
+    # cotas REAIS do projeto (escritas pelo arquiteto), confrontadas com as faces desenhadas
+    wd = b.hypotheses.get("dims_text") or []
+    n_ok = 0
+    for d in wd:
+        if d.get("ok") and d.get("a") and d.get("b"):
+            n_ok += 1
+            f.dim(tuple(d["a"]), tuple(d["b"]), 0.0, _n(d["v"]), size=label_size - 0.8, color=INK)
+        else:
+            f.text(d["x"], d["y"] - 0.08, _n(d["v"]), label_size - 1.0, ORANGE)
+    # cotas parciais de cada aresta + totais (geometria medida)
     fp = b.footprint
     ccw = fp.exterior.is_ccw
     coords = list(fp.exterior.coords)
@@ -306,12 +328,32 @@ def sheet_architecture(c, b: Building, lay: Layout, esp: dict, meta: dict):
     x0, y0, x1, y1 = fp.bounds
     f.dim((x0, y0), (x1, y0), -3.0, size=6.5)
     f.dim((x1, y0), (x1, y1), -3.0, size=6.5)
-    # espessuras de parede (amostra: as mais compridas)
     for w in sorted(b.walls, key=lambda w: -w.length)[:12]:
         m = w.line.interpolate(0.5, normalized=True)
         f.text(m.x, m.y, f"e={_n(w.t)}", 4.4, colors.white, angle=outputs._angle(w.line))
+    return n_ok, wd
+
+
+def _arch_legend(f, n_ok, wd):
+    leg = [(WALL, "Paredes lidas (espessura e= m)", "box"), (INK, "Traço do projeto (faces de paredes, caixilhos)", "line"),
+           (BLUE, "Troço de fachada sem parede lida — vão envidraçado", "line"),
+           (GREY, "Cotas exteriores medidas no contorno (parciais e totais)", "line")]
+    if wd:
+        leg += [(INK, f"Cotas do projeto confirmadas pela geometria desenhada: {n_ok}/{len(wd)} (≤ 1,2 cm)", "line")]
+        if n_ok < len(wd):
+            leg += [(ORANGE, "Cota do projeto não confirmada (valor escrito, a verificar)", "box")]
+    f.legend(leg)
+
+
+def sheet_architecture(c, b: Building, lay: Layout, esp: dict, meta: dict):
+    f = Frame(c, "Planta de arquitetura — piso térreo (cotada)", "A01", meta, _bounds(b, 4.5))
+    f.clip_on()
+    n_ok, wd = _arch_draw(f, b, lay, esp)
+    f.clip_off()
     f.north(float(b.hypotheses.get("north_deg") or 90.0))
-    f.legend([(WALL, "Paredes lidas (espessura e= m)", "box"), (BLUE, "Troço de fachada sem parede lida — vão envidraçado", "line")])
+    _arch_legend(f, n_ok, wd)
+    hsp = esp["env"].hsp
+    fp = b.footprint
     f.heading("Quadro de áreas")
     rows = [[(r.number or "-"), r.name, _n(r.area), r.type.replace("_", " "), "sim" if r.heated else "não"] for r in lay.rooms]
     f.table(["N.º", "Divisão", "Área m²", "Uso", "Aquec."], rows, [9, 46, 15, 24, 13], size=6.0, max_rows=30)
@@ -323,6 +365,55 @@ def sheet_architecture(c, b: Building, lay: Layout, esp: dict, meta: dict):
         f.table(["Vão", "L × H (m)", "Divisão", "Or."], [[w.name, f"{_n(w.w)} × {_n(w.h)}", w.room, w.orient or "-"] for w in lay.windows],
                 [14, 22, 62, 9], size=5.8, max_rows=24)
     c.showPage()
+    # plantas parciais à escala 1:50 (leitura das cotas em obra)
+    W, H = landscape(A3)
+    aw, ah = (W - 145 * mm) / mm * 50 / 1000, (H - 30 * mm) / mm * 50 / 1000      # metros por folha a 1:50
+    x0, y0, x1, y1 = fp.bounds
+    x0, y0, x1, y1 = x0 - 2.0, y0 - 2.0, x1 + 2.0, y1 + 2.0
+    nx, ny = max(1, math.ceil((x1 - x0) / aw)), max(1, math.ceil((y1 - y0) / ah))
+    tw, th = (x1 - x0) / nx, (y1 - y0) / ny
+    k = 0
+    for j in range(ny - 1, -1, -1):
+        for i in range(nx):
+            tile = box(x0 + i * tw, y0 + j * th, x0 + (i + 1) * tw, y0 + (j + 1) * th)
+            if not tile.intersects(fp):
+                continue
+            k += 1
+            g = Frame(c, f"Planta parcial {k} — 1:50 (cotada)", f"A01.{k}", meta, tile.bounds, scale=50)
+            g.clip_on()
+            _arch_draw(g, b, lay, esp, label_size=7.4)
+            g.clip_off()
+            _key_plan(g, b, tile)
+            _arch_legend(g, n_ok, wd)
+            c.showPage()
+
+
+def _key_plan(f, b, tile):
+    """Planta-chave: posição da folha parcial no edifício."""
+    c = f.c
+    x0, y0, x1, y1 = b.footprint.bounds
+    W, H = f.W, f.H
+    s = min(60 * mm / (x1 - x0), 40 * mm / (y1 - y0))
+    ox, oy = W - 120 * mm, H - 60 * mm
+    f.heading("Planta-chave")
+
+    def P(x, y):
+        return ox + (x - x0) * s, oy + (y - y0) * s
+    for ring in [b.footprint.exterior, *b.footprint.interiors]:
+        p = c.beginPath()
+        pts = [P(*q) for q in ring.coords]
+        p.moveTo(*pts[0])
+        for q in pts[1:]:
+            p.lineTo(*q)
+        p.close()
+        c.setStrokeColor(INK)
+        c.setLineWidth(0.5)
+        c.drawPath(p, stroke=1, fill=0)
+    tx0, ty0, tx1, ty1 = tile.bounds
+    a, bq = P(max(tx0, x0), max(ty0, y0)), P(min(tx1, x1), min(ty1, y1))
+    c.setFillColor(colors.Color(0.85, 0.2, 0.2, alpha=0.25))
+    c.rect(a[0], a[1], bq[0] - a[0], bq[1] - a[1], stroke=0, fill=1)
+    f.col_y = oy - 6 * mm
 
 
 # ----------------------------------------------------------------------------- A02 cortes

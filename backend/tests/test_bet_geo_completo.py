@@ -122,9 +122,26 @@ def test_desenhos_completos_e_capa_com_imagem(tmp_path):
     p, done = drawings.write_drawings(b, R, lay, esp, tmp_path / "d.pdf", {"obra": "teste"}, R.slab["h"])
     assert not any("falhou" in s for s in done) and len(done) == 9
     import pymupdf
-    assert pymupdf.open(str(p)).page_count == 13
+    n = pymupdf.open(str(p)).page_count
+    assert n >= 14                                                              # + plantas parciais 1:50
     imgs = covers.local_views(b, R.slab["h"])
     assert imgs.get("main")
     covers.prepend(p, covers.cover_pdf(imgs, "Desenhos", "x", {"obra": "t"}, [], landscape_a3=True))
     doc = pymupdf.open(str(p))
-    assert doc.page_count == 14 and doc[0].get_images()                     # capa com a imagem real
+    assert doc.page_count == n + 1 and doc[0].get_images()                  # capa com a imagem real
+
+
+def test_cotas_escritas_confirmadas_pelas_faces_desenhadas():
+    """Cota real do projeto: «3,06» escrita ao centro entre duas faces a 3,06 m → confirmada com as extremidades;
+    «2,00» sem faces a essa distância → não confirmada (fica visível como valor escrito a verificar)."""
+    import numpy as np
+    from engines.bet_geo.pdf_vector import _drop_patterns, _match_span
+    vt = np.array([(0.0, 5.0, 1.00), (0.0, 5.0, 4.06), (0.0, 5.0, 4.30)])         # faces verticais x = 1,00 / 4,06 / 4,30
+    hz = np.array([(0.0, 6.0, 0.0), (0.0, 6.0, 5.0)])
+    m = _match_span(3.06, 2.55, 2.5, hz, vt)
+    assert m and m[0] == "x" and m[1][0] == pytest.approx(1.0) and m[2][0] == pytest.approx(4.06)
+    assert _match_span(2.00, 2.55, 2.5, hz, vt) is None
+    floor = [[0.0, y / 100, 3.0, y / 100] for y in range(0, 200, 19)]               # tábuas de soalho a 19 cm
+    walls = [[0.0, 5.0, 3.0, 5.0], [0.0, 5.2, 3.0, 5.2]]                            # duas faces de uma parede
+    kept = _drop_patterns(floor + walls)
+    assert all(q in kept for q in walls) and sum(q in kept for q in floor) <= 2

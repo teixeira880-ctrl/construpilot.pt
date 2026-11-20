@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from shapely.affinity import affine_transform
-from shapely.geometry import LineString, Polygon, box
+from shapely.geometry import Point, LineString, Polygon, box
 from shapely.ops import unary_union
 
 from .model import Building, Wall, split_by_boundary
@@ -233,6 +233,149 @@ def snap_directions(walls, fp, tol_deg=2.5):
 
 
 # ----------------------------------------------------------------------------- leitura completa
+_DIM_TXT = re.compile(r"^\d{1,3}[.,]\d{2}$")
+
+
+def _face_lines(page, f: float, ox: float, oy: float):
+    """Traços escuros horizontais e verticais da folha (faces de paredes, caixilhos…) em metros do edifício."""
+    H = page.rect.height
+    hz, vt = [], []
+    for d in page.get_drawings():
+        col = d.get("color")
+        if col is None or max(col) > 0.25:
+            continue
+        for it in d["items"]:
+            if it[0] == "l":
+                segs = [(it[1], it[2])]
+            elif it[0] == "re":
+                r = it[1]
+                segs = [(r.tl, r.tr), (r.bl, r.br), (r.tl, r.bl), (r.tr, r.br)]
+            else:
+                continue
+            for a, b in segs:
+                ax, ay, bx, by = a.x * f - ox, H * f - a.y * f - oy, b.x * f - ox, H * f - b.y * f - oy
+                if abs(ay - by) < 0.004 and abs(bx - ax) > 0.05:
+                    hz.append((min(ax, bx), max(ax, bx), ay))
+                elif abs(ax - bx) < 0.004 and abs(by - ay) > 0.05:
+                    vt.append((min(ay, by), max(ay, by), ax))
+    return np.array(hz or [(0, 0, -1e9)]), np.array(vt or [(0, 0, -1e9)])
+
+
+def _match_span(v: float, x: float, y: float, hz, vt, tol=0.012):
+    """Procura, à volta do texto, as duas faces cuja distância é o valor escrito (texto ao centro da cota).
+    → (eixo, início, fim, erro) ou None."""
+    best = None
+    for axis in ("x", "y"):
+        for dy in ((0.0, -0.12, 0.12) if axis == "x" else (0.0,)):
+            for dx in ((0.0,) if axis == "x" else (0.0, -0.12, 0.12)):
+                X, Y = x + dx, y + dy
+                if axis == "x":
+                    m = (vt[:, 0] <= Y) & (vt[:, 1] >= Y)
+                    cs = vt[m][:, 2]
+                    pos = np.sort(cs[cs > X] - X)[:12]
+                    neg = np.sort(X - cs[cs < X])[:12]
+                else:
+                    m = (hz[:, 0] <= X) & (hz[:, 1] >= X)
+                    cs = hz[m][:, 2]
+                    pos = np.sort(cs[cs > Y] - Y)[:12]
+                    neg = np.sort(Y - cs[cs < Y])[:12]
+                for a in pos:
+                    for b_ in neg:
+                        e = abs(a + b_ - v)
+                        asym = abs(a - b_) / max(v, 0.1)
+                        if e <= tol and asym <= 0.35:
+                            score = e + 0.01 * asym
+                            if best is None or score < best[-1]:
+                                if axis == "x":
+                                    best = ("x", (X - b_, Y), (X + a, Y), round(e, 4), score)
+                                else:
+                                    best = ("y", (X, Y - b_), (X, Y + a), round(e, 4), score)
+    return best[:4] if best else None
+
+
+def _keep_faces(fp, hz, vt, out: list, min_len=0.20) -> None:
+    """Traços horizontais/verticais ≥ 20 cm dentro da área de construção (sem duplicados ao cm)."""
+    from shapely.prepared import prep
+    zone = prep(fp.buffer(0.6))
+    seen = set()
+    for x0, x1, y in hz:
+        if x1 - x0 >= min_len and zone.intersects(LineString([(x0, y), (x1, y)])):
+            k = (round(x0, 2), round(y, 2), round(x1, 2), round(y, 2))
+            if k not in seen:
+                seen.add(k)
+                out.append(list(k))
+    for y0, y1, x in vt:
+        if y1 - y0 >= min_len and zone.intersects(LineString([(x, y0), (x, y1)])):
+            k = (round(x, 2), round(y0, 2), round(x, 2), round(y1, 2))
+            if k not in seen:
+                seen.add(k)
+                out.append(list(k))
+
+
+def _drop_patterns(lines: list) -> list:
+    """Retira os padrões de pavimento/tracejados: séries de ≥ 4 traços paralelos igualmente espaçados (8–35 cm)
+    que se sobrepõem — uma parede tem 2 faces, não uma série regular."""
+    def key(q):
+        hzt = abs(q[1] - q[3]) < 1e-6
+        return hzt, (q[1] if hzt else q[0]), (min(q[0], q[2]) if hzt else min(q[1], q[3])), (max(q[0], q[2]) if hzt else max(q[1], q[3]))
+    ks = [key(q) for q in lines]
+    from collections import defaultdict
+    byc = defaultdict(list)
+    for i, (hzt, c, a, b_) in enumerate(ks):
+        byc[(hzt, round(c, 2))].append(i)
+
+    def at(hzt, c, a, b_):
+        for cc in (round(c, 2), round(c + 0.01, 2), round(c - 0.01, 2)):
+            for j in byc.get((hzt, cc), []):
+                _, _, a2, b2 = ks[j]
+                if min(b_, b2) - max(a, a2) >= 0.6 * (b_ - a):
+                    return True
+        return False
+    keep = []
+    for i, (hzt, c, a, b_) in enumerate(ks):
+        pattern = False
+        for d in [x / 100 for x in range(8, 36)]:
+            if at(hzt, c + d, a, b_) and at(hzt, c - d, a, b_) and (at(hzt, c + 2 * d, a, b_) or at(hzt, c - 2 * d, a, b_)):
+                pattern = True
+                break
+        if not pattern:
+            keep.append(lines[i])
+    return keep
+
+
+def written_dims(page, fr, ox: float, oy: float, fp) -> list[dict]:
+    """Cotas ESCRITAS pelo arquiteto na folha (valor, posição em metros), no referencial do edifício.
+    Duas fontes: o valor escrito e a distância MEDIDA entre as duas faces desenhadas de cada lado do texto.
+    Confirmada (≤ 1,2 cm, texto ao centro) → cota desenhada com linha de cota nas extremidades reais."""
+    out = []
+    f = fr.m_per_pt
+    zone = fp.buffer(6.0)
+    texts = []
+    for blk in page.get_text("dict").get("blocks", []):
+        for ln in blk.get("lines", []):
+            t = "".join(sp.get("text", "") for sp in ln.get("spans", [])).strip()
+            if not _DIM_TXT.match(t):
+                continue
+            x0, y0, x1, y1 = ln["bbox"]
+            X, Y = (x0 + x1) / 2 * f - ox, fr.h * f - (y0 + y1) / 2 * f - oy
+            if zone.contains(Point(X, Y)):
+                dx, dy = ln.get("dir", (1.0, 0.0))
+                texts.append((float(t.replace(",", ".")), X, Y, math.degrees(math.atan2(-dy, dx))))
+    if not texts:
+        return out
+    hz, vt = _face_lines(page, f, ox, oy)
+    _keep_faces(fp, hz, vt, out_faces := [])
+    written_dims.faces = out_faces                  # traço do arquiteto (faces das paredes), para as plantas cotadas
+    for v, X, Y, ang in texts:
+        d = {"v": v, "x": round(X, 3), "y": round(Y, 3), "ang": round(ang, 1), "ok": False}
+        mt = _match_span(v, X, Y, hz, vt)
+        if mt:
+            d.update(ok=True, axis=mt[0], a=[round(float(c), 3) for c in mt[1]], b=[round(float(c), 3) for c in mt[2]],
+                     err=float(mt[3]))
+        out.append(d)
+    return out
+
+
 def read(docs, hypotheses: str = "", country: str = "PT") -> Building | None:
     plans = find_plans(docs)
     if not plans:
@@ -298,6 +441,10 @@ def read(docs, hypotheses: str = "", country: str = "PT") -> Building | None:
     walls = snap_directions(walls, fp)
     b = Building(footprint=fp, covered=covered, walls=walls, country=country,
                  sources=[f"planta vetorial (doc {sheet.index + 1}, escala 1:{sheet.scale})"])
+    b.hypotheses["frame"] = {"doc": sheet.index, "page": page.number, "scale": sheet.scale, "ox": round(ox, 4), "oy": round(oy, 4)}
+    written_dims.faces = []
+    b.hypotheses["dims_text"] = written_dims(page, fr, ox, oy, fp)
+    b.hypotheses["faces"] = [[float(v) for v in q] for q in _drop_patterns(written_dims.faces)][:5000]
     # confrontação 1: área do contorno vs. área das paredes + compartimentos fechados
     b.checks = checks + [{
         "item": "área de construção (contorno lido)", "valor": round(fp.area, 2), "unidade": "m²",
