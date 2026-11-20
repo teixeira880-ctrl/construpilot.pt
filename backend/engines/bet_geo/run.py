@@ -115,7 +115,7 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
         esp = {"env": env, "solution": especialidades.Solution(100, 120, 100, 1.4, "bc"), "warnings": []}
     meta.setdefault("local", esp.get("concelho") or "")
     lines = costs.quote_lines(b, R, lay, esp)
-    await step("A calcular as imagens reais do edifício (geometria real)")
+    await step("Vistas do edifício (geometria real) para as capas")
     images: dict = {}
     try:
         import os as _os
@@ -325,38 +325,10 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
     async def on_step(label):
         await step(label)
 
-    async def images_fn(b, slab_h):
-        """Imagens dos PDF do estudo SEM fazer esperar o estudo pelas 4 vistas HD (20/11: estudo parado 20 min no passo
-        «imagens»): 1) imagens HD já em cache para esta geometria → usadas; 2) senão, a perspetiva principal física
-        1600×900 num processo separado com prazo (STUDY_IMG_TIMEOUT, 150 s) + vistas calculadas; 3) as 4 vistas HD do
-        orçamento continuam em segundo plano (cache por geometria)."""
-        from engines import quote_building, render_worker
-        geo = {**b.to_dict(), "slab_h": slab_h}
-        raw = {"_geo": geo}
-        try:
-            hit = await db.house_renders.find_one({"key": quote_building.geometry_key(raw)}, {"_id": 0}) if db is not None else None
-        except Exception:  # noqa: BLE001
-            hit = None
-        if hit and hit.get("views") and hit.get("quality") not in (None, "pbr_partial"):
-            import base64 as _b64
-            return {k: _b64.b64decode(v) for k, v in hit["views"].items()}
-        from . import covers
-        out = await asyncio.to_thread(covers.local_views, b, slab_h, ("main", "side", "rear", "aerial"))
-        main = await render_worker.render("geo", geo, "main", 1600, 900, int(os.environ.get("STUDY_IMG_SPP") or 24),
-                                          float(os.environ.get("STUDY_IMG_TIMEOUT") or 150))
-        if main:
-            out["main"] = main
-        try:                                       # vistas HD do orçamento: em segundo plano, nunca esperadas aqui
-            if db is not None:
-                await asyncio.wait_for(quote_building.views(db, raw, 0), 30)
-        except Exception:  # noqa: BLE001
-            log.warning("bet_geo: arranque das vistas HD falhou", exc_info=True)
-        return out
-
     meta = {"obra": _obra_name(docs, hypotheses), "branding": branding}
     with tempfile.TemporaryDirectory(prefix="cp_geo_") as tmp:
         try:
-            res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step, meta=meta, images_fn=images_fn)
+            res = await study(docs, hypotheses, country, Path(tmp), llm=llm, on_step=on_step, meta=meta)
         except Exception as exc:  # noqa: BLE001
             log.exception("bet_geo study failed for %s", job_id)
             await step(f"Motor de geometria real: erro ({type(exc).__name__}: {str(exc)[:160]}) — a usar o motor anterior",
@@ -398,7 +370,9 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
                points=points, questions=[], geometry_verified=True, execution_verified=False,
                geo_engine={"summary": s, "checks": R.checks, "geometry_checks": b.checks, "layout_checks": lay.checks,
                            "rooms": [r.to_dict() for r in lay.rooms], "sheets": res["sheets"]},
-               geo_building=geo, devis_ht=s["total_ht"], **extra)
+               geo_building=geo, devis_ht=s["total_ht"],
+               renders_status="pending" if str(os.environ.get("STUDY_LATE_IMAGES") or "1").lower() not in ("0", "false", "no") else None,
+               **extra)
     # orçamento OFICIAL (PDF/Excel do orçamento e da medição, com as imagens reais) a partir das mesmas linhas
     try:
         from engines.bet_core.assistant_tool import study_quote
@@ -408,10 +382,65 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
                         country, {"project": {"name": name}}, building_model={"_geo": geo}),
             float(os.environ.get("BET_QUOTE_TIMEOUT") or 300))
         if qid:
-            await step("Estudo completo concluído (geometria real)", artifacts=arts + list(qarts), quote_doc_id=qid)
+            arts = arts + list(qarts)
+            await step("Estudo completo concluído (geometria real)", artifacts=arts, quote_doc_id=qid)
     except Exception:  # noqa: BLE001 — o orçamento oficial nunca bloqueia o estudo já entregue
         log.warning("bet_geo study quote failed for %s", job_id, exc_info=True)
+        qid = None
+    # imagens HD DEPOIS da entrega (20/11: «se são as imagens que bloqueiam, passa no fim do estudo e da entrega»)
+    if db is not None and str(os.environ.get("STUDY_LATE_IMAGES") or "1").lower() not in ("0", "false", "no"):
+        t = asyncio.get_running_loop().create_task(_late_images(db, job_id, uid, cid, request_id, geo, store, arts, qid))
+        _LATE.add(t)
+        t.add_done_callback(_LATE.discard)
     return True
+
+
+_LATE: set = set()
+
+
+async def _late_images(db, job_id, uid, cid, request_id, geo, store, arts, qid):
+    """Depois de o estudo e o orçamento estarem entregues: as 4 vistas físicas HD (processo separado, prazo) → juntadas
+    ao estudo como imagens, e o orçamento oficial é refeito com elas. Nada disto atrasa nem bloqueia a entrega."""
+    import base64
+    import os
+    import tempfile
+    from datetime import datetime, timezone
+    try:
+        from engines import quote_building
+        raw = {"_geo": geo}
+        views = await asyncio.wait_for(quote_building.views(db, raw, float(os.environ.get("STUDY_LATE_WAIT") or 900)),
+                                       float(os.environ.get("STUDY_LATE_WAIT") or 900) + 120)
+        hit = await db.house_renders.find_one({"key": quote_building.geometry_key(raw)}, {"_id": 0, "quality": 1})
+        if not views or not hit or hit.get("quality") in (None, "pbr_partial"):
+            log.info("bet_geo late images %s: sem imagens físicas (fica a vista calculada)", job_id)
+            return
+        new = []
+        labels = {"main": "Perspetiva principal", "side": "Perspetiva lateral", "rear": "Perspetiva posterior", "aerial": "Vista aérea"}
+        with tempfile.TemporaryDirectory(prefix="cp_geo_img_") as tmp:
+            for k, data in views.items():
+                p = Path(tmp) / f"Imagem_real_HD_{k}.jpg"
+                p.write_bytes(data)
+                try:
+                    new.append(await store(db, uid, cid, request_id, "render_png", p, f"Imagem real HD — {labels.get(k, k)}"))
+                except Exception:  # noqa: BLE001
+                    log.warning("late image store failed", exc_info=True)
+        if qid:                                   # orçamento oficial refeito com as imagens HD (nova versão dos ficheiros)
+            try:
+                from engines.assistant_quote_exports import attach_quote_exports
+                await db.pro_documents.update_one({"doc_id": qid, "user_id": uid},
+                                                  {"$set": {"study_images_ready": True, "updated_at": datetime.now(timezone.utc).isoformat()}})
+                user = await db.users.find_one({"user_id": uid}, {"_id": 0}) or {"user_id": uid}
+                conv = {"user_id": uid, "conversation_id": cid, "_quote_request_id": "bet_" + job_id}
+                new += list(await attach_quote_exports(qid, user, conv))
+            except Exception:  # noqa: BLE001
+                log.warning("late quote exports failed for %s", job_id, exc_info=True)
+        if new:
+            await db.bet_study_jobs.update_one({"job_id": job_id}, {"$set": {
+                "artifacts": list(arts) + new, "renders_status": "done",
+                "updated_at": datetime.now(timezone.utc).isoformat()}})
+            log.info("bet_geo late images %s: %d ficheiros juntados", job_id, len(new))
+    except Exception:  # noqa: BLE001 — as imagens nunca estragam um estudo entregue
+        log.warning("bet_geo late images failed for %s", job_id, exc_info=True)
 
 
 async def geo_first(db, job_id, uid, cid, request_id, docs, hypotheses, country, step, store, llm=None, *,

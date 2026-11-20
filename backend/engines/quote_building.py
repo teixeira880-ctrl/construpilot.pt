@@ -388,10 +388,11 @@ async def enrich(db, doc: dict, uid: str, wait: float = 0) -> dict:
     if (doc or {}).get("doc_type") != "quote":
         return doc
     import os
+    no_wait = doc.get("source") == "bet_study" and not doc.get("study_images_ready")
     try:                                            # espera configurável pela foto IA verificada (Kling ~30–90 s)
-        wait = max(wait, float(os.environ.get("QUOTE_PHOTO_WAIT") or 90))
+        wait = 0 if no_wait else max(wait, float(os.environ.get("QUOTE_PHOTO_WAIT") or 90))
     except ValueError:
-        pass
+        pass                                        # orçamento do estudo: nunca espera (imagens HD entram depois, 20/11)
     raw = await model_for_quote(db, doc, uid)
     plans = await plan_images(db, doc, uid)
     from engines import images3d
