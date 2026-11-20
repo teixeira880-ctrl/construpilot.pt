@@ -192,14 +192,16 @@ async def _photoreal_all(db, key: str, base: dict[str, bytes], masks: dict[str, 
             from engines import house_pbr
             if house_pbr.available():
                 for k in VIEW_KEYS:
+                    from engines import render_worker               # processo separado: o servidor nunca fica preso
+                    tmo = float(os.environ.get("PBR_RENDER_TIMEOUT") or 420)
                     if raw.get("_geo"):                                  # geometria real do motor bet_geo (qualquer forma)
-                        from engines.bet_geo import views as GV
                         hi = k == "main"                                 # alta definição: principal 2560×1440, outras Full HD
                         w_, h_ = (2560, 1440) if hi else (1920, 1080)
                         spp_ = int(os.environ.get("QUOTE_GEO_SPP_MAIN" if hi else "QUOTE_GEO_SPP") or 48)
-                        png = await asyncio.to_thread(GV.render_pbr, _geo(raw), k, w_, h_, spp_)
+                        png = await render_worker.render("geo", raw["_geo"], k, w_, h_, spp_, tmo)
                     else:
-                        png = await asyncio.to_thread(house_pbr.render, raw, int(os.environ.get("QUOTE_PBR_W") or 1600), int(os.environ.get("QUOTE_PBR_H") or 900), k, int(os.environ.get("QUOTE_PBR_SPP") or 16))
+                        png = await render_worker.render("raw", raw, k, int(os.environ.get("QUOTE_PBR_W") or 1600),
+                                                         int(os.environ.get("QUOTE_PBR_H") or 900), int(os.environ.get("QUOTE_PBR_SPP") or 16), tmo)
                     if png:
                         got_pbr[k] = (png, "pbr_mitsuba")
                         if k == "main":

@@ -115,9 +115,16 @@ async def study(docs, hypotheses: str, country: str, out_dir: Path, *, llm=None,
     await step("A calcular as imagens reais do edifício (geometria real)")
     images: dict = {}
     try:
-        images = (await images_fn(b, slab_h)) if images_fn else await asyncio.to_thread(covers.local_views, b, slab_h)
-    except Exception:  # noqa: BLE001 — sem imagens o estudo sai na mesma
+        import os as _os
+        guard = float(_os.environ.get("STUDY_IMG_GUARD") or 240)        # o estudo nunca espera mais do que isto pelas imagens
+        images = (await asyncio.wait_for(images_fn(b, slab_h), guard)) if images_fn else \
+            await asyncio.to_thread(covers.local_views, b, slab_h)
+    except Exception:  # noqa: BLE001 — sem imagens o estudo sai na mesma (vistas calculadas)
         log.warning("bet_geo study images failed", exc_info=True)
+        try:
+            images = await asyncio.to_thread(covers.local_views, b, slab_h)
+        except Exception:  # noqa: BLE001
+            images = {}
     out_dir.mkdir(parents=True, exist_ok=True)
     await step("A desenhar as peças de execução cotadas e a montar o processo")
     try:
@@ -316,11 +323,31 @@ async def handle(db, job_id, uid, cid, request_id, docs, hypotheses, country, *,
         await step(label)
 
     async def images_fn(b, slab_h):
-        """As MESMAS imagens do orçamento (cache por geometria): renderização física da geometria real."""
-        from engines import quote_building
-        wait = float(os.environ.get("STUDY_IMG_WAIT") or 240)
+        """Imagens dos PDF do estudo SEM fazer esperar o estudo pelas 4 vistas HD (20/11: estudo parado 20 min no passo
+        «imagens»): 1) imagens HD já em cache para esta geometria → usadas; 2) senão, a perspetiva principal física
+        1600×900 num processo separado com prazo (STUDY_IMG_TIMEOUT, 150 s) + vistas calculadas; 3) as 4 vistas HD do
+        orçamento continuam em segundo plano (cache por geometria)."""
+        from engines import quote_building, render_worker
         geo = {**b.to_dict(), "slab_h": slab_h}
-        return await asyncio.wait_for(quote_building.views(db, {"_geo": geo}, wait), wait + 120)
+        raw = {"_geo": geo}
+        try:
+            hit = await db.house_renders.find_one({"key": quote_building.geometry_key(raw)}, {"_id": 0}) if db is not None else None
+        except Exception:  # noqa: BLE001
+            hit = None
+        if hit and hit.get("views") and hit.get("quality") not in (None, "pbr_partial"):
+            import base64 as _b64
+            return {k: _b64.b64decode(v) for k, v in hit["views"].items()}
+        from . import covers
+        out = await asyncio.to_thread(covers.local_views, b, slab_h, ("main", "side", "rear", "aerial"))
+        main = await render_worker.render("geo", geo, "main", 1600, 900, int(os.environ.get("STUDY_IMG_SPP") or 24),
+                                          float(os.environ.get("STUDY_IMG_TIMEOUT") or 150))
+        if main:
+            out["main"] = main
+        try:                                       # vistas HD do orçamento: em segundo plano, nunca esperadas aqui
+            await asyncio.wait_for(quote_building.views(db, raw, 0), 30)
+        except Exception:  # noqa: BLE001
+            log.warning("bet_geo: arranque das vistas HD falhou", exc_info=True)
+        return out
 
     meta = {"obra": _obra_name(docs, hypotheses), "branding": branding}
     with tempfile.TemporaryDirectory(prefix="cp_geo_") as tmp:

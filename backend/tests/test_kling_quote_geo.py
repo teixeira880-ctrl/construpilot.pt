@@ -248,10 +248,13 @@ def test_orcamento_sem_ia_usa_motores_internos_em_alta_definicao(monkeypatch):
     monkeypatch.setattr(house_pbr, "available", lambda: True)
     sizes = {}
 
-    def fake_pbr(b, view, w, h, spp):
+    from engines import render_worker
+    from engines.bet_geo.model import Building as _B
+
+    async def fake_pbr(kind, model, view, w, h, spp, timeout=600):      # renderização num processo separado (20/11)
         sizes[view] = (w, h, spp)
-        return GV.computed_and_mask(b, view, w // 4, h // 4)[0]
-    monkeypatch.setattr(GV, "render_pbr", fake_pbr)
+        return GV.computed_and_mask(_B.from_dict(model), view, w // 4, h // 4)[0]
+    monkeypatch.setattr(render_worker, "render", fake_pbr)
     db = mm.AsyncMongoMockClient()["t"]
     b = _house()
 
