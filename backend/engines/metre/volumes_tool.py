@@ -53,6 +53,10 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
     out["sources"]["dxf"] = {"layers": takeoff["layers"], "walls": {k: v for k, v in takeoff["elements"]["walls"].items() if k != "rows"},
                              "columns": {k: v for k, v in takeoff["elements"]["columns"].items() if k != "rows"}, "beams": {k: v for k, v in takeoff["elements"]["beams"].items() if k != "rows"},
                              "slab": takeoff["elements"]["slab"]}
+    if takeoff.get("levels_printed"):
+        lp = takeoff["levels_printed"]
+        out["sources"]["dxf"]["levels_printed"] = {"slab_tags": lp["slab_tags"][:40], "ai_texts": lp["ai_texts"][:40], "as_texts": lp["as_texts"][:40],
+                                                   "dominant": lp["dominant"], "note": lp["note"]}
     if coupes_result:
         out["sources"]["coupes"] = {"coupes": sorted(sheet), "dominant": coupes_summary.get("dominant"), "wall_thickness_cm": thick_cm}
 
@@ -64,6 +68,15 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
         dom = coupes_summary.get("dominant") or {}
         levels = {"as_plancher_haut_m": dom.get("as_plancher_haut_m"), "epaisseur_dalle_m": dom.get("epaisseur_dalle_cm") / 100 if dom.get("epaisseur_dalle_cm") else None,
                   "niveau_base_murs_m": base, "source": "cortes (dominante)" if dom else None, "exceptions": []}
+        printed = (takeoff.get("levels_printed") or {}).get("dominant")
+        if not dom and printed:
+            # Regra do utilizador: AI/AS sempre lidos nas etiquetas da planta; a base das paredes = AS da laje do piso inferior (argumento levels).
+            levels.update(as_plancher_haut_m=printed["as_plancher_haut_m"], epaisseur_dalle_m=printed["epaisseur_dalle_m"],
+                          source="etiquetas de laje impressas na planta (B / espessura / cota NGF)")
+            others = sorted({(t["as_ngf"], t["thickness_cm"]) for t in takeoff["levels_printed"]["slab_tags"]} - {(printed["as_plancher_haut_m"], round(printed["epaisseur_dalle_m"] * 100))})
+            for as_ngf, cm in others:
+                levels["exceptions"].append({"as_plancher_haut_m": as_ngf, "epaisseur_dalle_cm": cm,
+                                             "note": "outra etiqueta de laje impressa (outro edifício / zona de nível diferente): altura das paredes dessa zona a calcular com a sua própria AS/AI"})
     for k, v in (levels_override or {}).items():
         if v is not None and k in ("as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"):
             levels[k] = v

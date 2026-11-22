@@ -170,6 +170,41 @@ def coffrage_takeoff(dxf_bytes: bytes, *, wall_thicknesses_cm: list[float] | Non
     else:
         out["elements"]["slab"] = None
 
+    # Faces entre camadas: quando as camadas medidas isoladamente ficam claramente abaixo (contorno da laje fechado pelas paredes/vigas,
+    # paredes interrompidas pelas aberturas — exportações Revit/BEGT), as quantidades em planta vêm das faces entre camadas.
+    cross = None
+    try:
+        from engines.metre import cross_layer_faces as XF
+        xm = XF.measure(msp, layers, u)
+        if xm.get("ok"):
+            cross = XF.summary(xm)
+            out["cross_layer"] = cross
+            out["levels_printed"] = XF.level_labels(msp, u)
+    except Exception:  # noqa: BLE001 — o método complementar nunca bloqueia a medição de base
+        cross = None
+    switched = []
+    if cross:
+        sl = out["elements"].get("slab") or {}
+        if cross["slab"]["net_area_m2"] >= 1.25 * (sl.get("net_area_m2") or 0) and cross["slab"]["net_area_m2"] > 0:
+            out["elements"]["slab"] = {"gross_area_m2": cross["slab"]["net_area_m2"], "openings_count": 0, "openings_area_m2": 0.0,
+                                       "net_area_m2": cross["slab"]["net_area_m2"], "panels": cross["slab"]["panels"], "formula": cross["slab"]["formula"],
+                                       "single_layer_area_m2": sl.get("net_area_m2")}
+            slab_union = unary_union([r["poly"] for r in xm["slab"]])
+            switched.append("laje")
+        w = out["elements"]["walls"]
+        if cross["walls"]["plan_area_m2"] >= 1.25 * (w.get("plan_area_m2") or 0) and cross["walls"]["plan_area_m2"] > 0:
+            out["elements"]["walls"] = {**{k: v for k, v in cross["walls"].items()}, "rows": w.get("rows", []),
+                                        "single_layer": {"count": w.get("count"), "length_total_m": w.get("length_total_m"), "plan_area_m2": w.get("plan_area_m2")}}
+            wall_bodies = [r["poly"] for r in xm["wall"]] + [r["poly"] for r in xm["column"]]
+            switched.append("paredes")
+        bm = out["elements"]["beams"]
+        if cross["beams"]["length_total_m"] >= 1.25 * (bm.get("length_total_m") or 0) and cross["beams"]["length_total_m"] > 0:
+            out["elements"]["beams"] = {**cross["beams"], "rows": bm.get("rows", []), "single_layer": {"count": bm.get("count"), "length_total_m": bm.get("length_total_m")}}
+            switched.append("vigas")
+        if switched:
+            out["findings"].append({"severity": "info", "subject": "Medição por faces entre camadas",
+                                    "explanation": f"{', '.join(switched)}: as linhas de cada camada sozinhas não fecham os elementos (contornos fechados pelas paredes/vigas); "
+                                                   "quantidades em planta tiradas das faces entre camadas. Paredes < 7,5 cm (isolante) excluídas; 8-12 cm assinaladas como possível alvenaria."})
     lintels = sum(1 for e in msp if e.dxf.layer in layers.get("lintel", set()) and e.dxftype() == "INSERT")
     out["elements"]["lintels"] = {"count_blocks": lintels, "note": "blocos contados, dimensões não lidas (símbolos)"}
 
