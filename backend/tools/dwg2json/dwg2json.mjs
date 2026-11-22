@@ -46,5 +46,7 @@ const out = {
   entities: entities.map(clean),
   blocks,
 }
-fs.writeFileSync(output, JSON.stringify(out))
+// Certains DWG (ex. 2018+, handles 64 bits) contiennent des BigInt : JSON.stringify échouait (« Do not know how to serialize a BigInt »).
+const big = (_k, v) => (typeof v === 'bigint' ? (Number.isSafeInteger(Number(v)) ? Number(v) : v.toString()) : v)
+fs.writeFileSync(output, JSON.stringify(out, big))
 console.log(JSON.stringify({ entities: out.entities.length, blocks: Object.keys(blocks).length }))

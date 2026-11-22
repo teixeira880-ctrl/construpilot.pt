@@ -357,6 +357,62 @@ async def _doc_authorized(d: dict, user_id: str) -> bool:
     return bool(d) and d.get("user_id") == user_id
 
 
+PLAN_ARG_KEYS = ("plan_id", "plan_id_a", "plan_id_b", "dxf_plan_id", "formwork_plan_id", "coupes_plan_id")
+CAD_FORMATS = ("dwg", "dxf")
+_PROMOTE_LOCKS: dict = {}
+
+
+def _doc_format(meta: dict) -> str:
+    return ((meta.get("format") or (meta.get("filename") or "").rsplit(".", 1)[-1]) or "").lower()
+
+
+async def _plan_from_dossier_doc(ident: str, user: dict) -> str | None:
+    """DWG/DXF de um processo importado (doc_… ou nome de ficheiro) → planta plan_… utilizável pelas ferramentas de planta.
+
+    Os ficheiros de um processo ficam em assistant_docs; as ferramentas CAD (extract_autodesk_data, medições, betão…) só conhecem
+    plans_takeoff. Sem esta ponte, o modelo passava o doc_… como plan_id e recebia «Recurso inacessível» em ciclo.
+    Importação única e idempotente (promoted_plan_id guardado no doc); devolve None se não for um CAD desta conta."""
+    uid = user["user_id"]
+    resolved, _why = await _find_doc_id(ident, uid)
+    if not resolved:
+        return None
+    meta = await _allowed_doc(resolved, uid, with_data=False)
+    if _doc_format(meta) not in CAD_FORMATS:
+        return None
+
+    async def _existing():
+        m = await db.assistant_docs.find_one({"doc_id": resolved, "user_id": uid}, {"_id": 0, "promoted_plan_id": 1})
+        pid = (m or {}).get("promoted_plan_id")
+        if pid and await db.plans_takeoff.find_one({"plan_id": pid, "user_id": uid}, {"_id": 1}):
+            return pid
+        return None
+
+    if pid := await _existing():
+        return pid
+    lock = _PROMOTE_LOCKS.setdefault((uid, resolved), asyncio.Lock())
+    async with lock:
+        if pid := await _existing():
+            return pid
+        doc = await _allowed_doc(resolved, uid)
+        from routes.plans_crud import _process_and_store
+        plan = await _process_and_store(base64.b64decode(doc["data_b64"]), doc.get("filename") or f"{resolved}.{_doc_format(meta)}",
+                                        "application/octet-stream", user, None, False, None, doc.get("filename"))
+        await db.assistant_docs.update_one({"doc_id": resolved, "user_id": uid}, {"$set": {"promoted_plan_id": plan["plan_id"]}})
+        return plan["plan_id"]
+
+
+async def _resolve_plan_args(args: dict, user: dict) -> None:
+    """Substitui, nos argumentos de planta, um doc_… CAD de processo pelo plan_… correspondente (importado se preciso)."""
+    if not isinstance(args, dict):
+        return
+    for key in PLAN_ARG_KEYS:
+        value = args.get(key)
+        if isinstance(value, str) and value.strip() and not value.startswith("plan_"):
+            pid = await _plan_from_dossier_doc(value, user)
+            if pid:
+                args[key] = pid
+
+
 async def _find_doc_id(ident: str, uid: str) -> tuple[str | None, str | None]:
     """Resolve um identificador dado pelo modelo (doc_id OU nome de ficheiro, p. ex. do inventário de um processo) para um doc_id
     desta conta. Devolve (doc_id, None) ou (None, mensagem exata que nomeia o ficheiro)."""
@@ -428,6 +484,7 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
     if name not in {t.get("name") for t in tools_for(user)}:
         return {"ok": False, "error": "Ferramenta indisponível para este tipo de conta"}
     validate_args(name, args, tools_for(user))
+    await _resolve_plan_args(args, user)          # DWG/DXF de um processo (doc_…) → plan_… antes de qualquer ferramenta de planta
     if name in PLATFORM_TOOL_NAMES:
         return await execute_platform_tool(name, args, user, conv, db)
     if name in CRM_TOOL_NAMES:
@@ -507,6 +564,14 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 if not resolved:
                     raise                                            # comportamento anterior: documento alheio/inexistente recusado
                 ident, doc = resolved, await _allowed_doc(resolved, uid)
+            if _doc_format(doc) in CAD_FORMATS:
+                # DWG/DXF de um processo: não é um PDF; lê-se a planta importada (render vetorial) e devolve-se o plan_… a usar.
+                pid = await _plan_from_dossier_doc(ident, user)
+                from engines.plan_sources import load_plan_source
+                src = await load_plan_source(db, pid, uid) if pid else None
+                if not src:
+                    return {"ok": False, "error": "Ficheiro CAD do processo não convertível em planta legível: reimporte-o pelo módulo Plantas.", "document_id": ident}
+                doc, ident = {"mime": "application/pdf", **src, "filename": doc.get("filename")}, pid
         if name == "read_document":
             if doc.get("mime") in OFFICE_MIME_SET:
                 result = office_pages(doc.get("text") or "", args["first_page"], args["page_count"])
@@ -1561,6 +1626,16 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         except Exception:  # noqa: BLE001
             logger.warning("tool_errors logging failed", exc_info=True)
         result = {"ok": False, "error": _error_message(ref)}
+    if isinstance(result, dict) and result.get("ok") is False:
+        # Anti-ciclo: o mesmo erro da mesma ferramenta 3× no mesmo pedido → ordem explícita de parar e seguir por outra via.
+        fails = cache.setdefault("__fails__", {})
+        fkey = f"{name}|{str(result.get('error'))[:160]}"
+        fails[fkey] = fails.get(fkey, 0) + 1
+        if fails[fkey] >= 3:
+            result = {**result, "stop_retrying": True,
+                      "note": (f"Este mesmo erro de {name} já se repetiu {fails[fkey]} vezes neste pedido: NÃO voltes a chamar {name} "
+                               "com outros identificadores. Continua o estudo com as outras ferramentas (read_document, listar_processo, "
+                               "medições) e indica ao utilizador, uma só vez, o que não foi possível ler.")}
     _log = {"user_id": user["user_id"], "conversation_id": conv["conversation_id"],
         "tool": name, "ok": result.get("ok"), "preview": result.get("preview", False), "created_at": _now()}
     if name == "read_document" and isinstance(args, dict) and result.get("pages"):
