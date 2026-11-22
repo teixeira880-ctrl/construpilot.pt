@@ -47,6 +47,19 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
         return output
     if os.environ.get("ODA_FILE_CONVERTER"):
         logger.warning("ODA_FILE_CONVERTER set but not an executable file on this server — ignored")
+    aps_tried = False
+    if os.environ.get("APS_DWG_PREFERRED") == "true" and os.environ.get("APS_DWG_ENABLED") == "true":
+        # AutoCAD na nuvem Autodesk primeiro (leitura fiel do DWG); qualquer falha → conversor local, como antes.
+        from engines.autodesk_dwg import convert
+        aps_tried = True
+        try:
+            output, metadata = await convert(dwg_bytes, user_id=user_id)
+            _validate_dxf(output)
+            if provenance is not None: provenance.update(metadata)
+            return output
+        except Exception as exc:  # noqa: BLE001 — o conversor local continua a ser a rede de segurança
+            logger.warning("Autodesk (preferido) falhou, a usar o conversor local: %s", type(exc).__name__)
+            if provenance is not None: provenance.update(fallback_reason=f"aps_preferred_failed:{type(exc).__name__}")
     from engines import dwg_local
     if dwg_local.available():                      # LibreDWG (WebAssembly) no próprio servidor: grátis, sem chave, sem rede
         try:
@@ -59,7 +72,7 @@ async def dwg_to_dxf(dwg_bytes: bytes, filename: str = "plan.dwg", *, user_id=No
         except RuntimeError as exc:
             logger.warning("LibreDWG local falhou, a passar aos serviços externos: %s", exc)
             if provenance is not None: provenance.update(fallback_reason="libredwg_failed")
-    if os.environ.get("APS_DWG_ENABLED") == "true":
+    if os.environ.get("APS_DWG_ENABLED") == "true" and not aps_tried:
         from engines.autodesk_client import AutodeskError
         from engines.autodesk_dwg import convert
         try:
