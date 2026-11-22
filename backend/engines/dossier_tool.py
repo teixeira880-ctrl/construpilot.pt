@@ -27,7 +27,10 @@ INSTRUCTIONS = (
     "listar_processo devolve «controlo_lista_desenhos»: assinala os desenhos em falta, as revisões desatualizadas (ficheiro na revisão A "
     "quando a lista indica B) e os ficheiros fora da lista ANTES de medir ou orçamentar. «pecas_habituais_em_falta» é indicativo "
     "(depende do tipo de obra e do procedimento RJUE): apresenta-o como pontos a confirmar, nunca como uma falha certa. "
-    "A classificação por especialidade/piso é deduzida do nome do ficheiro: se uma peça parecer mal classificada, di-lo."
+    "A classificação por especialidade/piso é deduzida do nome do ficheiro: se uma peça parecer mal classificada, di-lo. "
+    "Ficheiros DWG/DXF de um processo: podes passar o seu doc_… diretamente como plan_id às ferramentas de planta "
+    "(extract_autodesk_data, medições, volumes de betão…) e a read_document: a plataforma importa-os automaticamente "
+    "como planta (plan_…) na primeira utilização; usa depois esse plan_… devolvido."
 )
 
 
