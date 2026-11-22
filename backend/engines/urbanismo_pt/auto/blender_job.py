@@ -26,6 +26,7 @@ _TAREFAS: Dict[str, asyncio.Task] = {}
 MIME = {"jpg": "image/jpeg", "png": "image/png", "glb": "model/gltf-binary", "blend": "application/x-blender",
         "json": "application/json"}
 PRINCIPAL = ("drone", "rua", "aerea", "jardim")
+_RANK = {"foto": 2, "blender": 1, "pc": 0}     # no PDF: acabamento fotográfico > Blender no servidor > rendu no PC
 # dossier de licenciamento: o motor de maior qualidade primeiro, mesmo que demore (GPT Image 2 «high» ~2 min por vista)
 MOTORES_DOSSIER = [m.strip() for m in os.environ.get("BLENDER_FOTO_MOTORES", "gpt_image_2,gemini_image3_pro,gen4_image,emergent").split(",") if m.strip()]      # a primeira vista acabada serve de referência de estilo às outras
 
@@ -183,7 +184,7 @@ async def desenhos_para_pdf(db, pid: str, uid: str) -> List[Dict[str, Any]]:
     por = {}
     for i in imgs:
         k = (i["camara"], i["estado"])
-        if k not in por or i.get("versao") == "foto":
+        if k not in por or _RANK.get(i.get("versao"), 1) > _RANK.get(por[k].get("versao"), 1):
             por[k] = i
     ordem = sorted(por.values(), key=lambda i: ((PRINCIPAL + ("topo",)).index(i["camara"]) if i["camara"] in PRINCIPAL + ("topo",) else 9,
                                                0 if i["estado"] == "antes" else 1))
@@ -193,7 +194,105 @@ async def desenhos_para_pdf(db, pid: str, uid: str) -> List[Dict[str, Any]]:
         if not f:
             continue
         sufixo = " — situação existente" if i["estado"] == "antes" else " — proposta"
-        orig = " (render Blender + acabamento fotográfico)" if i.get("versao") == "foto" else " (render Blender, Cycles)"
+        orig = {"foto": " (render Blender + acabamento fotográfico)", "pc": " (render 3D no PC do utilizador, path tracing)"}.get(
+            i.get("versao"), " (render Blender, Cycles)")
         out.append({"code": f"SIM-{n:02d}", "title": i["titulo"] + sufixo + orig, "filename": f"SIM-{n:02d}_{i['ficheiro']}",
                     "png": bytes(f["data"])})
     return out
+
+
+# ------------------------------------------------------------------ rendu híbrido: cena no servidor, imagem no PC
+# O servidor (sem GPU) só constrói a cena exata no Blender e exporta o .glb (segundos); o navegador do utilizador faz o
+# path tracing com a placa gráfica do PC. Estado e ficheiros à parte (prefixo pc_) para nunca tocar no trabalho Cycles.
+PC = "pc_"
+PC_FICHEIROS = ("modelo.glb", "modelo_antes.glb", "georreferencia.json")
+_TAREFAS_PC: Dict[str, asyncio.Task] = {}
+CAMARAS_PC = {"aerea", "drone", "rua", "jardim", "topo"}
+
+
+async def estado_pc(db, pid: str, uid: str) -> Dict[str, Any]:
+    d = await db.urbanismo_blender_pc.find_one({"processo_id": pid, "user_id": uid}, {"_id": 0})
+    if not d:
+        return {"estado": "nenhum", "blender_instalado": B.disponivel()}
+    if d.get("estado") == "a_preparar" and pid not in _TAREFAS_PC:
+        d["estado"] = "interrompido"
+    d["blender_instalado"] = B.disponivel()
+    return d
+
+
+async def executar_modelo(db, pid: str, uid: str) -> Dict[str, Any]:
+    async def passo(**c):
+        await db.urbanismo_blender_pc.update_one({"processo_id": pid, "user_id": uid}, {"$set": {**c, "updated_at": _now()}}, upsert=True)
+    d = await db.urbanismo_processos.find_one({"processo_id": pid, "user_id": uid}, {"_id": 0})
+    if not d or not d.get("auto"):
+        await passo(estado="erro", motivo="Processo não encontrado.")
+        return {"ok": False}
+    processo = {k: d.get(k) for k in ("auto", "volume", "terreno", "title")}
+    r = await B.renderizar_async(processo, "modelo")
+    if not r.get("ok"):
+        await passo(estado="erro", motivo=r.get("motivo"), log=(r.get("log") or "")[-1500:])
+        return r
+    guardados = []
+    for nome in PC_FICHEIROS:
+        if nome in r["ficheiros"]:
+            await _guardar(db, pid, uid, PC + nome, r["ficheiros"][nome])
+            guardados.append(PC + nome)
+    if PC + "modelo.glb" not in guardados:
+        await passo(estado="erro", motivo="O Blender não exportou o modelo 3D.")
+        return {"ok": False}
+    await passo(estado="pronto", ficheiros=guardados, georef=r["georef"], sol=r["sol"], segundos=r["segundos"],
+                camaras=[{k: c.get(k) for k in ("id", "titulo", "pos", "alvo", "lente_mm", "ortografica", "escala", "norte", "so_depois")}
+                         for c in json_camaras(r)])
+    return {"ok": True}
+
+
+def json_camaras(r: Dict[str, Any]) -> List[Dict[str, Any]]:
+    import json
+    try:
+        return json.loads(r["ficheiros"]["georreferencia.json"]).get("camaras") or []
+    except Exception:  # noqa: BLE001
+        return []
+
+
+async def lancar_modelo(db, pid: str, uid: str) -> Dict[str, Any]:
+    t = _TAREFAS_PC.get(pid)
+    if t and not t.done():
+        return {"ok": True, "estado": "a_preparar", "ja_em_curso": True}
+    if not B.disponivel():
+        return {"ok": False, "estado": "indisponivel", "motivo": "O Blender não está instalado neste servidor."}
+    await db.urbanismo_blender_pc.replace_one(
+        {"processo_id": pid, "user_id": uid},
+        {"processo_id": pid, "user_id": uid, "estado": "a_preparar", "created_at": _now(), "updated_at": _now()}, upsert=True)
+
+    async def correr():
+        try:
+            await executar_modelo(db, pid, uid)
+        except Exception as e:  # noqa: BLE001
+            log.exception("blender modelo pc %s", pid)
+            await db.urbanismo_blender_pc.update_one({"processo_id": pid, "user_id": uid},
+                                                     {"$set": {"estado": "erro", "motivo": f"{type(e).__name__}: {e}"[:300]}})
+        finally:
+            _TAREFAS_PC.pop(pid, None)
+    _TAREFAS_PC[pid] = asyncio.create_task(correr())
+    return {"ok": True, "estado": "a_preparar"}
+
+
+async def guardar_imagem_pc(db, pid: str, uid: str, camara: str, est: str, titulo: str, data: bytes, segundos: float = 0.0,
+                            amostras: int = 0) -> Dict[str, Any]:
+    """Imagem calculada no PC → guardada ao lado das do Blender (versão «pc») para o dossier e o PDF."""
+    if camara not in CAMARAS_PC or est not in ("antes", "depois"):
+        return {"ok": False, "motivo": "Vista inválida."}
+    if not (data[:3] == b"\xff\xd8\xff" or data[:8] == b"\x89PNG\r\n\x1a\n") or len(data) > 15_000_000:
+        return {"ok": False, "motivo": "Imagem inválida (JPEG ou PNG, até 15 MB)."}
+    ext = "png" if data[:4] == b"\x89PNG" else "jpg"
+    nome = f"{PC}{camara}_{est}.{ext}"
+    await _guardar(db, pid, uid, nome, data)
+    item = {"ficheiro": nome, "camara": camara, "titulo": (titulo or camara)[:120], "estado": est, "versao": "pc",
+            "segundos": round(float(segundos or 0), 1), "amostras": int(amostras or 0)}
+    q = {"processo_id": pid, "user_id": uid}
+    if not await db.urbanismo_blender.find_one(q, {"_id": 1}):
+        await db.urbanismo_blender.insert_one({**q, "estado": "pronto", "etapa": "Concluído (rendu no PC)", "imagens": [],
+                                               "created_at": _now(), "updated_at": _now()})
+    await db.urbanismo_blender.update_one(q, {"$pull": {"imagens": {"versao": "pc", "camara": camara, "estado": est}}})
+    await db.urbanismo_blender.update_one(q, {"$push": {"imagens": item}, "$set": {"updated_at": _now()}})
+    return {"ok": True, "imagem": item}

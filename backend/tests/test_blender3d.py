@@ -128,3 +128,50 @@ def test_trabalho_com_acabamento_e_pdf(processo, monkeypatch):
     assert len(sims) == 5 and all(s["png"] for s in sims)
     assert sum("acabamento fotográfico" in s["title"] for s in sims) == 4
     assert "modelo.glb" in st["ficheiros"]
+
+
+@pytest.mark.skipif(importlib.util.find_spec("bpy") is None, reason="Blender (bpy) não instalado")
+def test_so_modelo_para_rendu_no_pc(processo):
+    """Modo «modelo»: o servidor sem GPU só constrói a cena e exporta os .glb (antes e depois), sem nenhuma imagem Cycles."""
+    r = B.renderizar(processo, [], "modelo", prazo_s=600)
+    assert r["ok"], r.get("log")
+    f = r["ficheiros"]
+    assert f["modelo.glb"][:4] == b"glTF" and f["modelo_antes.glb"][:4] == b"glTF"
+    assert f["modelo.glb"] != f["modelo_antes.glb"]
+    assert not [n for n in f if n.endswith(".jpg")] and r["manifesto"]["imagens"] == []
+    geo = json.loads(f["georreferencia.json"])
+    assert {c["id"] for c in geo["camaras"]} >= {"aerea", "drone", "rua", "topo"} and geo["sol"]["elevacao"] > 0
+
+
+def test_imagem_pc_entra_no_pdf_sem_tirar_o_lugar_ao_servidor(processo, monkeypatch):
+    db = AsyncMongoMockClient()["t"]
+    jpg = b"\xff\xd8\xff" + b"2" * 700
+
+    async def fake_render(proc, q):
+        assert q == "modelo"
+        geo = json.dumps({"camaras": [{"id": "aerea", "titulo": "Vista aérea", "pos": [0, -30, 20], "alvo": [0, 0, 3], "lente_mm": 35}]})
+        return {"ok": True, "manifesto": {"imagens": []}, "georef": {"crs": "EPSG:3763"}, "sol": {"elevacao": 40}, "segundos": 2.0,
+                "ficheiros": {"modelo.glb": b"glTF1", "modelo_antes.glb": b"glTF0", "georreferencia.json": geo.encode(), "cena.blend": b"B"}}
+    monkeypatch.setattr(B, "renderizar_async", fake_render)
+
+    async def go():
+        await db.urbanismo_processos.insert_one({"processo_id": "p2", "user_id": "u1", **processo})
+        await BJ.executar_modelo(db, "p2", "u1")
+        st = await BJ.estado_pc(db, "p2", "u1")
+        mau = await BJ.guardar_imagem_pc(db, "p2", "u1", "aerea", "depois", "x", b"nao e imagem")
+        r1 = await BJ.guardar_imagem_pc(db, "p2", "u1", "aerea", "depois", "Vista aérea", jpg, 12.3, 256)
+        await BJ.guardar_imagem_pc(db, "p2", "u1", "aerea", "depois", "Vista aérea", jpg + b"3", 10, 256)   # substitui, não duplica
+        sims_pc = await BJ.desenhos_para_pdf(db, "p2", "u1")
+        # um render Cycles do servidor para a mesma vista passa à frente do PC
+        await db.urbanismo_blender.update_one({"processo_id": "p2"}, {"$push": {"imagens": {
+            "ficheiro": "aerea_depois.jpg", "camara": "aerea", "titulo": "Vista aérea", "estado": "depois", "versao": "blender"}}})
+        await BJ._guardar(db, "p2", "u1", "aerea_depois.jpg", jpg)
+        sims = await BJ.desenhos_para_pdf(db, "p2", "u1")
+        f = await BJ.ler_ficheiro(db, "p2", "u1", "pc_modelo.glb")
+        return st, mau, r1, sims_pc, sims, f
+    st, mau, r1, sims_pc, sims, f = asyncio.new_event_loop().run_until_complete(go())
+    assert st["estado"] == "pronto" and set(st["ficheiros"]) == {"pc_modelo.glb", "pc_modelo_antes.glb", "pc_georreferencia.json"}
+    assert st["camaras"][0]["id"] == "aerea" and f["mime"] == "model/gltf-binary"
+    assert not mau["ok"] and r1["ok"]
+    assert len(sims_pc) == 1 and "PC do utilizador" in sims_pc[0]["title"]
+    assert len(sims) == 1 and "Cycles" in sims[0]["title"]

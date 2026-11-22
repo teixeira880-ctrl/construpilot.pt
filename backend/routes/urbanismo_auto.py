@@ -12,6 +12,8 @@ GET  /urbanismo-auto/processos/{pid}/streetview.jpg  fotografia real da rua vira
 GET  /urbanismo-auto/processos/{pid}/desenhos/{n}.png · pecas-desenhadas.pdf · export.zip
 POST /urbanismo-auto/processos/{pid}/blender          renders reais no Blender (antes/depois) + modelo 3D georreferenciado
 GET  /urbanismo-auto/processos/{pid}/blender          estado e lista de imagens · GET …/blender/{nome} ficheiro
+POST /urbanismo-auto/processos/{pid}/blender-pc       rendu híbrido: o servidor prepara só a cena (.glb), o PC calcula a imagem
+GET  /urbanismo-auto/processos/{pid}/blender-pc       estado da cena para o PC · POST …/blender-pc/imagem imagem calculada no PC
 """
 from __future__ import annotations
 
@@ -361,6 +363,46 @@ async def blender_estado(pid: str, user=Depends(current_user)) -> dict:
     from engines.urbanismo_pt.auto import blender_job as BJ
     await _owned(pid, user["user_id"])
     return await BJ.estado(db, pid, user["user_id"])
+
+
+@router.post("/processos/{pid}/blender-pc")
+async def blender_pc_lancar(pid: str, user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    await _owned(pid, user["user_id"])
+    r = await BJ.lancar_modelo(db, pid, user["user_id"])
+    if not r.get("ok"):
+        raise HTTPException(503, r.get("motivo") or "Blender indisponível.")
+    return r
+
+
+@router.get("/processos/{pid}/blender-pc")
+async def blender_pc_estado(pid: str, user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    await _owned(pid, user["user_id"])
+    return await BJ.estado_pc(db, pid, user["user_id"])
+
+
+class ImagemPcIn(BaseModel):
+    camara: str = Field(..., max_length=20)
+    estado: str = Field(..., pattern="^(antes|depois)$")
+    titulo: str = Field(default="", max_length=120)
+    b64: str = Field(..., max_length=21_000_000)
+    segundos: float = 0.0
+    amostras: int = 0
+
+
+@router.post("/processos/{pid}/blender-pc/imagem")
+async def blender_pc_imagem(pid: str, body: ImagemPcIn, user=Depends(current_user)) -> dict:
+    from engines.urbanismo_pt.auto import blender_job as BJ
+    await _owned(pid, user["user_id"])
+    try:
+        data = base64.b64decode(body.b64.split(",", 1)[-1], validate=True)
+    except Exception:  # noqa: BLE001
+        raise HTTPException(400, "Imagem inválida.")
+    r = await BJ.guardar_imagem_pc(db, pid, user["user_id"], body.camara, body.estado, body.titulo, data, body.segundos, body.amostras)
+    if not r.get("ok"):
+        raise HTTPException(400, r.get("motivo"))
+    return r
 
 
 @router.get("/processos/{pid}/blender/{nome}")

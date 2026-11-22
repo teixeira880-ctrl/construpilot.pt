@@ -344,7 +344,8 @@ def especificacao(processo: Dict[str, Any], vizinhos: Optional[List[Dict[str, An
     camaras.append({"id": "topo", "titulo": "Planta georreferenciada sobre o ortofotomapa", "pos": [pc.x, pc.y, 200.0],
                     "alvo": [pc.x, pc.y, 0.0], "ortografica": True, "escala": round(2 * meia, 2), "norte": list(norte), "so_depois": True})
 
-    res = {"teste": (320, 180, 4), "rapido": (1280, 720, 24), "normal": (1600, 900, 48), "alta": (2560, 1440, 160)}.get(qualidade, (1600, 900, 48))
+    res = {"teste": (320, 180, 4), "rapido": (1280, 720, 24), "normal": (1600, 900, 48), "alta": (2560, 1440, 160),
+           "modelo": (1600, 900, 1)}.get(qualidade, (1600, 900, 48))
     mats = a.get("materiais") or {}
     origem_ll = g.ll(0.0, 0.0)
     return {
@@ -366,7 +367,7 @@ def especificacao(processo: Dict[str, Any], vizinhos: Optional[List[Dict[str, An
         "caixilharia": mats.get("caixilharia") or "aluminio_antracite",
         "pisos": hh["levels"], "piso_a_piso": hh["storey_h_m"],
         "sol": sol, "camaras": camaras,
-        "render": {"largura": res[0], "altura": res[1], "amostras": res[2]},
+        "render": {"largura": res[0], "altura": res[1], "amostras": res[2], "so_modelo": qualidade == "modelo"},
     }
 
 

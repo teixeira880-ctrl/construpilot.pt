@@ -726,6 +726,45 @@ def camara(c, larg, alt):
     return ob
 
 
+def simplificar_para_gltf():
+    """Só no modo «modelo» (rendu no PC): o glTF não lê materiais procedimentais nem cadeias de nós, e exportaria tudo
+    a branco. Para cada material cuja cor vem de nós: liga a fotografia (PBR) diretamente, ou fixa a cor média dos nós.
+    A cena dos renders Cycles do servidor nunca passa por aqui."""
+    for m in bpy.data.materials:
+        nt = getattr(m, "node_tree", None)
+        b = nt.nodes.get("Principled BSDF") if nt else None
+        if not b or not b.inputs["Base Color"].is_linked:
+            continue
+        entrada = b.inputs["Base Color"]
+        vistos, fila, imagem = set(), [entrada.links[0].from_node], None
+        cores = {"tijolo": [], "rampa": [], "rgb": [], "mistura": []}      # por ordem de fiabilidade
+        while fila:
+            n = fila.pop()
+            if n.name in vistos:
+                continue
+            vistos.add(n.name)
+            if n.type == "TEX_IMAGE" and n.image and imagem is None:
+                imagem = n
+            elif n.type == "TEX_BRICK":                  # pedra / madeira / lajeado: as duas cores das peças, sem a junta
+                cores["tijolo"] += [tuple(n.inputs[k].default_value[:3]) for k in ("Color1", "Color2")]
+            elif n.type == "VALTORGB":
+                cores["rampa"] += [tuple(e.color[:3]) for e in n.color_ramp.elements]
+            elif n.type == "RGB":
+                cores["rgb"].append(tuple(n.outputs[0].default_value[:3]))
+            for i in n.inputs:
+                if i.is_linked:
+                    fila += [lk.from_node for lk in i.links]
+                elif n.type in ("MIX", "MIX_RGB") and i.type == "RGBA":
+                    cores["mistura"].append(tuple(i.default_value[:3]))
+        cores = next((v for v in cores.values() if v), [])
+        for lk in list(entrada.links):
+            nt.links.remove(lk)
+        if imagem is not None:
+            nt.links.new(imagem.outputs["Color"], entrada)
+        elif cores:
+            entrada.default_value = (*[sum(c[k] for c in cores) / len(cores) for k in range(3)], 1.0)
+
+
 def renderizar(spec, pasta):
     t0 = time.time()
     col = construir(spec, pasta)
@@ -767,7 +806,8 @@ def renderizar(spec, pasta):
         col["envolvente_antes"].hide_render = depois
         col["tecnico"].hide_render = True
     ficheiros, imagens = [], []
-    for c in spec["camaras"]:
+    so_modelo = bool(spec["render"].get("so_modelo"))   # rendu feito no PC do utilizador: só a cena, sem Cycles
+    for c in ([] if so_modelo else spec["camaras"]):
         camara(c, larg, alt)
         quad = c.get("ortografica")
         sc.render.resolution_x = alt + alt // 3 if quad else larg
@@ -785,18 +825,24 @@ def renderizar(spec, pasta):
             print(f"[blender] {nome} {time.time() - t1:.1f} s", flush=True)
 
     # exportações: modelo do «depois» (glb), cena completa (.blend), georreferência
+    def exportar_glb(est, nome):
+        estado(est)
+        for c in col.values():
+            c.hide_viewport = c.hide_render
+        col["tecnico"].hide_viewport = True
+        try:
+            bpy.ops.export_scene.gltf(filepath=os.path.join(pasta, nome), export_format="GLB", use_visible=True,
+                                      export_apply=True, export_cameras=False, export_lights=False)
+            ficheiros.append(nome)
+        except Exception as e:  # noqa: BLE001
+            print("[blender] glb falhou:", nome, e, flush=True)
+        for c in col.values():
+            c.hide_viewport = False
+    if so_modelo:
+        simplificar_para_gltf()
+        exportar_glb("antes", "modelo_antes.glb")       # situação existente, para o antes / depois no PC
+    exportar_glb("depois", "modelo.glb")
     estado("depois")
-    for c in col.values():
-        c.hide_viewport = c.hide_render
-    col["tecnico"].hide_viewport = True
-    try:
-        bpy.ops.export_scene.gltf(filepath=os.path.join(pasta, "modelo.glb"), export_format="GLB", use_visible=True,
-                                  export_apply=True, export_cameras=False, export_lights=False)
-        ficheiros.append("modelo.glb")
-    except Exception as e:  # noqa: BLE001
-        print("[blender] glb falhou:", e, flush=True)
-    for c in col.values():
-        c.hide_viewport = False
     try:
         bpy.ops.file.pack_all()
     except Exception:  # noqa: BLE001
@@ -810,7 +856,7 @@ def renderizar(spec, pasta):
         json.dump(geo, f, ensure_ascii=False, indent=1)
     ficheiros.append("georreferencia.json")
     man = {"ficheiros": ficheiros, "imagens": imagens, "segundos": round(time.time() - t0, 1),
-           "blender": bpy.app.version_string, "motor": "Cycles (CPU, path tracing)", "amostras": spec["render"]["amostras"],
+           "blender": bpy.app.version_string, "motor": "cena para rendu no PC" if so_modelo else "Cycles (CPU, path tracing)", "amostras": spec["render"]["amostras"],
            "resolucao": [larg, alt]}
     with open(os.path.join(pasta, "manifesto.json"), "w") as f:
         json.dump(man, f, ensure_ascii=False)

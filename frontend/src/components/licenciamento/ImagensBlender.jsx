@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Camera, Download, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+
+const RenduPC = lazy(() => import("./RenduPC"));   // three-gpu-pathtracer só é carregado quando este painel abre
 
 /* Imagens do projeto feitas no Blender (Cycles) sobre o ortofotomapa oficial: antes / depois por vista,
    versão Blender pura e versão com acabamento fotográfico (geometria bloqueada), modelo 3D georreferenciado. */
@@ -48,7 +50,8 @@ function AntesDepois({ antes, depois, titulo }) {
 }
 
 function Vista({ pid, camara, imgs, versao }) {
-  const pick = (estado) => imgs.find(i => i.estado === estado && i.versao === versao) || imgs.find(i => i.estado === estado && i.versao === "blender");
+  const pick = (estado) => imgs.find(i => i.estado === estado && i.versao === versao) || imgs.find(i => i.estado === estado && i.versao === "blender")
+    || imgs.find(i => i.estado === estado && i.versao === "pc");
   const a = pick("antes"), d = pick("depois");
   const base = `/urbanismo-auto/processos/${pid}/blender/`;
   const ua = useBlob(a ? base + a.ficheiro : null);
@@ -58,6 +61,7 @@ function Vista({ pid, camara, imgs, versao }) {
       <div className="flex items-center gap-2 text-sm font-medium">
         {d?.titulo}
         {d?.versao === "foto" ? <Badge variant="secondary" className="text-[10px]">Blender + acabamento fotográfico</Badge>
+          : d?.versao === "pc" ? <Badge variant="outline" className="text-[10px]">Render 3D no seu PC (path tracing)</Badge>
           : <Badge variant="outline" className="text-[10px]">Render Blender (Cycles)</Badge>}
       </div>
       <AntesDepois antes={ua} depois={ud} titulo={d?.titulo || camara} />
@@ -73,6 +77,10 @@ export default function ImagensBlender({ pid }) {
   const [versao, setVersao] = useState("foto");
   const [qual, setQual] = useState("normal");
   const [erro, setErro] = useState(null);
+
+  const reler = useCallback(async () => {
+    try { const { data } = await api.get(`/urbanismo-auto/processos/${pid}/blender`); setSt(data); } catch { /* o ciclo seguinte volta a ler */ }
+  }, [pid]);
 
   useEffect(() => {
     let vivo = true, t;
@@ -148,6 +156,10 @@ export default function ImagensBlender({ pid }) {
           {camaras.map(([cam, imgs]) => <Vista key={cam} pid={pid} camara={cam} imgs={imgs} versao={versao} />)}
         </div>
       )}
+
+      <Suspense fallback={null}>
+        <RenduPC pid={pid} onImagem={reler} onServidor={a_render || st?.blender_instalado === false ? null : lancar} />
+      </Suspense>
 
       {(st?.ficheiros || []).length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-t pt-3">

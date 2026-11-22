@@ -11902,6 +11902,16 @@ thingies@^2.5.0:
   resolved "https://registry.yarnpkg.com/thingies/-/thingies-2.6.1.tgz#4eb28e2585a75288f1765a0b08f1dfa020357a6f"
   integrity sha512-cV/CMGTK3M4MlnJ/0At6ismOw/A0EEniDNScajjz/Br3c1sqE72YD01rGpPTKwd27wAxI5Pr+6+0w8yofzFRYw==
 
+three-gpu-pathtracer@0.0.27:
+  version "0.0.27"
+  resolved "https://registry.yarnpkg.com/three-gpu-pathtracer/-/three-gpu-pathtracer-0.0.27.tgz#3c02746c9bbf3dd2207052ff9bf31c130ea94a22"
+  integrity sha512-NLUYnL9nSLcUFurIHHLHbnmpKLaXi8JbGqfTeWRSx4h+l7Ndpllwj2DK2uOYTSUaN5+PuZ1JRqv1ynHEB1XCwQ==
+
+three-mesh-bvh@0.9.17:
+  version "0.9.17"
+  resolved "https://registry.yarnpkg.com/three-mesh-bvh/-/three-mesh-bvh-0.9.17.tgz#52396cdd776ef03e34a48c2412f88269f8fc7cf0"
+  integrity sha512-uU2DNnTHsMcrsAM1kiLXEeLx4JNsPLayLTPE5Rf7exbFRuQYEifS4DhGEA+lDiU8/7mID1PsE9sH8i6p5prZSg==
+
 three-mesh-bvh@0.9.9:
   version "0.9.9"
   resolved "https://registry.yarnpkg.com/three-mesh-bvh/-/three-mesh-bvh-0.9.9.tgz#273be4a3d4a4a287e6be2d947237e47657f84183"
@@ -12897,6 +12907,11 @@ wsl-utils@^0.1.0:
   integrity sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==
   dependencies:
     is-wsl "^3.1.0"
+
+xatlas-web@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/xatlas-web/-/xatlas-web-0.1.0.tgz#c1c636d557cbcd30726b546cde011c3861b6e4ef"
+  integrity sha512-PprVfuXbaIskxLTLBUQRaWfgSy9xUQqAMIRooOw0P6NYqwgh6T0voeer6+Z5M7AFt5SGXUybuww/uDGs1yw8vQ==
 
 xml-name-validator@^3.0.0:
   version "3.0.0"

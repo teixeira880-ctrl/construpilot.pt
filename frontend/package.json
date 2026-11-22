@@ -69,8 +69,11 @@
     "tailwind-merge": "3.2.0",
     "tailwindcss-animate": "1.0.7",
     "three": "0.185.0",
+    "three-gpu-pathtracer": "0.0.27",
+    "three-mesh-bvh": "0.9.17",
     "vaul": "1.1.2",
     "web-ifc": "0.0.77",
+    "xatlas-web": "^0.1.0",
     "zod": "3.24.4"
   },
   "scripts": {
