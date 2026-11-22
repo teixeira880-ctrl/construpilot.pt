@@ -144,7 +144,8 @@ def level_labels(msp, u: float) -> dict:
     """Etiquetas impressas na planta: laje «B / espessura / cota NGF» (camada *FLOR-IDEN*) e textos «Ai: …» / «As: …».
     Regra do utilizador: parede = AS da laje de baixo → AI da laje de cima; os valores vêm sempre das etiquetas, nunca de uma altura típica."""
     thick, lv, ai, as_ = [], [], [], []
-    for e in msp.query("TEXT MTEXT"):
+    # msp pode ser o modelspace ou uma lista já filtrada por vistas (plan_views): iterar e filtrar pelo tipo serve para os dois
+    for e in (x for x in msp if x.dxftype() in ("TEXT", "MTEXT")):
         t = (e.plain_text() if e.dxftype() == "MTEXT" else e.dxf.text).replace("\n", " ").strip()
         p = e.dxf.insert
         xy = (round(p.x * u, 2), round(p.y * u, 2))
