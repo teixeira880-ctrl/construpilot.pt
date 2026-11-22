@@ -357,6 +357,19 @@ def build_estimate(args: dict, lang: str = "pt") -> dict:
                                      "mandatory_notice": MANDATORY_NOTICE_PT if lang == "pt" else MANDATORY_NOTICE}}
 
 
+async def _available_ids_hint(user_id: str) -> str:
+    """Identificadores reais que o modelo pode usar (plantas importadas + ficheiros CAD dos processos), mais recentes primeiro."""
+    try:
+        plans = [p async for p in db.plans_takeoff.find({"user_id": user_id}, {"_id": 0, "plan_id": 1, "filename": 1}).sort("created_at", -1).limit(15)]
+        cads = [d async for d in db.assistant_docs.find({"user_id": user_id, "filename": {"$regex": r"\.(dwg|dxf)$", "$options": "i"}},
+                                                        {"_id": 0, "doc_id": 1, "filename": 1}).sort("created_at", -1).limit(25)]
+    except Exception:  # noqa: BLE001
+        return ""
+    parts = [f"{p['plan_id']} ({p.get('filename') or ''})" for p in plans] + [f"{d['doc_id']} ({d.get('filename') or ''})" for d in cads]
+    return ("Identificadores válidos nesta conta (copiar exatamente; um doc_… DWG/DXF é aceite como plan_id): " + "; ".join(parts)) if parts \
+        else "Nenhuma planta nem ficheiro DWG/DXF encontrado nesta conta: pede ao utilizador para anexar o ficheiro."
+
+
 async def _allowed_plan(plan_id: str, user_id: str) -> dict:
     p = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id},
                                         {"_id": 0, "plan_id": 1, "filename": 1, "page_count": 1, "cotes_checks": 1, "studies": 1, "cad_import": 1, "model_derivative": 1, "pages.text_blocks": 1})
@@ -1991,7 +2004,10 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
                 raise _UnitsError(_qu.message(_bad, "pt"))
         key = (name, json.dumps(args, sort_keys=True, allow_nan=False))
         read_tool = name in ('read_construction_study', 'get_supervision_result', 'list_platform_resources', 'read_work_draft', 'read_quote_draft', 'find_quote_drafts', 'get_plan_results', 'read_document', 'inspect_document_region', 'search_own_history') or name in assistant_clt_agent.NAMES  # o estudo muda entre chamadas
-        if not read_tool and key in cache:
+        if name in cache.get("__blocked__", ()):
+            result = {"ok": False, "stop_retrying": True,
+                      "error": f"{name} já falhou 3 vezes neste pedido: não foi executada outra vez. Continua com as outras ferramentas e diz ao utilizador, uma só vez, o que não foi possível ler."}
+        elif not read_tool and key in cache:
             result, attachments = cache[key]
         else:
             from contextlib import suppress as _suppress
@@ -2024,7 +2040,8 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         result = {"ok": False, "error": f"Argumento inválido: {exc.message}. Corrige o valor (usa exatamente um dos valores permitidos) "
                                         "e chama de novo a ferramenta; não menciones este erro ao utilizador."}
     except PermissionError:
-        result = {"ok": False, "error": "Recurso inacessível: o documento referido não pertence a esta conta ou já não existe. Pede ao utilizador para (re)anexar o ficheiro à mensagem (não é um problema de assinatura)."}
+        result = {"ok": False, "error": "Recurso inacessível: o identificador dado não corresponde a nenhum documento desta conta. Não inventes outro identificador.",
+                  "available": await _available_ids_hint(user["user_id"])}
     except HTTPException as exc:
         result = {"ok": False, "error": str(exc.detail)}
     except Exception:
@@ -2044,6 +2061,10 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
         fails = cache.setdefault("__fails__", {})
         fkey = f"{name}|{str(result.get('error'))[:160]}"
         fails[fkey] = fails.get(fkey, 0) + 1
+        per_tool = cache.setdefault("__fails_tool__", {})
+        per_tool[name] = per_tool.get(name, 0) + 1
+        if per_tool[name] >= 3:
+            cache.setdefault("__blocked__", set()).add(name)
         if fails[fkey] >= 3:
             result = {**result, "stop_retrying": True,
                       "note": (f"Este mesmo erro de {name} já se repetiu {fails[fkey]} vezes neste pedido: NÃO voltes a chamar {name} "
