@@ -51,7 +51,15 @@ def config(name):
 
 
 def api_base():
-    return f"{config('APS_AUTOMATION_BASE_URL').rstrip('/')}/{config('APS_AUTOMATION_REGION')}/v3"
+    # O painel Live tem APS_AUTOMATION_BASE_URL já com região e versão (…/da/us-east/v3): juntar outra vez «/us-east/v3»
+    # dava …/da/us-east/v3/us-east/v3 e todas as chamadas Automation respondiam 404.
+    base = config('APS_AUTOMATION_BASE_URL').rstrip('/')
+    region = config('APS_AUTOMATION_REGION').strip('/')
+    if base.endswith('/v3'):
+        return base
+    if region and base.endswith(f'/{region}'):
+        return f"{base}/v3"
+    return f"{base}/{region}/v3"
 
 
 def client():
