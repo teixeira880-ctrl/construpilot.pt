@@ -58,8 +58,10 @@ export function HeadTags({ routeDefaults }) {
   const path = cfg.canonical || key;
   const [ov, setOv] = useState(null);
   useEffect(() => { let on = true; loadOverrides().then((o) => on && setOv(o[path] || null)); return () => { on = false; }; }, [path]);
-  const lang = cfg.lang || "fr";
-  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  // Site português: a língua declarada ao Google é sempre pt-PT, salvo página que indique outra.
+  // (O valor por omissão era "fr", herdado do construpilot.fr: o <html> ficava declarado em francês durante a renderização.)
+  const lang = cfg.lang || "pt-PT";
+  useEffect(() => { if (cfg.lang) document.documentElement.lang = lang; }, [lang, cfg.lang]);
 
   const canonicalPath = ov?.canonical || path;
   const url = canonicalPath === "/" ? `${BASE}/` : `${BASE}${canonicalPath}`;
@@ -73,7 +75,7 @@ export function HeadTags({ routeDefaults }) {
       {cfg.keywords && <meta name="keywords" content={cfg.keywords} />}
       <link rel="canonical" href={url} />
       <meta name="robots" content={cfg.noindex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1"} />
-      <link rel="alternate" hrefLang={lang === "pt" ? "pt-PT" : "pt-PT"} href={url} />
+      <link rel="alternate" hrefLang="pt-PT" href={url} />
       {cfg.ptPath && <link rel="alternate" hrefLang="pt-PT" href={`${PT_BASE}${cfg.ptPath}`} />}
       <link rel="alternate" hrefLang="x-default" href={url} />
       <meta property="og:type" content={cfg.type || "website"} />
