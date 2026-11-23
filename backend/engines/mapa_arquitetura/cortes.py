@@ -117,8 +117,10 @@ def perfil_cobertura(z, lista, cota_piso, mapa_camadas=None) -> dict | None:
                 if laje:
                     topo = laje[0][1]
                     cima = [c for c in cot if c[0] > topo + 0.2]
+                    if cima and not (0.08 <= min(cima)[1] - min(cima)[0] <= 0.6):
+                        cima = []               # o que está por cima é parede / platibanda (alta), não a laje da cobertura
                     if cima:
-                        perfil.append((x, min(c[0] for c in cima) - topo))
+                        perfil.append((x, min(c[0] for c in cima) - topo, topo))
                 x += passo
             if len(perfil) < 20:
                 continue
@@ -131,10 +133,16 @@ def perfil_cobertura(z, lista, cota_piso, mapa_camadas=None) -> dict | None:
                     runs.append(cur); cur = [b]
             runs.append(cur)
             r = max(runs, key=len)
-            hs = [h for _, h in r]
+            hs = [h for _, h, _ in r]
             d = {"corte": nome, "vao": round(r[-1][0] - r[0][0], 2), "h_min": round(min(hs), 2), "h_max": round(max(hs), 2),
                  "h_media": round(sum(hs) / len(hs), 2),
-                 "area_perfil": round(sum((b[0] - a[0]) * (a[1] + b[1]) / 2 for a, b in zip(r, r[1:])), 2)}
+                 "area_perfil": round(sum((b[0] - a[0]) * (a[1] + b[1]) / 2 for a, b in zip(r, r[1:])), 2),
+                 # para o desenho de controlo (coordenadas da folha : y = k − cota)
+                 "_poly": [(px, k - t) for px, _, t in r] + [(px, k - t - h) for px, h, t in reversed(r)],
+                 "_linhas": [pl for e in f.elementos if e.tipo == "path" for pl in e.pls if len(pl) > 1
+                             and all(r[0][0] - 3 <= q[0] <= r[-1][0] + 3 and k - (r[0][2] + max(hs) + 2.5) <= q[1] <= k - (r[0][2] - 3) for q in pl)],
+                 "_caixa": (r[0][0] - 3, k - (r[0][2] + max(hs) + 2.5), r[-1][0] + 3, k - (r[0][2] - 3)),
+                 "_x": (round(r[0][0], 2), round(r[-1][0], 2))}
             if melhor is None or (d["h_max"] - d["h_min"], d["vao"]) > (melhor["h_max"] - melhor["h_min"], melhor["vao"]):
                 melhor = d
     return melhor

@@ -59,6 +59,19 @@ def paginas(modelo: dict, titulo: str = "") -> list:
                 dr.ellipse([x - r, y - r, x + r, y + r], outline=(200, 0, 160) if d["tipo"] == "interior" else (0, 90, 220), width=2)
         t = f"{titulo} — Planta : {p['piso']}"
         pags.append((t, _pagina(p.get("_linhas", []), t, plan, _bbox(pts))))
+    for p in modelo["pisos"]:
+        pc = p.get("perfil_cobertura")
+        if not pc or not pc.get("_poly"):
+            continue
+
+        def corte(dr, T, S, fn, pc=pc):
+            dr.polygon([T(q) for q in pc["_poly"]], fill=(255, 140, 0, 90), outline=(220, 90, 0))
+            x0, x1 = pc["_x"]
+            yb = max(q[1] for q in pc["_poly"])
+            dr.text(T((x0, yb + 0.3)), f"vão {pc['vao']:.2f} m · beirado {pc['h_min']:.2f} · cumeeira {pc['h_max']:.2f} · média "
+                                       f"{pc['h_media']:.2f} · área {pc['area_perfil']:.2f} m²", fill=(150, 60, 0), font=fn)
+        t = f"{titulo} — {pc['corte']} : {p['piso']}, da laje à face inferior da cobertura"
+        pags.append((t, _pagina(pc["_linhas"], t, corte, pc["_caixa"])))
     for v in modelo["alcados"]:
         z = v["zona"]
 
