@@ -168,7 +168,9 @@ async def read_levels(b: Building, docs, llm, plan_page=None) -> list[str]:
         if not secs:
             return ["Sem cortes legíveis no processo: pé-direito e terras por defeito."]
         images = [plan_with_edges_png(b)] + ([_png(plan_page, 90)] if plan_page is not None else []) + [_png(p) for p in secs]
-        txt = await llm(SYSTEM, PROMPT.format(n=len(edges(b))), images=images, max_tokens=1500)
+        import asyncio as _aio
+        # 240 s de teto próprio: uma ligação pendurada ao fornecedor não pode prender o estudo (regra best-effort)
+        txt = await _aio.wait_for(llm(SYSTEM, PROMPT.format(n=len(edges(b))), images=images, max_tokens=1500), 240)
         m = re.search(r"\{.*\}", txt or "", re.S)
         data = json.loads(m.group(0)) if m else {}
         return apply(b, data)
