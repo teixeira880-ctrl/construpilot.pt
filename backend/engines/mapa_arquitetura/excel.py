@@ -36,8 +36,6 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
             ad = c.get("area_no_desenho")
             _linha(wc, r, [p["piso"], c["nome"], c["area"], c["perimetro"], "exterior" if c["exterior"] else "interior", c["origem"],
                            ad, f"=C{r}-G{r}" if ad is not None else None], {3: N2, 4: N2, 7: N2, 8: N2}, (3, 4, 7)); r += 1
-    rc = r - 1
-    C = lambda col: f"Compartimentos!${col}$5:${col}${max(rc, 5)}"
 
     wpa = _folha(wb, "Paredes", ["Piso", "Tipo", "Espessura (m)", "Comprimento (m)", "Altura (m)", "Área bruta (m²)"], [16, 18, 13, 15, 11, 15], AZ)
     r = 5
@@ -46,48 +44,50 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
         for w in p["paredes"]:
             agg[(w["tipo"], round(w["espessura"] * 20) / 20)] += w["comprimento"]
         for (tipo, t), L in sorted(agg.items()):
-            _linha(wpa, r, [p["piso"], tipo, t, round(L, 2), f"=Pressupostos!$B${alt_linha[p['piso']]}", f'=IF(ISNUMBER(E{r}),D{r}*E{r},"")'],
-                   {3: N2, 4: N2, 5: N2, 6: N2}, (3, 4)); r += 1
-    rp = r - 1
-    P = lambda col: f"Paredes!${col}$5:${col}${max(rp, 5)}"
+            hh = p.get("altura")
+            _linha(wpa, r, [p["piso"], tipo, t, round(L, 2), hh, f"=D{r}*E{r}" if hh else None],
+                   {3: N2, 4: N2, 5: N2, 6: N2}, (3, 4, 5)); r += 1
 
     wd = _folha(wb, "Portas", ["Piso", "Largura (m)", "Tipo", "Quantidade"], [16, 12, 12, 12], AZ)
     r = 5
     for p in modelo["pisos"]:
         for (L, tipo), n in sorted(Counter((d["L"], d["tipo"]) for d in p["portas"]).items()):
             _linha(wd, r, [p["piso"], L, tipo, n], {2: N2, 4: N0}, (2, 4)); r += 1
-    rd = r - 1
 
     wv = _folha(wb, "Vãos", ["Alçado", "Nível (0 = fila de cima)", "Largura (m)", "Altura (m)", "Área (m²)"], [42, 12, 12, 12, 12], AZ)
     r = 5
     for v in modelo["alcados"]:
         for d in v["vaos"]:
             _linha(wv, r, [v["vista"], d["nivel"], d["L"], d["H"], f"=C{r}*D{r}"], {3: N2, 4: N2, 5: N2}, (3, 4)); r += 1
-    rv = r - 1
 
+    comps = [(p, c) for p in modelo["pisos"] for c in p["compartimentos"]]
+    pav = sum(c["area"] for _, c in comps if not c["exterior"] and c["nome"] != "Caixa do elevador")
+    san = sum(c["area"] for _, c in comps if c["nome"] in ("Instalação sanitária", "I.S.", "WC"))
+    ext = sum(c["area"] for _, c in comps if c["exterior"])
+    def par(tipo, area=False):
+        return round(sum(w["comprimento"] * ((p.get("altura") or 0) if area else 1) for p in modelo["pisos"] for w in p["paredes"]
+                         if w["tipo"] == tipo), 2)
+    portas = sum(1 for p in modelo["pisos"] for d in p["portas"] if d["tipo"] == "interior")
+    vaos = [d for v in modelo["alcados"] for d in v["vaos"]]
     linhas = [
         ("1", "PAVIMENTOS E TETOS", None, None, None),
-        ("1.1", "Pavimento interior (sem caixa do elevador)", "m²",
-         f'=SUMIFS({C("C")},{C("E")},"interior")-SUMIFS({C("C")},{C("B")},"Caixa do elevador")', "folha Compartimentos"),
-        ("1.2", "  dos quais instalações sanitárias", "m²",
-         f'=SUMIFS({C("C")},{C("B")},"Instalação sanitária")+SUMIFS({C("C")},{C("B")},"I.S.")+SUMIFS({C("C")},{C("B")},"WC")', None),
-        ("1.3", "Varandas, terraços e áreas exteriores fechadas", "m²", f'=SUMIFS({C("C")},{C("E")},"exterior")', None),
-        ("1.4", "Tetos interiores", "m²", "=D6", "igual ao pavimento interior"),
+        ("1.1", "Pavimento interior (sem caixa do elevador)", "m²", round(pav, 2), "folha Compartimentos"),
+        ("1.2", "  dos quais instalações sanitárias", "m²", round(san, 2), "folha Compartimentos"),
+        ("1.3", "Varandas, terraços e áreas exteriores fechadas", "m²", round(ext, 2), "folha Compartimentos"),
+        ("1.4", "Tetos interiores", "m²", round(pav, 2), "igual ao pavimento interior"),
         ("2", "PAREDES", None, None, None),
-        ("2.1", "Paredes de fachada — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"fachada")', "folha Paredes"),
-        ("2.2", "Paredes de fachada — área bruta (altura de cada piso em Pressupostos ; sem dedução de vãos)", "m²", f'=SUMIFS({P("F")},{P("B")},"fachada")', None),
-        ("2.3", "Paredes interiores — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"interior")', None),
-        ("2.4", "Paredes interiores — área bruta (altura de cada piso em Pressupostos ; sem dedução de portas)", "m²", f'=SUMIFS({P("F")},{P("B")},"interior")', None),
+        ("2.1", "Paredes de fachada — comprimento", "m", par("fachada"), "folha Paredes"),
+        ("2.2", "Paredes de fachada — área bruta (altura de cada piso ; sem dedução de vãos)", "m²", par("fachada", True), "folha Paredes"),
+        ("2.3", "Paredes interiores — comprimento", "m", par("interior"), "folha Paredes"),
+        ("2.4", "Paredes interiores — área bruta (altura de cada piso ; sem dedução de portas)", "m²", par("interior", True), "folha Paredes"),
         ("3", "PORTAS E VÃOS", None, None, None),
-        ("3.1", "Portas interiores", "un", f'=SUMIFS(Portas!$D$5:$D${max(rd, 5)},Portas!$C$5:$C${max(rd, 5)},"interior")', "folha Portas"),
-        ("3.2", "Vãos exteriores nos alçados", "un", f"=COUNT(Vãos!$C$5:$C${max(rv, 5)})", "folha Vãos — conferir no PDF de controlo"),
-        ("3.3", "Vãos exteriores nos alçados — área", "m²", f"=SUM(Vãos!$E$5:$E${max(rv, 5)})", None),
+        ("3.1", "Portas interiores", "un", portas, "folha Portas"),
+        ("3.2", "Vãos exteriores nos alçados", "un", len(vaos), "folha Vãos — conferir no PDF"),
+        ("3.3", "Vãos exteriores nos alçados — área", "m²", round(sum(d["L"] * d["H"] for d in vaos), 2), "folha Vãos"),
     ]
     for i, (a, d, u, q, o) in enumerate(linhas):
         _linha(mp, 5 + i, [a, d, u, q, o], {4: N2}, negrito=u is None)
     r = 6 + len(linhas)
-    mp.cell(row=r, column=2, value="NÃO INCLUÍDO (medir à parte)").font = BLD
-    for t in modelo.get("nao_incluido", []):
-        r += 1; _linha(mp, r, [None, t])
+    mp.cell(row=r, column=2, value="Ver a folha «Mapa» (completa, por capítulo e por piso, da fundação à cobertura).").font = BLD
     wb.save(caminho)
     return caminho

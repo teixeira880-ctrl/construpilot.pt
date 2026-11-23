@@ -440,4 +440,9 @@ def gerar_xlsx(modelo: dict, caminho: str, titulo: str, extras: list | None = No
     wb.move_sheet("Mapa", offset=-wb.sheetnames.index("Mapa"))
     wb.move_sheet("Elementos numerados", offset=1 - wb.sheetnames.index("Elementos numerados"))
     wb.save(caminho)
+    try:                                   # resultado das fórmulas gravado na célula : pré-visualizações (telemóvel, Drive) mostram tudo
+        from engines.xlsx_cache import preencher
+        preencher(caminho)
+    except Exception:  # noqa: BLE001
+        pass
     return caminho

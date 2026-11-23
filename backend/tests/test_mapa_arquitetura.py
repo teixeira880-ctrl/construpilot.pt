@@ -303,3 +303,16 @@ def test_quadro_de_fundacoes_no_mapa():
     assert betao == pytest.approx(3 * 1.6 * 1.6 * 0.5 + 2.2 * 2.2 * 0.5)
     aco = sum(x["qtd"] for x in L if x["un"] == "kg")
     assert aco == pytest.approx(3 * 2 * 10 * (1.6 - 0.16) * 0.888 + 2 * 11 * (2.2 - 0.16) * 1.578, rel=1e-6)
+
+
+def test_excel_mostra_valores_sem_recalcular(tmp_path):
+    """Pré-visualizações (telemóvel, Drive) não recalculam : todas as fórmulas têm o resultado gravado na célula."""
+    from openpyxl import load_workbook
+    m = assistant_tool.medir([("teste.dwfx", _dwfx())], 2.5, None, str(tmp_path))
+    f, v = load_workbook(m["files"]["xlsx"]), load_workbook(m["files"]["xlsx"], data_only=True)
+    for nome in f.sheetnames:
+        for a, b in zip(f[nome].iter_rows(), v[nome].iter_rows()):
+            for c, c2 in zip(a, b):
+                if isinstance(c.value, str) and c.value.startswith("="):
+                    assert c2.value is not None, (nome, c.coordinate, c.value)
+    assert v["Mapa (resumo)"]["D6"].value == pytest.approx(25.30, abs=0.1)

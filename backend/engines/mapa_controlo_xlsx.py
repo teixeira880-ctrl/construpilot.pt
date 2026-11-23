@@ -40,6 +40,11 @@ def anexar_imagens(caminho_xlsx: str, imagens: list, nota: str = "") -> bool:
             ws.add_image(xi, f"A{linha + 1}")
             linha += 3 + int(im.height / 20)            # ~20 px por linha de Excel
         wb.save(caminho_xlsx)
+        try:                    # o openpyxl apaga os resultados das fórmulas ao gravar : voltar a gravá-los (pré-visualizações)
+            from engines.xlsx_cache import preencher
+            preencher(caminho_xlsx)
+        except Exception:  # noqa: BLE001
+            pass
         return True
     except Exception:  # noqa: BLE001
         log.exception("anexar_imagens falhou")
