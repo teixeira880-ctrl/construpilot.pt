@@ -80,6 +80,19 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
                                      if enterrado and re.search(r"cave|sub|garag", enterrado["piso"], re.I) else None)
                         extras += fundacoes.linhas_planta(pl, origem=nome_e, area_laje_terrea=area_cave)
                         nao = [x for x in nao if not x["designacao"].startswith(("Muros de suporte", "Escavação geral"))]
+                    try:                              # lajes, vigas, aço base das lajes e aço dos muros (cortes tipo)
+                        from engines.mapa_estrutura import lajes_dossier
+                        mur = fundacoes.muros_por_nome(pl) if pl else None
+                        est_l = lajes_dossier.linhas_mapa(pdf, nome_e, mur)
+                        if est_l:
+                            extras += est_l
+                            nao = [x for x in nao if not x["designacao"].startswith(("Pilares, vigas, lajes", "Aço A500"))]
+                            nao.append({"capitulo": "Estrutura", "designacao": "Pilares — betão, cofragem e aço (quadro de pilares)",
+                                        "descricao": "quadro de pilares do projeto de estrutura", "un": "m³"})
+                            nao.append({"capitulo": "Estrutura", "designacao": "Reforços desenhados das lajes e armaduras das vigas",
+                                        "descricao": "armaduras desenhadas nas plantas de laje", "un": "kg"})
+                    except Exception as exc:  # noqa: BLE001
+                        modelo["avisos"].append(f"{nome_e} : lajes não lidas ({type(exc).__name__}).")
                     q = fundacoes.ler_quadro(pdf)
                     if q:
                         extras += fundacoes.linhas_mapa(q, nome_e)

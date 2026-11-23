@@ -375,3 +375,31 @@ def test_legenda_dos_pavimentos_exteriores():
     L = {r["designacao"][:40]: r["qtd"] for r in exteriores.linhas_mapa(ex)}
     assert any(v == pytest.approx(6.0) for k, v in L.items() if "camada 1" in k)
     assert any(v == pytest.approx(15.0) for k, v in L.items() if "camada 3" in k)
+
+
+def test_notas_de_aco_e_cortes_dos_muros():
+    import io
+    import pymupdf
+    from reportlab.pdfgen import canvas
+    from engines.mapa_estrutura import lajes_dossier as LD
+    b = io.BytesIO()
+    c = canvas.Canvas(b, pagesize=(1600, 1200))
+    c.setFont("Helvetica", 7)
+    c.drawString(50, 1150, "Armadura base: - Armadura longitudinal superior: Ø10 af.0,20 - Armadura longitudinal inferior: Ø10 af.0,20 "
+                           "- Armadura transversal superior: Ø10 af.0,20 - Armadura transversal inferior: Ø10 af.0,20")
+    c.drawString(50, 1135, "Armadura base entre nervuras: Superior: 3Ø10 Inferior: 3Ø10")
+    c.drawString(50, 1120, "afastamento de 0,90 m entre eixos de nervuras ; Malhasol CQ38")
+    for x, nome, linhas in ((100, "MURO TIPO M1", ["Ø12 af.0,18 (L=3,1)", "Ø8 af.0,20", "4Ø16 corridos", "5Ø12 af.0,20"]),
+                            (800, "MUROS TIPO M4, M5 e M7", ["Ø10 af.0,15 (L=3,1)", "Ø8 af.0,20", "2Ø16 corridos"])):
+        c.drawString(x, 900, nome)
+        for j, t in enumerate(linhas):
+            c.drawString(x + 20, 860 - 15 * j, t)
+    c.save()
+    doc = pymupdf.open(stream=b.getvalue(), filetype="pdf")
+    n = LD.notas_aco(doc)
+    assert n["lm"] == {"d": 10, "s": 0.2, "camadas": 4} and n["lfa"]["eixo"] == 0.9 and n["malha_lfa"] == "CQ38"
+    cm = LD.cortes_muros(doc)
+    assert set(cm) == {"M1", "M4", "M5", "M7"}
+    assert [x["txt"] for x in cm["M1"]["corridos"]] == ["4Ø16 corridos"]
+    assert any(x["L"] == 3.1 and x["s"] == 0.18 for x in cm["M1"]["barras"])
+    assert cm["M5"]["barras"][0]["d"] == 10

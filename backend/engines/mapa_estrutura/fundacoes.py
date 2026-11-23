@@ -180,7 +180,17 @@ def ler_planta(pdf: bytes) -> dict:
         veq = [(_f(m.group(1)), _f(m.group(2))) for t, _ in blocos for m in re.finditer(r"VEQ\s*\(?\s*(\d+[.,]\d+)\s*x\s*(\d+[.,]\d+)", t)]
         m_esc = re.search(r"COTA GERAL DE ESCAVA[ÇC][ÃA]O\s+(\d+[.,]\d+)", txt, re.I)
         m_tos = COTA_TXT.search(txt)
-        muros_lbl = [(m.group(1), _f(m.group(2)), p) for t, p in blocos for m in re.finditer(r"MURO\s+(M\d+)\s*\((\d+[.,]\d+)\)", t)]
+        muros_lbl = []                                         # rótulo «MURO M4 (0,25)» : posição da própria palavra M4
+        wsp = page.get_text("words")
+        for w in wsp:
+            if not re.fullmatch(r"M\d+", w[4]):
+                continue
+            cx, cy = (w[0] + w[2]) / 2, (w[1] + w[3]) / 2
+            viz = [x for x in wsp if abs((x[0] + x[2]) / 2 - cx) < 40 and abs((x[1] + x[3]) / 2 - cy) < 40]
+            esp = [x for x in viz if re.fullmatch(r"\((\d+[.,]\d+)\)", x[4])]
+            if any(x[4] == "MURO" for x in viz) and esp:
+                e_ = min(esp, key=lambda x: abs((x[0] + x[2]) / 2 - cx) + abs((x[1] + x[3]) / 2 - cy))
+                muros_lbl.append((w[4], _f(e_[4][1:-1]), (cx * k, cy * k)))
         par_lbl = [p for t, p in blocos if re.fullmatch(r"PAR\s*\d+", t)]
         found = {"isoladas": [], "lineares": [], "veq": [], "muros": [], "paredes": [], "outros": []}
         for c, x0, y0, x1, y1 in rects:
@@ -200,7 +210,12 @@ def ler_planta(pdf: bytes) -> dict:
                 cx, cy = g.centroid.x, g.centroid.y
                 d_par = min((((cx - p[0]) ** 2 + (cy - p[1]) ** 2) ** 0.5 for p in par_lbl), default=1e9)
                 d_mur = min((((cx - p[0]) ** 2 + (cy - p[1]) ** 2) ** 0.5 for _, _, p in muros_lbl), default=1e9)
-                (found["paredes"] if d_par < d_mur and d_par < 4.0 else found["muros"]).append((g, a))
+                if d_par < d_mur and d_par < 4.0:
+                    found["paredes"].append((g, a))
+                else:
+                    found["muros"].append((g, a))
+                    viz = sorted(((((cx - p[0]) ** 2 + (cy - p[1]) ** 2) ** 0.5, n) for n, ee, p in muros_lbl if abs(ee - a) < 0.03), key=lambda t: t[0])
+                    found.setdefault("muros_nome", []).append(viz[0][1] if viz else None)
         lt = re.search(r"((?:\S+\s+){0,40})LAJE T[ÉE]RREA", txt)
         esp = [_f(x) for x in re.findall(r"\b(0[.,]\d{2})\b", lt.group(1))] if lt else []
         malha = re.search(r"Malhasol\s*\(?\s*(A[QR]\s*\d+)", txt, re.I)
@@ -210,8 +225,20 @@ def ler_planta(pdf: bytes) -> dict:
                 "h_linear": sorted({h for _, h in lin}), "lin_lbl": lin, "veq_sec": veq[0] if veq else None,
                 "cota_sup_linear": max(csup) if csup else None, "cota_escavacao": _f(m_esc.group(1)) if m_esc else None,
                 "tosco_fundacao": _f(m_tos.group(1)) if m_tos else None, "toscos": toscos,
-                "muros_lbl": [(n, e) for n, e, _ in muros_lbl]}
+                "muros_lbl": [(n, e) for n, e, _ in muros_lbl], "muros_nome": found.get("muros_nome", [])}
     return {}
+
+
+def muros_por_nome(pl: dict) -> dict:
+    """{"por_nome": {M4: comprimento m}, "H": altura, "L": total} — cada faixa de muro vai para o rótulo MURO mais próximo com a mesma espessura."""
+    from collections import defaultdict as _dd
+    por = _dd(float)
+    for (g, e), n in zip(pl.get("muros", []), pl.get("muros_nome", [])):
+        if n:
+            por[n] += g.area / e
+    topo = next((t for t in pl.get("toscos", []) if pl.get("tosco_fundacao") and t > pl["tosco_fundacao"] + 1.5), None)
+    H = (topo - pl["cota_sup_linear"]) if topo and pl.get("cota_sup_linear") else None
+    return {"por_nome": {k: round(v, 2) for k, v in por.items()}, "H": H, "L": round(sum(por.values()), 2)}
 
 
 def linhas_planta(pl: dict, quadro: dict | None = None, origem: str = "", area_laje_terrea: float | None = None) -> list:
