@@ -15,7 +15,7 @@ from pathlib import Path
 
 from engines import mapa_controlo_xlsx
 
-from . import controlo, dwfx, excel, medicao
+from . import dwfx, excel, medicao
 
 log = logging.getLogger(__name__)
 MAX_ARTIFACT = 25 * 1024 * 1024
@@ -64,10 +64,14 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None) -> dict:
         if modelo.get("ok") and out_dir:
             out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
             titulo = Path(nome).stem[:60]
-            pags = controlo.paginas(modelo, titulo)
-            xlsx = excel.gerar(modelo, str(out / "Mapa_quantidades_arquitetura.xlsx"), titulo)
-            mapa_controlo_xlsx.anexar_imagens(xlsx, pags)
-            modelo["files"] = {"xlsx": xlsx, "controlo": controlo.gerar_pdf(modelo, str(out / "Controlo_medicao_arquitetura.pdf"), titulo, pags)}
+            from . import premium
+            xlsx = excel.gerar(modelo, str(out / "Mapa_quantidades.xlsx"), titulo)
+            premium.gerar_xlsx(modelo, xlsx, titulo, nao_medido=premium.NAO_MEDIDO_PADRAO)
+            pags = premium.desenhos(modelo, titulo)                 # plantas, alçados e cortes com os elementos numerados
+            mapa_controlo_xlsx.anexar_imagens(xlsx, pags, "Plantas, alçados e cortes com cada elemento numerado (W paredes, P portas, "
+                                                          "C compartimentos, V vãos) : os números são os do mapa.")
+            modelo["files"] = {"xlsx": xlsx, "controlo": premium.gerar_pdf(modelo, str(out / "Mapa_quantidades.pdf"), titulo,
+                                                                           nao_medido=premium.NAO_MEDIDO_PADRAO)}
         return modelo
     return {"ok": False, "avisos": avisos or ["Nenhum DWFX nos documentos."]}
 
@@ -133,8 +137,8 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, doc_loader=
             if not modelo.get("ok"):
                 return {"ok": False, "error": " ".join(modelo.get("avisos") or ["Desenho não legível."]),
                         "o_que_falta": "DWFX exportado do AutoCAD (layouts com escala), com as camadas de paredes e os rótulos dos compartimentos."}
-            arts = [await _store(db, uid, cid, request_id, "mapa_arquitetura_xlsx", Path(modelo["files"]["xlsx"]), "Mapa de quantidades de arquitetura (Excel)"),
-                    await _store(db, uid, cid, request_id, "mapa_arquitetura_controlo", Path(modelo["files"]["controlo"]), "Desenho de controlo da medição (PDF)")]
+            arts = [await _store(db, uid, cid, request_id, "mapa_arquitetura_xlsx", Path(modelo["files"]["xlsx"]), "Mapa de quantidades (Excel)"),
+                    await _store(db, uid, cid, request_id, "mapa_arquitetura_controlo", Path(modelo["files"]["controlo"]), "Mapa de quantidades premium com plantas numeradas (PDF)")]
     except asyncio.TimeoutError:
         return {"ok": False, "error": "A medição excedeu 5 minutos : envie só as folhas de plantas e alçados."}
     except Exception as exc:  # noqa: BLE001

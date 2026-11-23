@@ -45,7 +45,8 @@ def paredes_duplas(S, tmin=0.07, tmax=0.45):
             c, d, vx, vy, M = info[j]
             if abs(ux * vy - uy * vx) > 0.017:
                 continue
-            g = abs((c[0] - a[0]) * (-uy) + (c[1] - a[1]) * ux)
+            gs = (c[0] - a[0]) * (-uy) + (c[1] - a[1]) * ux           # com sinal : de que lado está a outra face
+            g = abs(gs)
             if not (tmin <= g <= tmax):
                 continue
             s1, s2 = sorted(((c[0] - a[0]) * ux + (c[1] - a[1]) * uy, (d[0] - a[0]) * ux + (d[1] - a[1]) * uy))
@@ -53,13 +54,13 @@ def paredes_duplas(S, tmin=0.07, tmax=0.45):
             if ov < 0.15:
                 continue
             if best is None or g < best[0] - 1e-6:
-                best = (g, j, ov, max(0, s1), min(L, s2))
+                best = (g, j, ov, max(0, s1), min(L, s2), 1.0 if gs > 0 else -1.0)
         if best:
-            g, j, ov, o0, o1 = best
+            g, j, ov, o0, o1, sg = best
             key = (min(i, j), max(i, j))
             if key not in usados:
                 usados[key] = {"t": round(g, 3), "L": ov, "eixo": ((a[0] + ux * o0, a[1] + uy * o0), (a[0] + ux * o1, a[1] + uy * o1)),
-                               "n": (-uy, ux)}
+                               "n": (-uy * sg, ux * sg)}                     # normal para o lado da outra face
     return list(usados.values())
 
 
@@ -181,17 +182,24 @@ def medir(folha, papeis, ponte=0.55) -> dict:
         comps.append({"nome": nome, "origem": origem, "area": round(p.area, 2), "area_no_desenho": escrita[0] if len(escrita) == 1 else None,
                       "perimetro": round(p.exterior.length + sum(i.length for i in p.interiors), 2),
                       "exterior": ext, "_geo": p})
-    interiores = unary_union([c["_geo"] for c in comps if not c["exterior"]]) if comps else None
+    exteriores = unary_union([c["_geo"] for c in comps if c["exterior"]]) if any(c["exterior"] for c in comps) else None
+    dentro_env = unary_union(blocos) if blocos else None
+
+    def fora(q) -> bool:
+        """Lado exterior : fora do contorno do edifício ou numa varanda / terraço."""
+        return (dentro_env is None or not dentro_env.contains(q)) or (exteriores is not None and exteriores.contains(q))
     paredes = []
     for w in duplas:
         (a, b), n, t = w["eixo"], w["n"], w["t"]
         m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        l1 = Point(m[0] - n[0] * 0.4, m[1] - n[1] * 0.4)
-        l2 = Point(m[0] + n[0] * (t + 0.4), m[1] + n[1] * (t + 0.4))
-        i1 = interiores is not None and interiores.contains(l1)
-        i2 = interiores is not None and interiores.contains(l2)
-        tipo = "interior" if (i1 and i2) else ("fachada" if (i1 or i2) else "exterior / muro")
-        paredes.append({"espessura": round(t, 2), "comprimento": round(w["L"], 2), "tipo": tipo})
+        # amostras a 0,10 / 0,30 / 0,60 m de cada face : o lado é exterior se a maioria cair fora do edifício ou numa varanda
+        lado1 = [Point(m[0] - n[0] * d, m[1] - n[1] * d) for d in (0.1, 0.3, 0.6)]
+        lado2 = [Point(m[0] + n[0] * (t + d), m[1] + n[1] * (t + d)) for d in (0.1, 0.3, 0.6)]
+        f1 = sum(fora(q) for q in lado1) >= 2
+        f2 = sum(fora(q) for q in lado2) >= 2
+        tipo = "interior" if not (f1 or f2) else ("fachada" if f1 != f2 else "exterior / muro")
+        paredes.append({"espessura": round(t, 2), "comprimento": round(w["L"], 2), "tipo": tipo,
+                        "eixo": [[round(a[0], 3), round(a[1], 3)], [round(b[0], 3), round(b[1], 3)]], "n": [round(n[0], 4), round(n[1], 4)]})
     cota = _cota_piso(folha, [c["_geo"] for c in comps if not c["exterior"]])
     for c in comps:
         g = c.pop("_geo")

@@ -252,3 +252,22 @@ def test_perfil_da_cobertura_no_sotao():
         dwfx.ler = orig
     assert pc["h_max"] == pytest.approx(2.5, abs=0.05) and pc["h_min"] == pytest.approx(0.5, abs=0.1)
     assert pc["area_perfil"] == pytest.approx(10.4 * 1.5, rel=0.03)
+
+
+def test_mapa_premium_pdf_e_excel(tmp_path):
+    from openpyxl import load_workbook
+    from engines.mapa_arquitetura import premium
+    m = medicao.medir(_dwfx(), pe_direito=2.5)
+    premium.numerar(m)
+    assert {c["id"] for c in m["pisos"][0]["compartimentos"]} == {"C1.01", "C1.02"}
+    assert all(w.get("id", "").startswith("W1.") for w in m["pisos"][0]["paredes"])
+    assert [d["id"] for d in m["pisos"][0]["portas"]] == ["P1.01"]
+    L = premium.linhas(m)
+    caps = {r["capitulo"] for r in L}
+    assert {"Alvenarias", "Pavimentos", "Portas e carpintarias", "Caixilharias e serralharias"} <= caps
+    pdf = premium.gerar_pdf(m, str(tmp_path / "m.pdf"), "Teste", nao_medido=premium.NAO_MEDIDO_PADRAO)
+    assert open(pdf, "rb").read(4) == b"%PDF"
+    x = premium.gerar_xlsx(m, str(tmp_path / "m.xlsx"), "Teste", nao_medido=premium.NAO_MEDIDO_PADRAO)
+    wb = load_workbook(x)
+    assert wb.sheetnames[:2] == ["Mapa", "Elementos numerados"]
+    assert any(c.value == "a medir" for row in wb["Mapa"].iter_rows() for c in row)
