@@ -168,6 +168,9 @@ export function removerUltimoPiso(modelo) {
     paredes: modelo.paredes.filter((w) => w.piso !== id),
     vaos: modelo.vaos.filter((v) => !ids.has(v.parede)),
     rotulos: (modelo.rotulos || []).filter((r) => r.piso !== id),
+    objetos: (modelo.objetos || []).filter((o) => o.piso !== id),
+    cotas: (modelo.cotas || []).filter((c) => c.piso !== id),
+    notas: (modelo.notas || []).filter((n) => n.piso !== id),
     // saem as escadas do piso removido e as que subiam para ele (o piso de baixo passa a ser o último)
     escadas: (modelo.escadas || []).filter((e) => e.piso !== id && e.piso !== modelo.pisos[modelo.pisos.length - 2].id),
   };
@@ -227,4 +230,123 @@ export function mudarEscada(modelo, id, patch) {
 
 export function removerEscada(modelo, id) {
   return { ...modelo, escadas: (modelo.escadas || []).filter((e) => e.id !== id) };
+}
+
+// ---------------------------------------------------------------- sala retangular e mover paredes
+// Quatro paredes de uma vez (dois cantos opostos, nos eixos). Lados com menos de 60 cm não criam nada.
+export function adicionarSala(modelo, piso, p, q, tipo) {
+  const x0 = Math.min(p[0], q[0]), x1 = Math.max(p[0], q[0]), y0 = Math.min(p[1], q[1]), y1 = Math.max(p[1], q[1]);
+  if (x1 - x0 < 0.6 || y1 - y0 < 0.6) return modelo;
+  let m = modelo;
+  for (const [a, b] of [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]]) m = adicionarParede(m, piso, a, b, tipo);
+  return m;
+}
+
+// Desloca uma parede (a partir do estado `antes`) e leva consigo as pontas das paredes do mesmo piso que nela tocavam
+// (cantos e encontros em T), para as divisões continuarem fechadas.
+export function moverParede(antes, id, dx, dy) {
+  const w = antes.paredes.find((x) => x.id === id);
+  if (!w || (!dx && !dy)) return antes;
+  // toca na parede: ponta com ponta, ou ponta pousada no eixo (encontro em T)
+  const toca = (p) => projetar(w, p).dist < 0.002;
+  const desl = (p) => [r3(p[0] + dx), r3(p[1] + dy)];
+  return {
+    ...antes,
+    paredes: antes.paredes.map((x) => {
+      if (x.id === id) return { ...x, a: desl(x.a), b: desl(x.b) };
+      if (x.piso !== w.piso) return x;
+      const ma = toca(x.a), mb = toca(x.b);
+      if (!ma && !mb) return x;
+      const n = { ...x, a: ma ? desl(x.a) : x.a, b: mb ? desl(x.b) : x.b };
+      return Math.hypot(n.b[0] - n.a[0], n.b[1] - n.a[1]) < 0.1 ? x : n;
+    }),
+  };
+}
+
+// ---------------------------------------------------------------- objetos (mobiliário, sanitários, equipamentos)
+export function contornoObjeto(o, base) {
+  const L = o.largura_m ?? base.largura_m, P = o.prof_m ?? base.prof_m;
+  const r = ((o.rot || 0) * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  const loc = base.forma === "circ"
+    ? Array.from({ length: 24 }, (_, i) => [(L / 2) * Math.cos((2 * Math.PI * i) / 24), (P / 2) * Math.sin((2 * Math.PI * i) / 24)])
+    : [[-L / 2, -P / 2], [L / 2, -P / 2], [L / 2, P / 2], [-L / 2, P / 2]];
+  return { pts: loc.map(([x, y]) => [o.x + x * c - y * s, o.y + x * s + y * c]), frente: [o.x + (P / 2) * s, o.y - (P / 2) * c], L, P };
+}
+
+export function adicionarObjeto(modelo, piso, tipo, pt, rot = 0) {
+  const lista = modelo.objetos || [];
+  const id = novoId("o", lista);
+  return { modelo: { ...modelo, objetos: [...lista, { id, piso, tipo, x: r3(arred(pt[0])), y: r3(arred(pt[1])), rot }] }, id };
+}
+
+export function mudarObjeto(modelo, id, patch) {
+  return { ...modelo, objetos: (modelo.objetos || []).map((o) => (o.id === id ? { ...o, ...patch } : o)) };
+}
+
+export function removerObjeto(modelo, id) {
+  return { ...modelo, objetos: (modelo.objetos || []).filter((o) => o.id !== id) };
+}
+
+// ---------------------------------------------------------------- cotas e notas do utilizador
+export function adicionarCota(modelo, piso, a, b) {
+  if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.05) return { modelo, id: null };
+  const lista = modelo.cotas || [];
+  const id = novoId("c", lista);
+  return { modelo: { ...modelo, cotas: [...lista, { id, piso, a: [r3(a[0]), r3(a[1])], b: [r3(b[0]), r3(b[1])], afastamento_m: 0.6 }] }, id };
+}
+
+export function mudarCota(modelo, id, patch) {
+  return { ...modelo, cotas: (modelo.cotas || []).map((c) => (c.id === id ? { ...c, ...patch } : c)) };
+}
+
+export function removerCota(modelo, id) {
+  return { ...modelo, cotas: (modelo.cotas || []).filter((c) => c.id !== id) };
+}
+
+// Geometria de uma cota: linha de cota paralela a a→b, afastada para a esquerda de a→b (afastamento negativo = direita).
+export function geoCota(c) {
+  const dx = c.b[0] - c.a[0], dy = c.b[1] - c.a[1];
+  const L = Math.hypot(dx, dy) || 1;
+  const n = [-dy / L, dx / L], f = c.afastamento_m ?? 0.6;
+  const p = [c.a[0] + n[0] * f, c.a[1] + n[1] * f], q = [c.b[0] + n[0] * f, c.b[1] + n[1] * f];
+  return { L, p, q, meio: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], n };
+}
+
+export function adicionarNota(modelo, piso, pt, texto) {
+  const t = String(texto || "").trim().slice(0, 120);
+  if (!t) return { modelo, id: null };
+  const lista = modelo.notas || [];
+  const id = novoId("n", lista);
+  return { modelo: { ...modelo, notas: [...lista, { id, piso, x: r3(pt[0]), y: r3(pt[1]), texto: t }] }, id };
+}
+
+export function mudarNota(modelo, id, patch) {
+  return { ...modelo, notas: (modelo.notas || []).map((n) => (n.id === id ? { ...n, ...patch } : n)) };
+}
+
+export function removerNota(modelo, id) {
+  return { ...modelo, notas: (modelo.notas || []).filter((n) => n.id !== id) };
+}
+
+// ---------------------------------------------------------------- sol
+// Posição do sol (hora solar verdadeira) para uma latitude, um dia do ano e uma hora: altura e azimute (graus, do norte
+// no sentido dos ponteiros do relógio). Fórmulas correntes: declinação de Cooper e ângulo horário.
+export function sol(latGraus, diaDoAno, horaSolar) {
+  const rad = Math.PI / 180;
+  const dec = 23.45 * rad * Math.sin(((360 * (284 + diaDoAno)) / 365) * rad);
+  const lat = latGraus * rad, h = (horaSolar - 12) * 15 * rad;
+  const sinAlt = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(h);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  let az = Math.atan2(-Math.cos(dec) * Math.sin(h), Math.sin(dec) * Math.cos(lat) - Math.cos(dec) * Math.sin(lat) * Math.cos(h));
+  if (az < 0) az += 2 * Math.PI;
+  return { altura: alt / rad, azimute: az / rad };
+}
+
+// Vetor para o sol nos eixos do modelo (x ao longo da frente, y para o tardoz, z para cima); a frente (−y) olha para `azFrente`.
+export function vetorSol(altura, azimute, azFrente) {
+  const rad = Math.PI / 180;
+  const e = altura * rad, s = azimute * rad;
+  const E = Math.sin(s) * Math.cos(e), N = Math.cos(s) * Math.cos(e);
+  const ax = (azFrente - 90) * rad, ay = (azFrente + 180) * rad;
+  return [E * Math.sin(ax) + N * Math.cos(ax), E * Math.sin(ay) + N * Math.cos(ay), Math.sin(e)];
 }

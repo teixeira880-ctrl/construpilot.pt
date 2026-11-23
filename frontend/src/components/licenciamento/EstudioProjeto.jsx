@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Car, DoorOpen, Download, Eraser, Layers, Loader2, Maximize2, Minimize2, MousePointer2, PenLine, RotateCcw, Save, Square, Trash2, TrendingUp, Undo2 } from "lucide-react";
+import { AlertTriangle, Armchair, Car, Copy, DoorOpen, Download, Eraser, Layers, Loader2, Maximize2, Minimize2, MousePointer2, PenLine, RectangleHorizontal, Redo2, RotateCcw, Ruler, Save, Square, StickyNote, Trash2, TrendingUp, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +13,20 @@ import * as G from "@/components/licenciamento/estudioGeo";
  */
 
 const FERRAMENTAS = [
-  ["selecionar", "Selecionar", MousePointer2], ["parede", "Parede", PenLine], ["porta", "Porta", DoorOpen],
+  ["selecionar", "Selecionar", MousePointer2], ["parede", "Parede", PenLine], ["sala", "Sala", RectangleHorizontal], ["porta", "Porta", DoorOpen],
   ["janela", "Janela", Square], ["portada", "Portada", Layers], ["portao", "Portão", Car], ["escada", "Escada", TrendingUp],
-  ["apagar", "Apagar", Eraser],
+  ["objeto", "Mobiliário", Armchair], ["cota", "Cota", Ruler], ["nota", "Nota", StickyNote], ["apagar", "Apagar", Eraser],
 ];
 const COB = { plana: "Plana", uma_agua: "Uma água", duas_aguas: "Duas águas", quatro_aguas: "Quatro águas" };
 const LADOS = { frente: "Frente", tardoz: "Tardoz", esquerda: "Esquerda", direita: "Direita" };
 const ALTURA_2D = 470;
+const DICA = {
+  parede: "Clique para marcar pontos; escreva o comprimento e Enter para uma medida exata; Esc termina. O cursor cola a pontas, eixos e à grelha de 5 cm.",
+  sala: "Clique num canto e depois no canto oposto: as quatro paredes são criadas de uma vez.",
+  objeto: "Escolha a peça no painel e clique na planta para a colocar. R roda 90°; as setas deslocam 5 cm.",
+  cota: "Clique em dois pontos para os cotar. A cota aparece nas plantas, no PDF e no DXF.",
+  nota: "Clique no sítio da nota e escreva o texto.",
+};
 
 function Campo({ rotulo, children }) {
   return <label className="block text-xs text-muted-foreground">{rotulo}<div className="mt-0.5">{children}</div></label>;
@@ -177,6 +184,15 @@ function Medicoes({ md }) {
         <div className="border rounded p-2"><div className="text-xs text-muted-foreground">Fachada (líquida)</div><b>{n(md.fachada.area_liquida_m2)} m²</b></div>
         <div className="border rounded p-2"><div className="text-xs text-muted-foreground">Cobertura (área real)</div><b>{n(md.cobertura.area_m2)} m²</b></div>
       </div>
+      {md.quadro_areas && <div><div className="font-medium text-sm mb-1">Quadro de áreas</div>
+        <T cab={["Piso", "Área bruta (m²)", "Área útil (m²)", "Divisões", "Paredes e vazios (m²)"]}
+          linhas={[...md.quadro_areas.map((q) => [q.piso, n(q.area_bruta_m2), n(q.area_util_m2), q.n_divisoes, n(q.paredes_e_vazios_m2)]),
+            ["Área de implantação", n(md.area_implantacao_m2), "—", "—", "—"]]} /></div>}
+      {md.mapa_vaos?.length > 0 && <div data-testid="estudio-mapa-vaos"><div className="font-medium text-sm mb-1">Mapa de vãos (o código é o que aparece na planta)</div>
+        <T cab={["Código", "Tipo", "Modelo", "Largura", "Altura", "Peitoril", "Caixilharia", "Proteção", "Ext.", "Qtd.", "Área (m²)"]}
+          linhas={md.mapa_vaos.map((v) => [v.codigo, v.tipo, v.modelo, n(v.largura_m, 3), n(v.altura_m, 3), n(v.peitoril_m), v.caixilharia, v.protecao, v.exterior ? "sim" : "não", v.quantidade, n(v.area_m2)])} /></div>}
+      {md.objetos?.length > 0 && <div><div className="font-medium text-sm mb-1">Equipamento e mobiliário</div>
+        <T cab={["Peça", "Categoria", "Qtd."]} linhas={md.objetos.map((o) => [o.nome, o.categoria, o.quantidade])} /></div>}
       <div><div className="font-medium text-sm mb-1">Camadas por tipo de parede</div>
         <T cab={["Tipo", "Camada", "Esp. (m)", "Área (m²)", "Volume (m³)"]}
           linhas={md.por_tipo.flatMap((t) => t.camadas.map((c) => [t.nome, c.material, n(c.esp_m, 3), n(c.area_m2), n(c.volume_m3, 3)]))} /></div>
@@ -226,6 +242,13 @@ export default function EstudioProjeto({ pid }) {
   const [grande, setGrande] = useState(false);
   const [interior, setInterior] = useState(false);
   const [aEditarCamadas, setAEditarCamadas] = useState(false);
+  const [tipoObjeto, setTipoObjeto] = useState("sofa_3");
+  const [catObjeto, setCatObjeto] = useState("");
+  const [compTxt, setCompTxt] = useState("");           // comprimento escrito à mão enquanto se desenha uma parede
+  const [posCorte, setPosCorte] = useState(null);       // posição do plano de corte (null = a meio)
+  const [difs, setDifs] = useState(null);
+  const [aLevar, setALevar] = useState(false);
+  const refazerPilha = useRef([]);
   const [vista, setVista] = useState({ cx: 5, cy: 4, esc: 40 });
   const [largura, setLargura] = useState(700);
   const historia = useRef([]);
@@ -246,7 +269,7 @@ export default function EstudioProjeto({ pid }) {
       const { data } = await api.get(`/estudio-projeto/processos/${pid}`);
       setModelo(data.modelo); setDerivado(data.derivado); setInfo(data);
       setPiso(data.modelo.pisos[0].id); setSujo(false); setSel(null); setInicio(null);
-      historia.current = [];
+      historia.current = []; refazerPilha.current = []; setDifs(null);
       enquadrar(data.modelo, data.modelo.pisos[0].id, caixa.current?.clientWidth || 700);
     } catch (e) { setErro(e?.response?.data?.detail || "Não foi possível abrir o Estúdio de Projeto."); }
   }, [pid, enquadrar]);
@@ -276,13 +299,15 @@ export default function EstudioProjeto({ pid }) {
   const aplicar = useCallback((novo, registar = true) => {
     setModelo((atual) => {
       if (novo === atual) return atual;
-      if (registar) { historia.current.push(atual); if (historia.current.length > 60) historia.current.shift(); }
+      if (registar) { historia.current.push(atual); if (historia.current.length > 60) historia.current.shift(); refazerPilha.current = []; }
       return novo;
     });
     setSujo(true);
   }, []);
-  const anular = () => { const ant = historia.current.pop(); if (ant) { setModelo(ant); setSujo(true); setSel(null); } };
+  const anular = () => { const ant = historia.current.pop(); if (ant) { refazerPilha.current.push(modelo); setModelo(ant); setSujo(true); setSel(null); } };
+  const refazer = () => { const seg = refazerPilha.current.pop(); if (seg) { historia.current.push(modelo); setModelo(seg); setSujo(true); setSel(null); } };
 
+  const objCat = useMemo(() => Object.fromEntries((info?.catalogo?.objetos || []).map((o) => [o.id, o])), [info]);
   const paredesPiso = useMemo(() => (modelo ? modelo.paredes.filter((w) => w.piso === piso) : []), [modelo, piso]);
   const derPorId = useMemo(() => Object.fromEntries((derivado?.paredes || []).map((w) => [w.id, w])), [derivado]);
   const esp = useCallback((w) => G.espessuraTipo(modelo.tipos_parede[w.tipo]) || 0.2, [modelo]);
@@ -309,6 +334,16 @@ export default function EstudioProjeto({ pid }) {
       const s = dx * g.u[0] + dy * g.u[1], d = Math.abs(dx * g.n[0] + dy * g.n[1]);
       if (Math.abs(s) <= v.largura_m / 2 && d <= g.t / 2 + tol) return { tipo: "vao", id: v.id };
     }
+    for (const nt of modelo.notas || []) {
+      if (nt.piso === piso && Math.abs(p[0] - nt.x) <= Math.max(0.4, nt.texto.length * 3.2 / vista.esc) && Math.abs(p[1] - nt.y) <= 9 / vista.esc) return { tipo: "nota", id: nt.id };
+    }
+    for (const c of modelo.cotas || []) {
+      if (c.piso !== piso) continue;
+      const g = G.geoCota(c);
+      if (G.projetar({ a: g.p, b: g.q }, p).dist <= 8 / vista.esc) return { tipo: "cota", id: c.id };
+    }
+    const ob = [...(modelo.objetos || [])].reverse().find((o) => o.piso === piso && objCat[o.tipo] && G.dentroPoligono(p, G.contornoObjeto(o, objCat[o.tipo]).pts));
+    if (ob) return { tipo: "objeto", id: ob.id };
     // a escada antes das paredes: num compartimento estreito está sempre perto de uma parede, mas o clique foi dentro dela
     const esc = (derivado?.escadas || []).find((e) => e.piso === piso && e.contorno.some((a) => G.dentroPoligono(p, a)));
     if (esc) return { tipo: "escada", id: esc.id };
@@ -325,6 +360,35 @@ export default function EstudioProjeto({ pid }) {
       if (!inicio) { setInicio(q); return; }
       aplicar(G.adicionarParede(modelo, piso, inicio, q, tipoParede));
       setInicio(q);
+      return;
+    }
+    if (ferramenta === "sala") {
+      const q = G.encaixar(p, paredesPiso, null).ponto;
+      if (!inicio) { setInicio(q); return; }
+      const m = G.adicionarSala(modelo, piso, inicio, q, tipoParede);
+      if (m === modelo) toast.message("A sala tem de ter pelo menos 60 cm de lado.");
+      else aplicar(m);
+      setInicio(null); setCursor(null);
+      return;
+    }
+    if (ferramenta === "cota") {
+      const q = G.encaixar(p, paredesPiso, null).ponto;
+      if (!inicio) { setInicio(q); return; }
+      const r = G.adicionarCota(modelo, piso, inicio, q);
+      if (r.id) { aplicar(r.modelo); setSel({ tipo: "cota", id: r.id }); }
+      setInicio(null); setCursor(null);
+      return;
+    }
+    if (ferramenta === "nota") {
+      const r = G.adicionarNota(modelo, piso, p, window.prompt("Texto da nota (até 120 letras):", ""));
+      if (r.id) { aplicar(r.modelo); setSel({ tipo: "nota", id: r.id }); }
+      setFerramenta("selecionar");
+      return;
+    }
+    if (ferramenta === "objeto") {
+      if (!objCat[tipoObjeto]) return;
+      const r = G.adicionarObjeto(modelo, piso, tipoObjeto, p);
+      aplicar(r.modelo); setSel({ tipo: "objeto", id: r.id });
       return;
     }
     if (ferramenta === "escada") {
@@ -355,13 +419,22 @@ export default function EstudioProjeto({ pid }) {
     const alvo = acertar(p);
     if (ferramenta === "apagar") {
       if (alvo?.tipo === "vao") aplicar(G.removerVao(modelo, alvo.id));
-      else if (alvo?.tipo === "escada") aplicar(G.removerEscada(modelo, alvo.id));
-      else if (alvo?.tipo === "parede") aplicar(G.removerParede(modelo, alvo.id));
+      else if (alvo) aplicar(removerAlvo(alvo));
       setSel(null);
       return;
     }
     if (alvo) {
+      // arrastar o corpo de uma parede já selecionada desloca-a (as paredes que nela tocam esticam)
+      if (alvo.tipo === "parede" && sel?.tipo === "parede" && sel.id === alvo.id) arrasto.current = { tipo: "parede", id: alvo.id, antes: modelo, p0: p };
       setSel({ tipo: alvo.tipo, id: alvo.id });
+      if (alvo.tipo === "objeto") {
+        const o = modelo.objetos.find((x) => x.id === alvo.id);
+        arrasto.current = { tipo: "objeto", id: alvo.id, antes: modelo, dx: p[0] - o.x, dy: p[1] - o.y };
+      }
+      if (alvo.tipo === "nota") {
+        const o = modelo.notas.find((x) => x.id === alvo.id);
+        arrasto.current = { tipo: "nota", id: alvo.id, antes: modelo, dx: p[0] - o.x, dy: p[1] - o.y };
+      }
       if (alvo.tipo === "vao") arrasto.current = { tipo: "vao", id: alvo.id, antes: modelo };
       if (alvo.tipo === "escada") {
         const e = modelo.escadas.find((x) => x.id === alvo.id);
@@ -390,6 +463,22 @@ export default function EstudioProjeto({ pid }) {
       if (Math.hypot(q[0] - fixo[0], q[1] - fixo[1]) >= 0.1) aplicar(G.mudarParede(modelo, a.id, { [a.ponta]: q }), false);
       return;
     }
+    if (a?.tipo === "parede") {
+      const w = a.antes.paredes.find((x) => x.id === a.id);
+      const { n } = G.geoParede(w);
+      const d = G.arred((p[0] - a.p0[0]) * n[0] + (p[1] - a.p0[1]) * n[1]);
+      const novo = G.moverParede(a.antes, a.id, G.r3(n[0] * d), G.r3(n[1] * d));
+      const wn = novo.paredes.find((x) => x.id === a.id), wa = modelo.paredes.find((x) => x.id === a.id);
+      if (wa && (wn.a[0] !== wa.a[0] || wn.a[1] !== wa.a[1])) aplicar(novo, false);
+      return;
+    }
+    if (a?.tipo === "objeto" || a?.tipo === "nota") {
+      const x = G.r3(G.arred(p[0] - a.dx)), y = G.r3(G.arred(p[1] - a.dy));
+      const lista = a.tipo === "objeto" ? modelo.objetos : modelo.notas;
+      const o = (lista || []).find((k) => k.id === a.id);
+      if (o && (o.x !== x || o.y !== y)) aplicar(a.tipo === "objeto" ? G.mudarObjeto(modelo, a.id, { x, y }) : G.mudarNota(modelo, a.id, { x, y }), false);
+      return;
+    }
     if (a?.tipo === "escada") {
       const x = G.r3(G.arred(p[0] - a.dx)), y = G.r3(G.arred(p[1] - a.dy));
       const e = modelo.escadas.find((k) => k.id === a.id);
@@ -406,6 +495,8 @@ export default function EstudioProjeto({ pid }) {
       return;
     }
     if (ferramenta === "parede") setCursor(G.encaixar(p, paredesPiso, inicio));
+    else if (ferramenta === "sala" || ferramenta === "cota") setCursor(G.encaixar(p, paredesPiso, null));
+    else if (ferramenta === "objeto") setCursor({ ponto: [G.r3(G.arred(p[0])), G.r3(G.arred(p[1]))], tipo: "grelha" });
     else setCursor(null);
   };
 
@@ -432,14 +523,40 @@ export default function EstudioProjeto({ pid }) {
     return () => el.removeEventListener("wheel", roda);
   }, [modelo === null]);
 
+  const removerAlvo = (a) => ({ vao: G.removerVao, escada: G.removerEscada, parede: G.removerParede, objeto: G.removerObjeto, cota: G.removerCota, nota: G.removerNota }[a.tipo] || ((m) => m))(modelo, a.id);
   const tecla = (ev) => {
     if (ev.target.tagName === "INPUT" || ev.target.tagName === "SELECT") return;
-    if (ev.key === "Escape") { setInicio(null); setCursor(null); setFerramenta("selecionar"); }
+    if (ev.target.tagName === "TEXTAREA") return;
+    if (ev.key === "Escape") { setInicio(null); setCursor(null); setCompTxt(""); setFerramenta("selecionar"); }
+    // comprimento exato: com uma parede em curso, escrever os algarismos e Enter
+    if (ferramenta === "parede" && inicio && !ev.ctrlKey && !ev.metaKey) {
+      if (/^[0-9.,]$/.test(ev.key)) { ev.preventDefault(); setCompTxt((t) => (t + ev.key).slice(0, 7)); return; }
+      if (ev.key === "Backspace" && compTxt) { ev.preventDefault(); setCompTxt((t) => t.slice(0, -1)); return; }
+      if (ev.key === "Enter" && compTxt && cursor) {
+        ev.preventDefault();
+        const L = Number(compTxt.replace(",", "."));
+        const dx = cursor.ponto[0] - inicio[0], dy = cursor.ponto[1] - inicio[1], d = Math.hypot(dx, dy);
+        if (Number.isFinite(L) && L >= 0.1 && d > 1e-6) {
+          const q = [G.r3(inicio[0] + (dx / d) * L), G.r3(inicio[1] + (dy / d) * L)];
+          aplicar(G.adicionarParede(modelo, piso, inicio, q, tipoParede)); setInicio(q);
+        }
+        setCompTxt("");
+        return;
+      }
+    }
     if ((ev.key === "Delete" || ev.key === "Backspace") && sel && sel.tipo !== "divisao") {
       ev.preventDefault();
-      aplicar(sel.tipo === "vao" ? G.removerVao(modelo, sel.id) : sel.tipo === "escada" ? G.removerEscada(modelo, sel.id) : G.removerParede(modelo, sel.id)); setSel(null);
+      aplicar(removerAlvo(sel)); setSel(null);
     }
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); anular(); }
+    if (sel?.tipo === "objeto") {
+      const o = (modelo.objetos || []).find((x) => x.id === sel.id);
+      const seta = { ArrowLeft: [-0.05, 0], ArrowRight: [0.05, 0], ArrowUp: [0, 0.05], ArrowDown: [0, -0.05] }[ev.key];
+      if (o && seta) { ev.preventDefault(); aplicar(G.mudarObjeto(modelo, o.id, { x: G.r3(o.x + seta[0]), y: G.r3(o.y + seta[1]) })); }
+      if (o && ev.key.toLowerCase() === "r" && !ev.ctrlKey && !ev.metaKey) { ev.preventDefault(); aplicar(G.mudarObjeto(modelo, o.id, { rot: ((o.rot || 0) + 90) % 360 })); }
+    }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); if (ev.shiftKey) refazer(); else anular(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "y") { ev.preventDefault(); refazer(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") { ev.preventDefault(); if (sujo && !aGuardar) guardar(); }
   };
 
   const guardar = async () => {
@@ -455,6 +572,20 @@ export default function EstudioProjeto({ pid }) {
   const repor = async () => {
     if (!window.confirm("Repor o modelo a partir do processo? As alterações feitas no Estúdio são apagadas.")) return;
     try { await api.delete(`/estudio-projeto/processos/${pid}`); await carregar(); } catch { toast.error("Não foi possível repor."); }
+  };
+  const verDiferencas = useCallback(async () => {
+    try { const { data } = await api.get(`/estudio-projeto/processos/${pid}/divergencias`); setDifs(data); }
+    catch { setDifs({ divergencias: [], erro: "Não foi possível comparar com o processo." }); }
+  }, [pid]);
+  useEffect(() => { if (aba === "processo" && !sujo) verDiferencas(); }, [aba, sujo, verDiferencas]);
+  const levarAcabamentos = async () => {
+    setALevar(true);
+    try {
+      const { data } = await api.post(`/estudio-projeto/processos/${pid}/sincronizar-materiais`);
+      if (data.ok) toast.success("Acabamentos levados para o processo. A memória descritiva foi refeita."); else toast.message(data.msg);
+      await verDiferencas();
+    } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível levar os acabamentos."); }
+    setALevar(false);
   };
   const descarregar = async (caminho, nome) => {
     try {
@@ -512,21 +643,32 @@ export default function EstudioProjeto({ pid }) {
   const mudaEsc = (patch) => aplicar(G.mudarEscada(modelo, eSel.id, patch));
   const escadasPiso = (derivado?.escadas || []).filter((e) => e.piso === piso);
   const escadasAbaixo = idxPiso > 0 ? (derivado?.escadas || []).filter((e) => e.piso === modelo.pisos[idxPiso - 1].id) : [];
+  const oSel = sel?.tipo === "objeto" ? (modelo.objetos || []).find((o) => o.id === sel.id) : null;
+  const cSel = sel?.tipo === "cota" ? (modelo.cotas || []).find((c) => c.id === sel.id) : null;
+  const nSel = sel?.tipo === "nota" ? (modelo.notas || []).find((x) => x.id === sel.id) : null;
+  const objetosPiso = (modelo.objetos || []).filter((o) => o.piso === piso && objCat[o.tipo]);
+  const cotasPiso = (modelo.cotas || []).filter((c) => c.piso === piso);
+  const notasPiso = (modelo.notas || []).filter((x) => x.piso === piso);
+  const codigoVao = Object.fromEntries((derivado?.medicoes?.mapa_vaos || []).flatMap((l) => l.ids.map((i) => [i, l.codigo])));
   const dSel = sel?.tipo === "divisao" ? divisoes.find((d) => G.dentroPoligono(sel.pt, d.pts)) : null;
   const mudaDiv = (patch) => aplicar(G.definirDivisao(modelo, piso, dSel, patch));
   const rotSel = dSel ? (modelo.rotulos || [])[G.rotuloDaDivisao(modelo, piso, dSel.pts)] : null;
   const erros = derivado?.erros || [], avisos = [...(info?.avisos_origem || []).map((msg) => ({ msg })), ...(derivado?.avisos || [])];
   const previa = ferramenta === "parede" && inicio && cursor ? [inicio, cursor.ponto] : null;
+  const previaSala = ferramenta === "sala" && inicio && cursor ? [inicio, cursor.ponto] : null;
+  const previaCota = ferramenta === "cota" && inicio && cursor ? [inicio, cursor.ponto] : null;
+  const nadaSel = !wSel && !vSel && !dSel && !eSel && !oSel && !cSel && !nSel;
 
   return (
     <div className={grande ? "fixed inset-0 z-50 bg-background overflow-auto p-3 space-y-3 outline-none" : "space-y-3 outline-none"} data-testid="estudio-projeto" onKeyDown={tecla} tabIndex={-1}>
       <div className="flex flex-wrap items-center gap-2">
         {FERRAMENTAS.map(([k, t, Icone]) => (
           <Button key={k} size="sm" variant={ferramenta === k ? "default" : "outline"} data-testid={`estudio-ferramenta-${k}`}
-            onClick={() => { setFerramenta(k); setInicio(null); setCursor(null); }}><Icone className="h-4 w-4 mr-1" />{t}</Button>
+            onClick={() => { setFerramenta(k); setInicio(null); setCursor(null); setCompTxt(""); }}><Icone className="h-4 w-4 mr-1" />{t}</Button>
         ))}
         <span className="mx-1 h-6 border-l" />
-        <Button size="sm" variant="outline" onClick={anular} disabled={!historia.current.length}><Undo2 className="h-4 w-4 mr-1" />Anular</Button>
+        <Button size="sm" variant="outline" onClick={anular} disabled={!historia.current.length} title="Ctrl+Z"><Undo2 className="h-4 w-4 mr-1" />Anular</Button>
+        <Button size="sm" variant="outline" onClick={refazer} disabled={!refazerPilha.current.length} title="Ctrl+Y" data-testid="estudio-refazer"><Redo2 className="h-4 w-4 mr-1" />Refazer</Button>
         <Button size="sm" onClick={guardar} disabled={!sujo || aGuardar} data-testid="estudio-guardar">
           {aGuardar ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Guardar</Button>
         <Button size="sm" variant="outline" onClick={repor}><RotateCcw className="h-4 w-4 mr-1" />Repor do processo</Button>
@@ -544,8 +686,7 @@ export default function EstudioProjeto({ pid }) {
             <Trash2 className="h-4 w-4 mr-1" />Remover este piso</Button>
         )}
         <span className="text-xs text-muted-foreground ml-auto">
-          {ferramenta === "parede" ? "Clique para marcar pontos; Esc termina. O cursor cola a pontas, eixos e à grelha de 5 cm."
-            : "Roda do rato = zoom · arrastar o fundo = mover · clicar numa parede ou vão = editar"}
+          {DICA[ferramenta] || "Roda do rato = zoom · arrastar o fundo = mover · clicar numa peça = editar · arrastar uma parede selecionada = deslocá-la"}
         </span>
       </div>
 
@@ -557,6 +698,16 @@ export default function EstudioProjeto({ pid }) {
               <g stroke="#e8ecee" strokeWidth={px}>{grelha}</g>
               {divisoes.map((d) => <polygon key={d.id} points={d.pts.map((p) => p.join(",")).join(" ")} fill={d.acabamentos?.pavimento?.cor || "#f3f7f1"} fillOpacity="0.3"
                 stroke={dSel?.id === d.id ? "#1f7a5c" : "none"} strokeWidth={3 * px} data-divisao={d.nome} />)}
+              {objetosPiso.map((o) => {
+                const b = objCat[o.tipo], g = G.contornoObjeto(o, b), ativo = oSel?.id === o.id;
+                const c0 = g.pts.reduce((a, q) => [a[0] + q[0] / g.pts.length, a[1] + q[1] / g.pts.length], [0, 0]);
+                return (
+                  <g key={o.id} data-objeto={o.id}>
+                    <polygon points={g.pts.map((q) => q.join(",")).join(" ")} fill={b.cor} fillOpacity="0.35" stroke={ativo ? "#1f7a5c" : "#4b5560"} strokeWidth={(ativo ? 2.2 : 1) * px} />
+                    <line x1={c0[0]} y1={c0[1]} x2={g.frente[0]} y2={g.frente[1]} stroke={ativo ? "#1f7a5c" : "#4b5560"} strokeWidth={px} />
+                  </g>
+                );
+              })}
               {abaixo.map((w) => <line key={`b${w.id}`} x1={w.a[0]} y1={w.a[1]} x2={w.b[0]} y2={w.b[1]} stroke="#9aa4ab" strokeWidth={px} strokeDasharray={`${6 * px} ${5 * px}`} />)}
               {paredesPiso.map((w) => {
                 const { u } = G.geoParede(w);
@@ -602,9 +753,24 @@ export default function EstudioProjeto({ pid }) {
                   <circle cx={e.marcha[0][0]} cy={e.marcha[0][1]} r={3.5 * px} fill="#be2828" />
                 </g>
               ))}
+              {cotasPiso.map((c) => {
+                const g = G.geoCota(c), cor = cSel?.id === c.id ? "#1f7a5c" : "#be2828";
+                return (
+                  <g key={c.id} stroke={cor} strokeWidth={px} fill="none" data-cota={c.id}>
+                    <line x1={g.p[0]} y1={g.p[1]} x2={g.q[0]} y2={g.q[1]} />
+                    <line x1={c.a[0]} y1={c.a[1]} x2={g.p[0] + g.n[0] * 4 * px * Math.sign(c.afastamento_m || 1)} y2={g.p[1] + g.n[1] * 4 * px * Math.sign(c.afastamento_m || 1)} />
+                    <line x1={c.b[0]} y1={c.b[1]} x2={g.q[0] + g.n[0] * 4 * px * Math.sign(c.afastamento_m || 1)} y2={g.q[1] + g.n[1] * 4 * px * Math.sign(c.afastamento_m || 1)} />
+                  </g>
+                );
+              })}
+              {previaSala && <polygon points={`${previaSala[0][0]},${previaSala[0][1]} ${previaSala[1][0]},${previaSala[0][1]} ${previaSala[1][0]},${previaSala[1][1]} ${previaSala[0][0]},${previaSala[1][1]}`}
+                fill="#1f7a5c" fillOpacity="0.08" stroke="#1f7a5c" strokeWidth={G.espessuraTipo(modelo.tipos_parede[tipoParede])} strokeOpacity="0.45" />}
+              {previaCota && <line x1={previaCota[0][0]} y1={previaCota[0][1]} x2={previaCota[1][0]} y2={previaCota[1][1]} stroke="#be2828" strokeWidth={1.5 * px} strokeDasharray={`${5 * px} ${4 * px}`} />}
+              {ferramenta === "objeto" && cursor && objCat[tipoObjeto] && <polygon pointerEvents="none" fill="#1f7a5c" fillOpacity="0.15" stroke="#1f7a5c" strokeWidth={px}
+                points={G.contornoObjeto({ x: cursor.ponto[0], y: cursor.ponto[1], rot: 0 }, objCat[tipoObjeto]).pts.map((q) => q.join(",")).join(" ")} />}
               {wSel && wSel.piso === piso && ["a", "b"].map((k) => <circle key={k} cx={wSel[k][0]} cy={wSel[k][1]} r={6 * px} fill="#fff" stroke="#1f7a5c" strokeWidth={2 * px} />)}
               {previa && <line x1={previa[0][0]} y1={previa[0][1]} x2={previa[1][0]} y2={previa[1][1]} stroke="#1f7a5c" strokeWidth={G.espessuraTipo(modelo.tipos_parede[tipoParede])} strokeOpacity="0.45" />}
-              {ferramenta === "parede" && cursor && <circle cx={cursor.ponto[0]} cy={cursor.ponto[1]} r={(cursor.tipo === "ponta" ? 7 : 4) * px} fill="none" stroke={cursor.tipo === "grelha" ? "#8a949b" : "#d97706"} strokeWidth={2 * px} />}
+              {["parede", "sala", "cota"].includes(ferramenta) && cursor && <circle cx={cursor.ponto[0]} cy={cursor.ponto[1]} r={(cursor.tipo === "ponta" ? 7 : 4) * px} fill="none" stroke={cursor.tipo === "grelha" ? "#8a949b" : "#d97706"} strokeWidth={2 * px} />}
             </g>
             {divisoes.map((d) => {
               const [x, y] = ecra(d.centro);
@@ -620,13 +786,43 @@ export default function EstudioProjeto({ pid }) {
               );
             })}
             {previa && (() => { const [x, y] = ecra([(previa[0][0] + previa[1][0]) / 2, (previa[0][1] + previa[1][1]) / 2]);
-              return <text x={x + 10} y={y - 10} fontSize="13" fill="#1f7a5c" pointerEvents="none">{G.fmt(Math.hypot(previa[1][0] - previa[0][0], previa[1][1] - previa[0][1]))} m</text>; })()}
+              return <text x={x + 10} y={y - 10} fontSize="13" fill="#1f7a5c" pointerEvents="none" data-testid="estudio-comprimento">{compTxt ? `${compTxt} m ↵` : `${G.fmt(Math.hypot(previa[1][0] - previa[0][0], previa[1][1] - previa[0][1]))} m`}</text>; })()}
+            {previaSala && (() => { const [x, y] = ecra([(previaSala[0][0] + previaSala[1][0]) / 2, (previaSala[0][1] + previaSala[1][1]) / 2]);
+              return <text x={x} y={y} fontSize="13" fill="#1f7a5c" textAnchor="middle" pointerEvents="none">{G.fmt(Math.abs(previaSala[1][0] - previaSala[0][0]))} × {G.fmt(Math.abs(previaSala[1][1] - previaSala[0][1]))} m</text>; })()}
+            {(previaCota ? [...cotasPiso, { id: "_p", a: previaCota[0], b: previaCota[1], afastamento_m: 0 }] : cotasPiso).map((c) => {
+              const g = G.geoCota(c); const [x, y] = ecra(g.meio);
+              return <text key={`ct${c.id}`} x={x} y={y - 4} fontSize="12" fill={cSel?.id === c.id ? "#1f7a5c" : "#be2828"} textAnchor="middle" pointerEvents="none">{G.fmt(g.L)}</text>;
+            })}
+            {notasPiso.map((nt) => { const [x, y] = ecra([nt.x, nt.y]);
+              return <text key={nt.id} x={x} y={y + 4} fontSize="12" fontStyle="italic" fill={nSel?.id === nt.id ? "#1f7a5c" : "#1f2933"} textAnchor="middle" pointerEvents="none" data-nota={nt.id}>{nt.texto}</text>; })}
+            {vista.esc > 26 && modelo.vaos.map((v) => {
+              const g = centroVao(v);
+              if (!g || g.w.piso !== piso || !codigoVao[v.id]) return null;
+              const [x, y] = ecra([g.c[0] - g.n[0] * (g.t / 2 + 0.22) * (v.lado === -1 ? -1 : 1), g.c[1] - g.n[1] * (g.t / 2 + 0.22) * (v.lado === -1 ? -1 : 1)]);
+              return <text key={`cv${v.id}`} x={x} y={y + 3} fontSize="10" fill="#6b7780" textAnchor="middle" pointerEvents="none">{codigoVao[v.id]}</text>;
+            })}
             <text x={12} y={H2 - 10} fontSize="11" fill="#6b7780" pointerEvents="none">FRENTE (via pública) ↓ · grelha de {passoGrelha} m</text>
           </svg>
         </div>
 
         <div className="border rounded-lg p-3 space-y-3 text-sm" data-testid="estudio-painel">
-          {ferramenta === "parede" && (
+          {ferramenta === "objeto" && (
+            <div className="space-y-2" data-testid="estudio-objetos">
+              <div className="font-medium">Mobiliário e equipamento ({cat.objetos.length} peças)</div>
+              <Sel valor={catObjeto} onChange={setCatObjeto} opcoes={[["", "Todas as categorias"], ...cat.categorias_objetos.map((c) => [c, c])]} />
+              <div className="max-h-72 overflow-auto divide-y border rounded">
+                {cat.objetos.filter((o) => !catObjeto || o.categoria === catObjeto).map((o) => (
+                  <button type="button" key={o.id} data-objeto-tipo={o.id} onClick={() => setTipoObjeto(o.id)}
+                    className={`w-full text-left py-1.5 px-2 flex items-center gap-2 hover:bg-muted ${tipoObjeto === o.id ? "bg-muted" : ""}`}>
+                    <span className="h-4 w-4 rounded-sm border shrink-0" style={{ background: o.cor }} />
+                    <span className="min-w-0"><span className="block text-xs text-foreground">{o.nome}</span>
+                      <span className="block text-[10px] text-muted-foreground">{G.fmt(o.largura_m)} × {G.fmt(o.prof_m)} × {G.fmt(o.altura_m)} m</span></span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {(ferramenta === "parede" || ferramenta === "sala") && (
             <Campo rotulo="Tipo da parede a desenhar">{selTipo(tipoParede, (t) => { if (!modelo.tipos_parede[t]) aplicar(comTipo(modelo, t)); setTipoParede(t); })}</Campo>
           )}
           {wSel && (
@@ -666,6 +862,11 @@ export default function EstudioProjeto({ pid }) {
                 <Campo rotulo="Peitoril (m)"><Num valor={vSel.peitoril_m} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { peitoril_m: x }))} /></Campo>
                 <Campo rotulo="Centro desde a ponta (m)"><Num valor={vSel.pos_m} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { pos_m: x }))} /></Campo>
               </div>
+              <Campo rotulo="Modelo"><Sel valor={vSel.modelo && cat.modelos_vao[vSel.tipo]?.[vSel.modelo] ? vSel.modelo : cat.modelo_vao_padrao[vSel.tipo]} data-testid="estudio-vao-modelo"
+                onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { modelo: x }))} opcoes={Object.entries(cat.modelos_vao[vSel.tipo] || {}).map(([k, x]) => [k, x.nome])} /></Campo>
+              {vSel.tipo !== "porta" && vSel.tipo !== "portao" && (
+                <Campo rotulo="Proteção solar"><Sel valor={vSel.protecao || ""} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { protecao: x }))} opcoes={Object.entries(cat.protecoes)} data-testid="estudio-vao-protecao" /></Campo>
+              )}
               <Campo rotulo="Caixilharia deste vão">
                 <SelAcabamento valor={vSel.caixilharia || ""} onChange={(v) => aplicar(G.mudarVao(modelo, vSel.id, { caixilharia: v || undefined }))} lista={cat.acabamentos.caixilharia}
                   herdado={cat.acabamentos.caixilharia.find((x) => x.id === (modelo.materiais?.caixilharia || cat.padrao.caixilharia))} data-testid="estudio-vao-caixilharia" />
@@ -716,7 +917,38 @@ export default function EstudioProjeto({ pid }) {
               <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerEscada(modelo, eSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar escada</Button>
             </div>
           )}
-          {!wSel && !vSel && !dSel && !eSel && (
+          {oSel && objCat[oSel.tipo] && (() => { const b = objCat[oSel.tipo]; return (
+            <div className="space-y-2" data-testid="estudio-objeto">
+              <div className="font-medium">{b.nome}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Campo rotulo="Largura (m)"><Num valor={oSel.largura_m ?? b.largura_m} min={0.1} onChange={(x) => aplicar(G.mudarObjeto(modelo, oSel.id, { largura_m: x }))} /></Campo>
+                <Campo rotulo="Profundidade (m)"><Num valor={oSel.prof_m ?? b.prof_m} min={0.05} onChange={(x) => aplicar(G.mudarObjeto(modelo, oSel.id, { prof_m: x }))} /></Campo>
+                <Campo rotulo="Rotação (°)"><Num valor={oSel.rot || 0} passo={15} onChange={(x) => aplicar(G.mudarObjeto(modelo, oSel.id, { rot: x % 360 }))} /></Campo>
+                <Campo rotulo="Altura (m)"><div className="h-8 flex items-center text-xs text-muted-foreground">{G.fmt(b.altura_m)}{b.base_m ? ` (base a ${G.fmt(b.base_m)})` : ""}</div></Campo>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => aplicar(G.mudarObjeto(modelo, oSel.id, { rot: ((oSel.rot || 0) + 90) % 360 }))} data-testid="estudio-objeto-rodar"><RotateCcw className="h-4 w-4 mr-1" />Rodar 90°</Button>
+                <Button size="sm" variant="outline" onClick={() => { const r = G.adicionarObjeto(modelo, piso, oSel.tipo, [oSel.x + 0.3, oSel.y - 0.3], oSel.rot || 0); aplicar(r.modelo); setSel({ tipo: "objeto", id: r.id }); }}><Copy className="h-4 w-4 mr-1" />Duplicar</Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Arraste para mover; setas = 5 cm; R = rodar. O traço indica a frente da peça.</p>
+              <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerObjeto(modelo, oSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar peça</Button>
+            </div>
+          ); })()}
+          {cSel && (
+            <div className="space-y-2" data-testid="estudio-cota">
+              <div className="font-medium">Cota — {G.fmt(G.geoCota(cSel).L)} m</div>
+              <Campo rotulo="Afastamento da linha de cota (m; negativo = outro lado)"><Num valor={cSel.afastamento_m ?? 0.6} min={-20} onChange={(x) => aplicar(G.mudarCota(modelo, cSel.id, { afastamento_m: x }))} /></Campo>
+              <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerCota(modelo, cSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar cota</Button>
+            </div>
+          )}
+          {nSel && (
+            <div className="space-y-2" data-testid="estudio-nota">
+              <div className="font-medium">Nota</div>
+              <Campo rotulo="Texto"><Texto valor={nSel.texto} maxLength={120} onChange={(v) => aplicar(G.mudarNota(modelo, nSel.id, { texto: v }))} /></Campo>
+              <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerNota(modelo, nSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar nota</Button>
+            </div>
+          )}
+          {nadaSel && ferramenta !== "objeto" && (
             <div className="space-y-2">
               <div className="font-medium">{pisoObj?.nome}</div>
               <div className="grid grid-cols-2 gap-2">
@@ -753,12 +985,14 @@ export default function EstudioProjeto({ pid }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b pb-2">
-        {[["3d", "3D"], ["alcados", "Alçados"], ["cortes", "Cortes"], ["medicoes", "Medições"]].map(([k, t]) => (
+        {[["3d", "3D"], ["alcados", "Alçados"], ["cortes", "Cortes"], ["medicoes", "Medições"], ["processo", "Processo"]].map(([k, t]) => (
           <Button key={k} size="sm" variant={aba === k ? "secondary" : "ghost"} onClick={() => setAba(k)} data-testid={`estudio-aba-${k}`}>{t}</Button>
         ))}
         <span className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} onClick={() => descarregar(`/estudio-projeto/processos/${pid}/pranchas.pdf`, "estudio-pranchas.pdf")}>
-            <Download className="h-4 w-4 mr-1" />Pranchas (PDF)</Button>
+            <Download className="h-4 w-4 mr-1" />Pranchas à escala (PDF)</Button>
+          <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} data-testid="estudio-dxf" onClick={() => descarregar(`/estudio-projeto/processos/${pid}/desenhos.dxf`, "estudio-desenhos.dxf")}>
+            <Download className="h-4 w-4 mr-1" />Desenhos (DXF)</Button>
           <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} onClick={() => descarregar(`/estudio-projeto/processos/${pid}/medicoes.csv`, "estudio-medicoes.csv")}>
             <Download className="h-4 w-4 mr-1" />Medições (CSV)</Button>
           <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} data-testid="estudio-ifc" onClick={() => descarregar(`/estudio-projeto/processos/${pid}/modelo.ifc`, "estudio-modelo.ifc")}>
@@ -769,7 +1003,7 @@ export default function EstudioProjeto({ pid }) {
 
       {aba === "3d" && derivado && (
         <div className="space-y-2">
-          <Estudio3D derivado={derivado} altura={grande ? 520 : 420} pisoVisivel={interior ? idxPiso : null}
+          <Estudio3D derivado={derivado} contexto={info?.contexto} altura={grande ? 560 : 440} pisoVisivel={interior ? idxPiso : null}
             onSelecionar={(alvo) => {       // clique numa peça do 3D → abre o painel dessa peça
               setFerramenta("selecionar"); setInicio(null); setPiso(alvo.piso);
               setSel(alvo.tipo === "divisao" ? { tipo: "divisao", pt: alvo.pt } : { tipo: alvo.tipo, id: alvo.id });
@@ -788,13 +1022,51 @@ export default function EstudioProjeto({ pid }) {
       {aba === "cortes" && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant={eixo === "x" ? "secondary" : "outline"} onClick={() => setEixo("x")}>A-A transversal</Button>
-            <Button size="sm" variant={eixo === "y" ? "secondary" : "outline"} onClick={() => setEixo("y")}>B-B longitudinal</Button>
+            <Button size="sm" variant={eixo === "x" ? "secondary" : "outline"} onClick={() => { setEixo("x"); setPosCorte(null); }}>A-A transversal</Button>
+            <Button size="sm" variant={eixo === "y" ? "secondary" : "outline"} onClick={() => { setEixo("y"); setPosCorte(null); }}>B-B longitudinal</Button>
           </div>
-          <Desenho modelo={modelo} params={{ tipo: "corte", eixo }} ativo />
+          {derivado?.limites && (() => {
+            const [a, b] = eixo === "x" ? [derivado.limites[0], derivado.limites[2]] : [derivado.limites[1], derivado.limites[3]];
+            const v = posCorte == null ? (a + b) / 2 : Math.max(a, Math.min(b, posCorte));
+            return (
+              <label className="text-xs text-muted-foreground flex items-center gap-2">Posição do plano de corte
+                <input type="range" className="flex-1 max-w-md" min={a + 0.05} max={b - 0.05} step={0.05} value={v} onChange={(e) => setPosCorte(Number(e.target.value))} data-testid="estudio-corte-pos" />
+                <span className="text-foreground w-14">{G.fmt(v)} m</span>
+                <Button size="sm" variant="ghost" onClick={() => setPosCorte(null)}>A meio</Button>
+              </label>
+            );
+          })()}
+          <Desenho modelo={modelo} params={{ tipo: "corte", eixo, ...(posCorte == null ? {} : { pos: posCorte }) }} ativo />
         </div>
       )}
       {aba === "medicoes" && <Medicoes md={derivado?.medicoes} />}
+      {aba === "processo" && (
+        <div className="space-y-3 text-sm" data-testid="estudio-processo">
+          <p className="text-xs text-muted-foreground">As peças do licenciamento (implantação, quadro de áreas, memória) são as do processo, verificadas contra o PDM, o RGEU e o RJUE.
+            Aqui vê o que o Estúdio tem de diferente. Ao exportar o processo, o ZIP leva também a pasta «Estudio-de-Projeto» com as pranchas, o DXF, o IFC e as medições deste modelo.</p>
+          {sujo ? <p className="text-xs text-amber-800">Guarde o modelo para comparar com o processo.</p>
+            : !difs ? <Loader2 className="h-5 w-5 animate-spin" />
+              : difs.erro ? <p className="text-xs text-red-700">{difs.erro}</p>
+                : difs.divergencias.length === 0 ? <p className="text-sm text-emerald-700" data-testid="estudio-sem-diferencas">O Estúdio coincide com o processo nas medidas comparadas (pisos, áreas, cobertura, vãos, acabamentos).</p>
+                  : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs" data-testid="estudio-diferencas">
+                        <thead><tr className="text-left text-muted-foreground border-b"><th className="py-1 pr-3 font-medium">O que mudou</th><th className="py-1 pr-3 font-medium">No processo</th><th className="py-1 pr-3 font-medium">No Estúdio</th></tr></thead>
+                        <tbody>{difs.divergencias.map((x, i) => (
+                          <tr key={i} className="border-b last:border-0"><td className="py-1 pr-3">{x.campo}</td>
+                            <td className="py-1 pr-3">{typeof x.processo === "number" ? G.fmt(x.processo) : x.processo} {x.unidade}</td>
+                            <td className="py-1 pr-3 font-medium">{typeof x.estudio === "number" ? G.fmt(x.estudio) : x.estudio} {x.unidade}</td></tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  )}
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button size="sm" variant="outline" disabled={sujo || aLevar} onClick={levarAcabamentos} data-testid="estudio-levar-acabamentos">
+              {aLevar && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Levar fachada, cobertura e caixilharia para o processo</Button>
+            <span className="text-[11px] text-muted-foreground">Só passam os acabamentos que o catálogo das peças de licenciamento conhece; a memória descritiva é refeita.</span>
+          </div>
+        </div>
+      )}
       {info?.nota && <p className="text-xs text-muted-foreground border-t pt-2">{info.nota}</p>}
     </div>
   );

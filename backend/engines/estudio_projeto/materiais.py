@@ -231,8 +231,34 @@ _POR_NOME: Dict[str, Dict[str, Any]] = {m["nome"]: m for m in BIBLIOTECA}
 
 
 # ---------------------------------------------------------------- acabamentos por lista (id → nome, grupo, cor)
+def _padrao(grupo: str, nome: str) -> str:
+    """Textura do 3D (desenho da superfície, não a cor): escolhida pelo grupo e pelo nome do acabamento."""
+    g, n = grupo.lower(), nome.lower()
+    if "telha" in g or "telha" in n:
+        return "ardosia" if "ardósia" in n else "telha"
+    if g == "pedra" or any(k in n for k in ("granito", "xisto", "calcário", "pedra", "mármore", "lioz")):
+        return "pedra" if g in ("pedra", "combinações") else "ladrilho"
+    if "tijolo" in n:
+        return "tijolo"
+    if any(k in n for k in ("azulejo", "cerâmic", "grés", "ladrilho", "mosaico", "klinker", "hidráulico", "tijoleira", "ardósia", "terrazzo")):
+        return "ladrilho"
+    if any(k in n for k in ("soalho", "parquet", "flutuante", "vinílico em régua", "deck", "bambu")):
+        return "soalho"
+    if "madeira" in g or any(k in n for k in ("madeira", "ripado", "lambrim", "cortiça")):
+        return "ripado"
+    if g == "metal" or any(k in n for k in ("zinco", "chapa", "sandwich", "sanduíche", "cobre", "alumínio compósito", "corten")):
+        return "chapa"
+    if "betão" in n or "betão" in g:
+        return "betao"
+    if "seixo" in n or "godo" in n:
+        return "seixo"
+    if "reboco" in n or "reboco" in g or "etics" in n or "capoto" in n:
+        return "reboco"
+    return "liso"
+
+
 def _lista(grupos: List[Tuple[str, List[Tuple[str, str, str]]]]) -> List[Dict[str, str]]:
-    return [{"id": i, "nome": n, "grupo": g, "cor": c} for g, itens in grupos for i, n, c in itens]
+    return [{"id": i, "nome": n, "grupo": g, "cor": c, "padrao": _padrao(g, n)} for g, itens in grupos for i, n, c in itens]
 
 
 FACHADA = _lista([
@@ -425,6 +451,10 @@ _IDX = {k: {x["id"]: x for x in v} for k, v in ACABAMENTOS.items()}
 def acabamento(tipo: str, ident: Any) -> Dict[str, str]:
     """Acabamento escolhido, ou o de omissão quando o identificador não existe na lista."""
     return _IDX[tipo].get(str(ident or ""), _IDX[tipo][PADRAO[tipo]])
+
+
+def padroes(mat: Dict[str, Any]) -> Dict[str, str]:
+    return {k: acabamento(k, (mat or {}).get(k))["padrao"] for k in ACABAMENTOS}
 
 
 def cores(mat: Dict[str, Any]) -> Dict[str, str]:

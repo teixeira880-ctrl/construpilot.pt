@@ -425,6 +425,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                                 "ext3d_a": R(g["e3a"]), "ext3d_b": R(g["e3b"]),
                                 "z0": z0, "altura_m": altura, "exterior": tipo["exterior"],
                                 "cor": fw["cor"] if tipo["exterior"] else MAT.acabamento("parede_interior", mat_casa.get("parede_interior"))["cor"],
+                                "padrao": fw["padrao"] if tipo["exterior"] else "liso",
                                 "fachada": {"id": fw["id"], "nome": fw["nome"]} if tipo["exterior"] else None,
                                 "fachada_m": R(fach_len.get(w["id"], 0.0), 3),
                                 "corpo": _anel(corpos[w["id"]]),
@@ -457,7 +458,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                  "perimetro_m": R(pl.length, 2), "pts": _anel(pl), "centro": [R(rp.x), R(rp.y)],
                  "area_paredes_m2": R(max(0.0, pl.length * altura - a_vaos_div), 2), "rodape_m": R(max(0.0, pl.length - portas), 2),
                  "faces": _faces_divisao(_anel(pl), vaos_piso, geo), "z0": z0, "z1": z1,
-                 "acabamentos": {k: {"id": v["id"], "nome": v["nome"], "cor": v["cor"]} for k, v in acab.items()},
+                 "acabamentos": {k: {"id": v["id"], "nome": v["nome"], "cor": v["cor"], "padrao": v["padrao"]} for k, v in acab.items()},
                  "proprios": [k for k in ACABAMENTOS_DIVISAO if (rt or {}).get(k)]}
             divisoes_out.append(d)
             med_div.append({**{kk: d[kk] for kk in ("id", "piso", "nome", "area_m2", "perimetro_m", "area_paredes_m2", "rodape_m")},
@@ -639,5 +640,5 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                    "n_paredes": len(med_paredes), "n_vaos": sum(c["quantidade"] for c in cont_vaos.values())},
     }
     return {"ok": not erros, "pisos": pisos_out, "paredes": paredes_out, "divisoes": divisoes_out, "lajes": lajes_out, "escadas": escadas_out,
-            "objetos": objetos_out, "cobertura": cobertura, "cores": MAT.cores(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
+            "objetos": objetos_out, "cobertura": cobertura, "cores": MAT.cores(mat), "padroes": MAT.padroes(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
             "limites": [R(min(xs)), R(min(ys)), R(max(xs)), R(max(ys))] if xs else None}

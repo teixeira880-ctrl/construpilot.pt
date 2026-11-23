@@ -85,14 +85,37 @@ def _catalogo() -> Dict[str, Any]:
     return {"tipos_parede": TIPOS_BASE, "vaos": VAO_BASE, "coberturas": list(COBERTURAS), **MAT.catalogo(), **OBJ.catalogo()}
 
 
+def _contexto(d: Dict[str, Any]) -> Dict[str, Any]:
+    """O que o processo sabe do sítio, nos mesmos eixos do modelo: lote, rumo da frente e latitude (para o estudo de sol)."""
+    a = d.get("auto") or {}
+    t = a.get("terreno") or {}
+    loc = a.get("localizacao") or {}
+    out: Dict[str, Any] = {}
+    pol = t.get("poligono_m")
+    if isinstance(pol, (list, tuple)) and len(pol) >= 3:
+        try:
+            out["lote"] = [[round(float(p[0]), 3), round(float(p[1]), 3)] for p in pol][:400]
+        except (TypeError, ValueError, IndexError):
+            pass
+    az = (t.get("azimutes") or {}).get("frente")
+    if isinstance(az, (int, float)):
+        out["azimute_frente"] = float(az) % 360
+    if isinstance(loc.get("lat"), (int, float)):
+        out["latitude"] = float(loc["lat"])
+    if loc.get("morada_formatada"):
+        out["morada"] = str(loc["morada_formatada"])[:160]
+    return out
+
+
 @router.get("/processos/{pid}")
 async def obter(pid: str, user=Depends(current_user)) -> dict:
     c = await _carregar(pid, user["user_id"])
     der = await run_in_threadpool(EP.derivar, c["modelo"])
     return {"modelo": c["modelo"], "derivado": der, "origem": c["origem"], "avisos_origem": c["avisos_origem"],
             "updated_at": c["updated_at"], "catalogo": _catalogo(), "titulo": c["processo"].get("title"),
+            "contexto": _contexto(c["processo"]),
             "nota": ("O Estúdio parte das medidas do processo. As peças do licenciamento (implantação, quadro de áreas, "
-                     "memória) continuam a ser as do processo: o que alterar aqui ainda não as atualiza.")}
+                     "memória) continuam a ser as do processo: veja o separador «Processo» para as diferenças.")}
 
 
 @router.put("/processos/{pid}")

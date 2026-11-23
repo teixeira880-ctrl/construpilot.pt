@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { Camera, Download, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { sol as posicaoSol, vetorSol, fmt } from "@/components/licenciamento/estudioGeo";
 
 /**
  * 3D do Estúdio de Projeto — desenhado só a partir do resultado do servidor (`derivado`): as mesmas paredes, vãos,
@@ -10,6 +13,71 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
  */
 
 const RESERVA = { fachada: "#f1efe9", cobertura: "#ba6042", caixilharia: "#2f3235", parede_interior: "#f6f5f0", pavimento: "#b9b7b1", teto: "#f6f5f0" };
+
+// ---------------------------------------------------------------- texturas desenhadas (sem ficheiros de imagem)
+// Cada padrão é desenhado num canvas em tons de cinza claro e multiplicado pela cor do acabamento; `m` = metros por repetição.
+const PADROES = {
+  tijolo: { m: 0.6, f: (c, n) => { c.fillStyle = "#d9d9d9"; c.fillRect(0, 0, n, n); c.fillStyle = "#fff"; const h = n / 8, w = n / 2;
+    for (let j = 0; j < 8; j += 1) for (let i = -1; i < 2; i += 1) c.fillRect(i * w + (j % 2 ? w / 2 : 0) + 2, j * h + 2, w - 4, h - 4); } },
+  pedra: { m: 1.6, f: (c, n, r) => { c.fillStyle = "#cfcfcf"; c.fillRect(0, 0, n, n); const h = n / 5; let y = 0;
+    for (let j = 0; j < 5; j += 1) { let x = -r() * 40; while (x < n) { const w = 50 + r() * 70, v = 225 + Math.floor(r() * 30);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(x + 2, y + 2, w - 4, h - 4); x += w; } y += h; } } },
+  ladrilho: { m: 1.2, f: (c, n) => { c.fillStyle = "#c9c9c9"; c.fillRect(0, 0, n, n); c.fillStyle = "#fff"; const q = n / 2;
+    for (let j = 0; j < 2; j += 1) for (let i = 0; i < 2; i += 1) c.fillRect(i * q + 1.5, j * q + 1.5, q - 3, q - 3); } },
+  soalho: { m: 1.4, f: (c, n, r) => { const h = n / 8; for (let j = 0; j < 8; j += 1) { const v = 225 + Math.floor(r() * 30);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(0, j * h, n, h); c.fillStyle = "#b9b9b9"; c.fillRect(0, j * h, n, 1.5); c.fillRect(Math.floor(r() * n), j * h, 1.5, h); } } },
+  ripado: { m: 0.8, f: (c, n, r) => { const w = n / 8; for (let i = 0; i < 8; i += 1) { const v = 220 + Math.floor(r() * 35);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(i * w, 0, w, n); c.fillStyle = "#a9a9a9"; c.fillRect(i * w, 0, 2, n); } } },
+  chapa: { m: 1.0, f: (c, n) => { c.fillStyle = "#f4f4f4"; c.fillRect(0, 0, n, n); c.fillStyle = "#c4c4c4"; for (let i = 0; i < 2; i += 1) c.fillRect(i * (n / 2), 0, 5, n);
+    c.fillStyle = "#fff"; for (let i = 0; i < 2; i += 1) c.fillRect(i * (n / 2) + 5, 0, 3, n); } },
+  telha: { m: 0.9, f: (c, n) => { c.fillStyle = "#e9e9e9"; c.fillRect(0, 0, n, n); const w = n / 4, h = n / 3;
+    for (let j = 0; j < 3; j += 1) { c.fillStyle = "#9f9f9f"; c.fillRect(0, j * h, n, 4);
+      for (let i = 0; i < 4; i += 1) { const g = c.createLinearGradient(i * w, 0, (i + 1) * w, 0); g.addColorStop(0, "#bdbdbd"); g.addColorStop(0.5, "#ffffff"); g.addColorStop(1, "#bdbdbd");
+        c.fillStyle = g; c.fillRect(i * w, j * h + 4, w, h - 4); } } } },
+  ardosia: { m: 0.8, f: (c, n, r) => { c.fillStyle = "#bdbdbd"; c.fillRect(0, 0, n, n); const w = n / 4, h = n / 4;
+    for (let j = 0; j < 4; j += 1) for (let i = -1; i < 4; i += 1) { const v = 215 + Math.floor(r() * 40); c.fillStyle = `rgb(${v},${v},${v})`;
+      c.fillRect(i * w + (j % 2 ? w / 2 : 0) + 1.5, j * h + 1.5, w - 3, h - 3); } } },
+  betao: { m: 2.4, f: (c, n, r) => { c.fillStyle = "#f2f2f2"; c.fillRect(0, 0, n, n); for (let k = 0; k < 500; k += 1) { const v = 205 + Math.floor(r() * 50);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(r() * n, r() * n, 2 + r() * 3, 2 + r() * 3); } c.fillStyle = "#c9c9c9"; c.fillRect(0, 0, n, 2); c.fillRect(0, 0, 2, n); } },
+  reboco: { m: 1.5, f: (c, n, r) => { c.fillStyle = "#f6f6f6"; c.fillRect(0, 0, n, n); for (let k = 0; k < 1400; k += 1) { const v = 228 + Math.floor(r() * 27);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(r() * n, r() * n, 1.5, 1.5); } } },
+  seixo: { m: 1.0, f: (c, n, r) => { c.fillStyle = "#c4c4c4"; c.fillRect(0, 0, n, n); for (let k = 0; k < 420; k += 1) { const v = 200 + Math.floor(r() * 55);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(r() * n, r() * n, 3 + r() * 4, 0, 6.3); c.fill(); } } },
+};
+
+function texturaDe(padrao, cacheTex) {
+  const def = PADROES[padrao];
+  if (!def || typeof document === "undefined") return null;
+  if (!cacheTex[padrao]) {
+    const n = 256, cv = document.createElement("canvas");
+    cv.width = n; cv.height = n;
+    let semente = 7 + padrao.length * 131;                  // sempre o mesmo desenho para o mesmo padrão
+    const r = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+    def.f(cv.getContext("2d"), n, r);
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.repeat.set(1 / def.m, 1 / def.m);                     // as geometrias têm UV em metros
+    cacheTex[padrao] = t;
+  }
+  return cacheTex[padrao];
+}
+
+// UV em metros para faces inclinadas (águas): projeção na horizontal perpendicular à maior pendente e ao longo dela
+function uvPlano(g) {
+  const pos = g.getAttribute("position");
+  if (!pos || pos.count < 3) return g;
+  const a = new THREE.Vector3().fromBufferAttribute(pos, 0), b = new THREE.Vector3().fromBufferAttribute(pos, 1), c = new THREE.Vector3().fromBufferAttribute(pos, 2);
+  const nrm = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+  let u = new THREE.Vector3(0, 1, 0).cross(nrm);
+  if (u.lengthSq() < 1e-8) u = new THREE.Vector3(1, 0, 0);
+  u.normalize();
+  const v = new THREE.Vector3().crossVectors(nrm, u).normalize();
+  const uv = new Float32Array(pos.count * 2), q = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i += 1) { q.fromBufferAttribute(pos, i); uv[2 * i] = q.dot(u); uv[2 * i + 1] = q.dot(v); }
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return g;
+}
 
 function leque(pts3, tris = null) {
   // triângulos dados pelo servidor (faces com reentrâncias) ou, na falta, leque de um polígono convexo;
@@ -48,15 +116,20 @@ function base(a, ux, uy, z0) {
   return b;
 }
 
-function construir(derivado, pisoVisivel) {
+function construir(derivado, pisoVisivel, comTexturas = true) {
   const grupo = new THREE.Group();
   const cores = { ...RESERVA, ...(derivado.cores || {}) };
-  const cache = {};
-  const mat = (cor, extra = {}) => {       // um material por cor (e variante), partilhado entre peças
-    const k = `${cor}|${JSON.stringify(extra)}`;
-    if (!cache[k]) cache[k] = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, ...extra });
+  const padroes = derivado.padroes || {};
+  const cache = {}, cacheTex = {};
+  const mat = (cor, extra = {}, padrao = null) => {       // um material por cor, variante e textura, partilhado entre peças
+    const k = `${cor}|${JSON.stringify(extra)}|${padrao || ""}`;
+    if (!cache[k]) {
+      const tex = comTexturas && padrao ? texturaDe(padrao, cacheTex) : null;
+      cache[k] = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, ...extra, ...(tex ? { map: tex } : {}) });
+    }
     return cache[k];
   };
+  grupo.userData.texturas = cacheTex;
   const mVidro = new THREE.MeshPhysicalMaterial({ color: 0x8fb4cc, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.55 });
   const mPorta = mat("#7a4b28", { roughness: 0.6 });
   const mPortao = mat("#686e72", { roughness: 0.5, metalness: 0.3 });
@@ -75,7 +148,7 @@ function construir(derivado, pisoVisivel) {
     const geo = new THREE.ExtrudeGeometry(painel(L + eb, w.altura_m, -ea, validos), { depth: t, bevelEnabled: false });
     geo.translate(0, 0, -t / 2);
     const B = base(w.a, ux, uy, w.z0);
-    const mesh = new THREE.Mesh(geo, mat(w.cor || (w.exterior ? cores.fachada : cores.parede_interior)));
+    const mesh = new THREE.Mesh(geo, mat(w.cor || (w.exterior ? cores.fachada : cores.parede_interior), {}, w.exterior ? w.padrao : null));
     mesh.applyMatrix4(B);
     mesh.castShadow = true; mesh.receiveShadow = true;
     junta(mesh, { tipo: "parede", id: w.id, piso: w.piso });
@@ -135,7 +208,7 @@ function construir(derivado, pisoVisivel) {
     const forma = new THREE.Shape(d.pts.map((p) => new THREE.Vector2(p[0], p[1])));
     const chao = new THREE.ShapeGeometry(forma);
     chao.rotateX(-Math.PI / 2);
-    const mChao = new THREE.Mesh(chao, mat(d.acabamentos.pavimento.cor, { roughness: 0.7, side: THREE.DoubleSide }));
+    const mChao = new THREE.Mesh(chao, mat(d.acabamentos.pavimento.cor, { roughness: 0.7, side: THREE.DoubleSide }, d.acabamentos.pavimento.padrao));
     mChao.position.y = z0 + 0.012;
     mChao.receiveShadow = true;
     junta(mChao, alvo);
@@ -144,7 +217,7 @@ function construir(derivado, pisoVisivel) {
       const ux = (f.b[0] - f.a[0]) / L, uy = (f.b[1] - f.a[1]) / L;
       // 8 mm para dentro da divisão (o contorno roda no sentido anti-horário: o interior fica à esquerda)
       const a = [f.a[0] - uy * 0.008, f.a[1] + ux * 0.008];
-      const pele = new THREE.Mesh(new THREE.ShapeGeometry(painel(L, h, 0, f.vaos || [])), mat(d.acabamentos.parede_interior.cor, { side: THREE.DoubleSide }));
+      const pele = new THREE.Mesh(new THREE.ShapeGeometry(painel(L, h, 0, f.vaos || [])), mat(d.acabamentos.parede_interior.cor, { side: THREE.DoubleSide }, d.acabamentos.parede_interior.padrao));
       pele.applyMatrix4(base(a, ux, uy, z0));
       pele.receiveShadow = true;
       junta(pele, alvo);
@@ -159,9 +232,20 @@ function construir(derivado, pisoVisivel) {
   }
 
   if (ate >= nPisos - 1) {
-    const mCob = mat(cores.cobertura, { roughness: 0.8, side: THREE.DoubleSide });
-    for (const f of derivado.cobertura?.faces || []) { const m = new THREE.Mesh(leque(f.pts, f.tris), mCob); m.castShadow = true; grupo.add(m); }
-    for (const e of derivado.cobertura?.empenas || []) grupo.add(new THREE.Mesh(leque(e.pts), mat(cores.fachada, { side: THREE.DoubleSide })));
+    const mCob = mat(cores.cobertura, { roughness: 0.8, side: THREE.DoubleSide }, padroes.cobertura);
+    for (const f of derivado.cobertura?.faces || []) { const m = new THREE.Mesh(uvPlano(leque(f.pts, f.tris)), mCob); m.castShadow = true; m.receiveShadow = true; grupo.add(m); }
+    for (const e of derivado.cobertura?.empenas || []) { const m = new THREE.Mesh(uvPlano(leque(e.pts)), mat(cores.fachada, { side: THREE.DoubleSide }, padroes.fachada)); m.castShadow = true; grupo.add(m); }
+  }
+
+  // mobiliário, sanitários e equipamentos: volume de ocupação de cada peça
+  for (const o of derivado.objetos || []) {
+    if (ordem[o.piso] > ate) continue;
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(o.pts.map((p) => new THREE.Vector2(p[0], p[1]))), { depth: Math.max(0.02, o.z1 - o.z0), bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, mat(o.cor, { roughness: 0.75 }));
+    m.position.y = o.z0 + 0.014;
+    m.castShadow = true; m.receiveShadow = true;
+    junta(m, { tipo: "objeto", id: o.id, piso: o.piso });
   }
   return grupo;
 }
@@ -170,20 +254,32 @@ function libertar(grupo) {
   const mats = new Set();
   grupo.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) mats.add(o.material); });
   mats.forEach((m) => m.dispose());
+  Object.values(grupo.userData.texturas || {}).forEach((t) => t.dispose());
 }
 
-export default function Estudio3D({ derivado, altura = 420, pisoVisivel = null, onSelecionar = null }) {
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const DIA_DO_MES = [21, 52, 80, 111, 141, 172, 202, 233, 264, 294, 325, 355];        // dia 21 de cada mês
+const VISTAS = [["perspetiva", "Perspetiva"], ["topo", "Topo"], ["frente", "Frente"], ["tardoz", "Tardoz"], ["esquerda", "Esquerda"], ["direita", "Direita"]];
+
+export default function Estudio3D({ derivado, contexto = null, altura = 420, pisoVisivel = null, onSelecionar = null }) {
   const mount = useRef(null);
   const st = useRef({});
   const aoSelecionar = useRef(onSelecionar);
   aoSelecionar.current = onSelecionar;
   const [erro, setErro] = useState(false);
+  const [mes, setMes] = useState(5);                   // junho
+  const [hora, setHora] = useState(15);
+  const [texturas, setTexturas] = useState(true);
+  const [aExportar, setAExportar] = useState(false);
+  const latitude = contexto?.latitude ?? 39.5;         // sem processo georreferenciado: centro de Portugal continental
+  const azFrente = contexto?.azimute_frente ?? 180;
+  const ps = posicaoSol(latitude, DIA_DO_MES[mes], hora);
 
   useEffect(() => {
     const el = mount.current;
     if (!el) return undefined;
     let renderer;
-    try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch { setErro(true); return undefined; }
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); } catch { setErro(true); return undefined; }
     const w = el.clientWidth || 600;
     renderer.setSize(w, altura);
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -201,7 +297,8 @@ export default function Estudio3D({ derivado, altura = 420, pisoVisivel = null, 
     sol.castShadow = true;
     sol.shadow.mapSize.set(2048, 2048);
     Object.assign(sol.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 160 });
-    scene.add(sol, sol.target, new THREE.HemisphereLight(0xeaf3ff, 0x8a8a7a, 1.5));
+    const ceu = new THREE.HemisphereLight(0xeaf3ff, 0x8a8a7a, 1.5);
+    scene.add(sol, sol.target, ceu);
     const chao = new THREE.Mesh(new THREE.CircleGeometry(120, 48), new THREE.MeshStandardMaterial({ color: 0xb9c7a4, roughness: 1 }));
     chao.rotation.x = -Math.PI / 2; chao.position.y = -0.22; chao.receiveShadow = true;
     scene.add(chao);
@@ -228,7 +325,7 @@ export default function Estudio3D({ derivado, altura = 420, pisoVisivel = null, 
     renderer.domElement.addEventListener("pointerdown", down);
     renderer.domElement.addEventListener("pointerup", up);
 
-    st.current = { renderer, scene, camera, controls, sol, enquadrado: false };
+    st.current = { renderer, scene, camera, controls, sol, ceu, enquadrado: false };
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
@@ -236,6 +333,7 @@ export default function Estudio3D({ derivado, altura = 420, pisoVisivel = null, 
       renderer.domElement.removeEventListener("pointerup", up);
       controls.dispose();
       if (st.current.grupo) libertar(st.current.grupo);
+      if (st.current.lote) libertar(st.current.lote);
       chao.geometry.dispose(); chao.material.dispose();
       renderer.dispose();
       el.innerHTML = "";
@@ -247,21 +345,121 @@ export default function Estudio3D({ derivado, altura = 420, pisoVisivel = null, 
     const s = st.current;
     if (!s.scene || !derivado) return;
     if (s.grupo) { s.scene.remove(s.grupo); libertar(s.grupo); }
-    s.grupo = construir(derivado, pisoVisivel);
+    s.grupo = construir(derivado, pisoVisivel, texturas);
     s.scene.add(s.grupo);
     const lim = derivado.limites;
+    s.centro = lim ? [(lim[0] + lim[2]) / 2, (lim[1] + lim[3]) / 2, Math.max(12, Math.hypot(lim[2] - lim[0], lim[3] - lim[1]) * 1.1)] : [5, 4, 14];
     if (lim && !s.enquadrado) {       // enquadra uma vez; depois a câmara fica onde o utilizador a deixou
       const cx = (lim[0] + lim[2]) / 2, cy = (lim[1] + lim[3]) / 2;
       const raio = Math.max(12, Math.hypot(lim[2] - lim[0], lim[3] - lim[1]) * 1.1);
       s.controls.target.set(cx, 2.5, -cy);
       s.camera.position.set(cx + raio * 0.8, raio * 0.6, -cy + raio * 0.9);
-      s.sol.target.position.set(cx, 0, -cy);
-      s.sol.position.set(cx + 25, 40, -cy + 20);
       s.controls.update();
       s.enquadrado = true;
     }
-  }, [derivado, pisoVisivel]);
+  }, [derivado, pisoVisivel, texturas, altura]);
+
+  // limite do lote do processo (mesmos eixos do modelo) e seta do norte
+  useEffect(() => {
+    const s = st.current;
+    if (!s.scene) return;
+    if (s.lote) { s.scene.remove(s.lote); libertar(s.lote); s.lote = null; }
+    const g = new THREE.Group();
+    const lote = contexto?.lote;
+    if (lote?.length >= 3) {
+      const pts = [...lote, lote[0]].map((p) => new THREE.Vector3(p[0], -0.19, -p[1]));
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xbe2828 })));
+      const sh = new THREE.Shape(lote.map((p) => new THREE.Vector2(p[0], p[1])));
+      const geo = new THREE.ShapeGeometry(sh); geo.rotateX(-Math.PI / 2);
+      const relva = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xa9c48c, roughness: 1 }));
+      relva.position.y = -0.2; relva.receiveShadow = true;
+      g.add(relva);
+    }
+    // norte: no modelo a frente (−y) olha para `azFrente`; o norte fica a (180 − azFrente) do +y
+    const lim = derivado?.limites;
+    if (lim) {
+      const a = ((azFrente + 180) * Math.PI) / 180;          // rumo de +y; norte = rodar −a
+      const nx = -Math.sin(a), ny = Math.cos(a);             // vetor norte nos eixos (x, y) do modelo
+      const o = new THREE.Vector3(lim[0] - 2.5, 0.05, -(lim[1] - 2.5));
+      g.add(new THREE.ArrowHelper(new THREE.Vector3(nx, 0, -ny).normalize(), o, 2.2, 0x1f2933, 0.6, 0.35));
+    }
+    s.lote = g;
+    s.scene.add(g);
+  }, [contexto, azFrente, derivado?.limites?.join(","), altura]);       // eslint-disable-line react-hooks/exhaustive-deps
+
+  // sol do dia 21 do mês escolhido, à hora solar escolhida, para a latitude e o rumo do processo
+  useEffect(() => {
+    const s = st.current;
+    if (!s.sol || !s.centro) return;
+    const [cx, cy] = s.centro;
+    const alt = Math.max(ps.altura, 1.5);
+    const v = vetorSol(alt, ps.azimute, azFrente);
+    s.sol.target.position.set(cx, 0, -cy);
+    s.sol.position.set(cx + v[0] * 90, v[2] * 90, -cy - v[1] * 90);
+    const dia = ps.altura > 0;
+    s.sol.intensity = dia ? 0.6 + 2.2 * Math.min(1, ps.altura / 35) : 0;
+    s.ceu.intensity = dia ? 1.1 + 0.5 * Math.min(1, ps.altura / 35) : 0.35;
+    s.scene.background = new THREE.Color(dia ? (ps.altura < 8 ? 0xf2d9c4 : 0xe6eef4) : 0x1c2530);
+  }, [ps.altura, ps.azimute, azFrente, derivado, altura]);
+
+  const verDe = (k) => {
+    const s = st.current;
+    if (!s.camera || !s.centro) return;
+    const [cx, cy, r] = s.centro;
+    const d = r * 1.25;
+    const pos = { perspetiva: [cx + r * 0.8, r * 0.6, -cy + r * 0.9], topo: [cx, d * 1.25, -cy + 0.01], frente: [cx, 3, -cy + d], tardoz: [cx, 3, -cy - d],
+      esquerda: [cx - d, 3, -cy], direita: [cx + d, 3, -cy] }[k];
+    s.controls.target.set(cx, k === "topo" ? 0 : 2.5, -cy);
+    s.camera.position.set(...pos);
+    s.controls.update();
+  };
+  const baixar = (blob, nome) => {
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = u; a.download = nome; a.click();
+    setTimeout(() => URL.revokeObjectURL(u), 4000);
+  };
+  const imagem = () => {
+    const s = st.current;
+    if (!s.renderer) return;
+    s.renderer.render(s.scene, s.camera);
+    s.renderer.domElement.toBlob((b) => b && baixar(b, "estudio-vista-3d.png"), "image/png");
+  };
+  const glb = async () => {
+    const s = st.current;
+    if (!s.grupo) return;
+    setAExportar(true);
+    try {
+      const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
+      const dados = await new Promise((ok, falha) => new GLTFExporter().parse(s.grupo, ok, falha, { binary: true }));
+      baixar(new Blob([dados], { type: "model/gltf-binary" }), "estudio-modelo.glb");
+    } catch { /* o botão volta ao estado normal; o modelo no ecrã não é afetado */ }
+    setAExportar(false);
+  };
 
   if (erro) return <div className="p-6 text-sm text-muted-foreground border rounded">O seu navegador não suporta 3D (WebGL).</div>;
-  return <div ref={mount} style={{ width: "100%", height: altura }} className="rounded-lg overflow-hidden border" data-testid="estudio-3d" />;
+  return (
+    <div className="space-y-2">
+      <div ref={mount} style={{ width: "100%", height: altura }} className="rounded-lg overflow-hidden border" data-testid="estudio-3d" />
+      <div className="flex flex-wrap items-center gap-1.5" data-testid="estudio-3d-vistas">
+        {VISTAS.map(([k, t]) => <Button key={k} size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => verDe(k)} data-vista={k}>{t}</Button>)}
+        <label className="text-xs flex items-center gap-1 ml-2"><input type="checkbox" checked={texturas} onChange={(e) => setTexturas(e.target.checked)} data-testid="estudio-3d-texturas" />Texturas</label>
+        <span className="ml-auto flex gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={imagem} data-testid="estudio-3d-imagem"><Camera className="h-3.5 w-3.5 mr-1" />Imagem (PNG)</Button>
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={glb} disabled={aExportar} data-testid="estudio-3d-glb"><Download className="h-3.5 w-3.5 mr-1" />Modelo 3D (GLB)</Button>
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="estudio-3d-sol">
+        <Sun className="h-4 w-4 text-amber-600" />
+        <select className="border rounded h-7 px-1 bg-background text-foreground" value={mes} onChange={(e) => setMes(Number(e.target.value))} data-testid="estudio-3d-mes">
+          {MESES.map((m, i) => <option key={m} value={i}>21 {m}</option>)}
+        </select>
+        <input type="range" min={5} max={21} step={0.25} value={hora} onChange={(e) => setHora(Number(e.target.value))} className="flex-1 max-w-xs" data-testid="estudio-3d-hora" />
+        <span className="text-foreground w-12">{String(Math.floor(hora)).padStart(2, "0")}h{String(Math.round((hora % 1) * 60)).padStart(2, "0")}</span>
+        <span className="text-muted-foreground" data-testid="estudio-3d-sol-texto">
+          {ps.altura > 0 ? `Sol a ${fmt(ps.altura, 0)}° de altura, azimute ${fmt(ps.azimute, 0)}°` : "Sol abaixo do horizonte"} · hora solar · latitude {fmt(latitude, 2)}°
+          {contexto?.azimute_frente == null ? " · frente assumida a sul (sem processo georreferenciado)" : ` · frente a ${fmt(azFrente, 0)}°`}
+        </span>
+      </div>
+    </div>
+  );
 }

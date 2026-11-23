@@ -78,3 +78,55 @@ test("escadas: colocar na grelha, rodar, remover; remover o último piso leva as
   expect(G.removerUltimoPiso(m).escadas).toHaveLength(0);              // sem piso acima, a escada deixa de fazer sentido
   expect(G.removerEscada(m, "e1").escadas).toHaveLength(0);
 });
+
+test("sala retangular cria quatro paredes fechadas", () => {
+  const m = G.adicionarSala({ ...base(), paredes: [] }, "p0", [5, 6], [1, 2], "ext_30");
+  expect(m.paredes).toHaveLength(4);
+  expect(m.paredes[0].a).toEqual([1, 2]);
+  expect(m.paredes[3].b).toEqual([1, 2]);
+  expect(G.adicionarSala(base(), "p0", [0, 0], [0.3, 4], "ext_30").paredes).toHaveLength(2);       // demasiado estreita
+});
+
+test("mover uma parede leva as pontas das paredes que nela tocam", () => {
+  const m = G.moverParede(base(), "w2", 2, 0);
+  expect(m.paredes[1].a).toEqual([12, 0]);
+  expect(m.paredes[1].b).toEqual([12, 8]);
+  expect(m.paredes[0].b).toEqual([12, 0]);          // a parede w1 esticou
+  expect(m.paredes[0].a).toEqual([0, 0]);
+  // encontro em T: a parede interior que acaba no eixo da parede movida acompanha-a
+  const t = { ...base(), paredes: [...base().paredes, { id: "i", piso: "p0", a: [4, 5], b: [10, 5], tipo: "ext_30" }, { id: "longe", piso: "p0", a: [4, 5], b: [4, 0], tipo: "ext_30" }] };
+  const mt = G.moverParede(t, "w2", 1.5, 0);
+  expect(mt.paredes.find((w) => w.id === "i").b).toEqual([11.5, 5]);
+  expect(mt.paredes.find((w) => w.id === "longe")).toEqual(t.paredes[3]);
+});
+
+test("objetos: contorno rodado, cotas e notas", () => {
+  const sofa = { largura_m: 2.2, prof_m: 0.95, forma: "ret" };
+  const c = G.contornoObjeto({ x: 5, y: 5, rot: 90 }, sofa);
+  const xs = c.pts.map((p) => p[0]), ys = c.pts.map((p) => p[1]);
+  expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(0.95, 6);
+  expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(2.2, 6);
+  let r = G.adicionarObjeto(base(), "p0", "sofa_3", [2.02, 3.04]);
+  expect(r.modelo.objetos[0]).toMatchObject({ id: "o1", x: 2, y: 3.05, tipo: "sofa_3" });
+  expect(G.removerObjeto(G.mudarObjeto(r.modelo, "o1", { rot: 45 }), "o1").objetos).toHaveLength(0);
+  r = G.adicionarCota(base(), "p0", [0, 0], [4, 0]);
+  const g = G.geoCota(r.modelo.cotas[0]);
+  expect(g.L).toBeCloseTo(4, 6);
+  expect(g.p).toEqual([0, 0.6]);
+  expect(G.adicionarNota(base(), "p0", [1, 1], "   ").id).toBeNull();
+  expect(G.adicionarNota(base(), "p0", [1, 1], " Pavimento radiante ").modelo.notas[0].texto).toBe("Pavimento radiante");
+  expect(G.removerUltimoPiso({ ...base(), pisos: [...base().pisos, { id: "p1" }], objetos: [{ id: "o1", piso: "p1" }] }).objetos).toHaveLength(0);
+});
+
+test("sol: meio-dia solar a sul, altura = 90 − latitude + declinação", () => {
+  const verao = G.sol(40, 172, 12), inverno = G.sol(40, 355, 12);
+  expect(verao.azimute).toBeCloseTo(180, 3);
+  expect(verao.altura).toBeCloseTo(90 - 40 + 23.45, 1);
+  expect(inverno.altura).toBeCloseTo(90 - 40 - 23.45, 1);
+  expect(G.sol(40, 80, 8).azimute).toBeLessThan(180);            // de manhã o sol está a nascente
+  // frente virada a sul: ao meio-dia o sol está à frente da casa (−y) e por cima
+  const v = G.vetorSol(verao.altura, verao.azimute, 180);
+  expect(v[0]).toBeCloseTo(0, 6); expect(v[1]).toBeLessThan(0); expect(v[2]).toBeGreaterThan(0.9);
+  // de manhã, com a frente a sul, o sol está à direita (nascente = +x)
+  const m = G.sol(40, 80, 8); expect(G.vetorSol(m.altura, m.azimute, 180)[0]).toBeGreaterThan(0);
+});
