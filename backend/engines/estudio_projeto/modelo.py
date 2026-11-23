@@ -12,7 +12,8 @@ import re
 from typing import Any, Dict, List, Optional
 
 VERSAO = 1
-LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 60, "camadas": 8, "rotulos": 300, "escadas": 12, "coord": 500.0}
+LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 60, "camadas": 8, "rotulos": 300, "escadas": 12, "objetos": 600,
+       "cotas": 300, "notas": 200, "coord": 500.0}
 TIPOS_ESCADA = ("reta", "l", "u")
 COBERTURAS = ("plana", "uma_agua", "duas_aguas", "quatro_aguas")
 TIPOS_VAO = ("porta", "janela", "portada", "portao")
@@ -159,6 +160,10 @@ def normalizar(m: Any) -> Dict[str, Any]:
                      "lado": -1 if v.get("lado") == -1 else 1, "dobradica": "b" if v.get("dobradica") == "b" else "a"})
         if v.get("caixilharia"):                 # caixilharia própria deste vão (vazio = a da casa)
             vaos[-1]["caixilharia"] = _txt(v.get("caixilharia"), 40)
+        if v.get("modelo"):                      # modelo de abertura (batente, correr, oscilobatente…)
+            vaos[-1]["modelo"] = _txt(v.get("modelo"), 30)
+        if v.get("protecao"):                    # proteção solar (estore, portadas…)
+            vaos[-1]["protecao"] = _txt(v.get("protecao"), 30)
 
     c = m.get("cobertura") if isinstance(m.get("cobertura"), dict) else {}
     cobertura = {"tipo": c.get("tipo") if c.get("tipo") in COBERTURAS else "duas_aguas",
@@ -201,9 +206,57 @@ def normalizar(m: Any) -> Dict[str, Any]:
                         "cobertor_m": _f(e.get("cobertor_m"), "cobertor", 0.22, 0.40, 0.25),
                         "sentido": "esq" if e.get("sentido") == "esq" else "dir"})
 
+    from engines.estudio_projeto.objetos import OBJETOS
+    obj_in = m.get("objetos") or []
+    if not isinstance(obj_in, list) or len(obj_in) > LIM["objetos"]:
+        raise ErroModelo(f"Máximo de {LIM['objetos']} objetos.")
+    objetos, oids = [], set()
+    for o in obj_in:
+        if not isinstance(o, dict) or o.get("tipo") not in OBJETOS or str(o.get("piso") or "") not in ids:
+            raise ErroModelo("Objeto inválido (tipo ou piso desconhecido).")
+        oid = _id(o.get("id"), "objeto")
+        if oid in oids:
+            raise ErroModelo("Objetos com o mesmo identificador.")
+        oids.add(oid)
+        p = _pt([o.get("x"), o.get("y")], "objeto")
+        base = OBJETOS[o["tipo"]]
+        objetos.append({"id": oid, "piso": str(o["piso"]), "tipo": o["tipo"], "x": p[0], "y": p[1],
+                        "rot": round(_f(o.get("rot"), "rotação do objeto", -360.0, 720.0, 0.0) % 360.0, 2),
+                        "largura_m": _f(o.get("largura_m"), "largura do objeto", 0.05, 12.0, base["largura_m"]),
+                        "prof_m": _f(o.get("prof_m"), "profundidade do objeto", 0.05, 12.0, base["prof_m"])})
+
+    cot_in = m.get("cotas") or []
+    if not isinstance(cot_in, list) or len(cot_in) > LIM["cotas"]:
+        raise ErroModelo(f"Máximo de {LIM['cotas']} cotas.")
+    cotas_, cids = [], set()
+    for c_ in cot_in:
+        if not isinstance(c_, dict) or str(c_.get("piso") or "") not in ids:
+            raise ErroModelo("Cota inválida.")
+        cid = _id(c_.get("id"), "cota")
+        if cid in cids:
+            raise ErroModelo("Cotas com o mesmo identificador.")
+        cids.add(cid)
+        cotas_.append({"id": cid, "piso": str(c_["piso"]), "a": _pt(c_.get("a"), "cota.a"), "b": _pt(c_.get("b"), "cota.b"),
+                       "afastamento_m": _f(c_.get("afastamento_m"), "afastamento da cota", -20.0, 20.0, 0.6)})
+
+    not_in = m.get("notas") or []
+    if not isinstance(not_in, list) or len(not_in) > LIM["notas"]:
+        raise ErroModelo(f"Máximo de {LIM['notas']} notas.")
+    notas, nids = [], set()
+    for n_ in not_in:
+        if not isinstance(n_, dict) or str(n_.get("piso") or "") not in ids or not _txt(n_.get("texto"), 120):
+            raise ErroModelo("Nota inválida.")
+        nid = _id(n_.get("id"), "nota")
+        if nid in nids:
+            raise ErroModelo("Notas com o mesmo identificador.")
+        nids.add(nid)
+        p = _pt([n_.get("x"), n_.get("y")], "nota")
+        notas.append({"id": nid, "piso": str(n_["piso"]), "x": p[0], "y": p[1], "texto": _txt(n_.get("texto"), 120)})
+
     mat = m.get("materiais") if isinstance(m.get("materiais"), dict) else {}
     return {"versao": VERSAO, "pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos,
             "cobertura": cobertura, "rotulos": rotulos, "escadas": escadas,
+            "objetos": objetos, "cotas": cotas_, "notas": notas,
             "laje_terrea_m": _f(m.get("laje_terrea_m"), "laje térrea", 0.08, 1.0, 0.20),
             "materiais": {k: _txt(mat.get(k), 40) for k in ("fachada", "cobertura", "caixilharia", "pavimento", "parede_interior", "teto")
                           if mat.get(k)},

@@ -59,16 +59,37 @@ def _cadeia(itens, pontos: List[float], fixo: float, horizontal: bool, cor=GREY,
 
 
 # ---------------------------------------------------------------- planta
+def _cota_livre(itens, a, b, afast: float, cor=RED, sz=13):
+    """Cota entre dois pontos quaisquer, desenhada paralela ao troço e afastada dele."""
+    L = math.hypot(b[0] - a[0], b[1] - a[1])
+    if L < 0.02:
+        return
+    ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+    nx, ny = -uy, ux
+    pa, pb = (a[0] + nx * afast, a[1] + ny * afast), (b[0] + nx * afast, b[1] + ny * afast)
+    itens.append(_line([pa, pb], cor, 1.0))
+    for p0, p1 in ((a, pa), (b, pb)):
+        itens.append(_line([p0, (p1[0] + nx * 0.08 * (1 if afast >= 0 else -1), p1[1] + ny * 0.08 * (1 if afast >= 0 else -1))], cor, 0.7))
+    itens.append(_text((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, fmt(L), sz, cor, "mm", 0, -11))
+
+
 def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
     piso = d["pisos"][k]
     itens: List[dict] = []
+
+    def camada(nome: str, desde: int) -> int:           # etiqueta os elementos acabados de desenhar (camadas do DXF)
+        for it in itens[desde:]:
+            it.setdefault("cam", nome)
+        return len(itens)
     from engines.estudio_projeto import materiais as MAT
     for dv in d["divisoes"]:
         if dv["piso"] == piso["id"]:      # fundo da divisão: tom claro do pavimento escolhido para ela
             r_, g_, b_ = MAT.rgb(dv["acabamentos"]["pavimento"]["cor"])
             itens.append(_poly(dv["pts"], tuple(round(255 - (255 - c) * 0.28) for c in (r_, g_, b_)), None, 0))
+    n0 = camada("PAVIMENTOS", 0)
     for pp in piso["paredes_planta"]:
         itens.append(_poly(pp["ext"], POCHE, INK, 1.0, pp["furos"]))
+    n0 = camada("PAREDES", n0)
     paredes = [w for w in d["paredes"] if w["piso"] == piso["id"]]
     for w in paredes:
         L = w["comprimento_m"]
@@ -96,6 +117,31 @@ def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
             else:
                 for off in (h, h / 3, -h / 3, -h):
                     itens.append(_line([pt(v["u0"], off), pt(v["u1"], off)], cor, 1.0))
+    n0 = camada("VAOS", n0)
+    for w in paredes:                                   # código de cada vão (o mesmo do mapa de vãos), do lado de fora
+        L = w["comprimento_m"]
+        ux, uy = (w["b"][0] - w["a"][0]) / L, (w["b"][1] - w["a"][1]) / L
+        for v in w["vaos"]:
+            if v.get("codigo") and v["valido"]:
+                um = (v["u0"] + v["u1"]) / 2
+                off = -(w["esp_m"] / 2 + 0.22)
+                itens.append(_text(w["a"][0] + ux * um - uy * off, w["a"][1] + uy * um + ux * off, v["codigo"], 11, GREY))
+    n0 = camada("TEXTO_VAOS", n0)
+    for o in d.get("objetos") or []:                    # mobiliário, sanitários e equipamentos: ocupação em planta
+        if o["piso"] != piso["id"]:
+            continue
+        itens.append(_poly(o["pts"], (255, 255, 255), (90, 100, 108), 1.0))
+        cxo, cyo = o["x"], o["y"]
+        fx, fy = o["frente"]
+        if o["forma"] in ("cama", "sanita", "cuba", "banheira", "duche", "placa"):      # marca interior que distingue a peça
+            esc = 0.62 if o["forma"] in ("cuba", "banheira", "duche", "placa") else 0.8
+            dentro = [(cxo + (px_ - cxo) * esc, cyo + (py_ - cyo) * esc) for px_, py_ in o["pts"]]
+            itens.append(_line(dentro + [dentro[0]], (140, 150, 156), 0.8))
+        if o["forma"] == "alto":                         # armários e colunas altas: diagonais
+            itens.append(_line([o["pts"][0], o["pts"][2]], (140, 150, 156), 0.8))
+            itens.append(_line([o["pts"][1], o["pts"][3]], (140, 150, 156), 0.8))
+        itens.append(_line([(cxo + (fx - cxo) * 0.55, cyo + (fy - cyo) * 0.55), (fx, fy)], (140, 150, 156), 0.8))
+    n0 = camada("MOBILIARIO", n0)
     ids_pisos = [p["id"] for p in d["pisos"]]
     for e in d.get("escadas") or []:
         ke = ids_pisos.index(e["piso"])
@@ -114,11 +160,19 @@ def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
                 itens.append(_line(list(anel) + [anel[0]], GREY, 1.4, True))
                 cx_, cy_ = sum(p[0] for p in anel) / len(anel), sum(p[1] for p in anel) / len(anel)
                 itens.append(_text(cx_, cy_, "vazio da escada", 12, GREY))
+    n0 = camada("ESCADAS", n0)
     for dv in d["divisoes"]:
         if dv["piso"] == piso["id"]:
             cx, cy = dv["centro"]
             itens.append(_text(cx, cy, dv["nome"], 17, INK, "mm", 0, -10))
             itens.append(_text(cx, cy, f"{fmt(dv['area_m2'])} m²", 14, GREY, "mm", 0, 10))
+    for nt in m.get("notas") or []:
+        if nt["piso"] == piso["id"]:
+            itens.append(_text(nt["x"], nt["y"], nt["texto"], 13, INK, "lm"))
+    n0 = camada("TEXTO", n0)
+    for ct in m.get("cotas") or []:                     # cotas colocadas pelo utilizador
+        if ct["piso"] == piso["id"]:
+            _cota_livre(itens, ct["a"], ct["b"], ct["afastamento_m"])
     aneis = [p for a in piso["pegada"] for p in a]
     if aneis:
         x0, x1 = min(p[0] for p in aneis), max(p[0] for p in aneis)
@@ -153,6 +207,7 @@ def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
         _cadeia(itens, [x0, x1], y0 - 2.3 * un, True, RED, 16, 1)
         _cadeia(itens, [y0, y1], x0 - 2.6 * un, False, RED, 16, -1)
         itens.append(_text((x0 + x1) / 2, y0 - 3.2 * un, "FRENTE", 13, GREY))
+    camada("COTAS", n0)
     return {"titulo": f"Planta do {piso['nome'].lower()} — cotada", "itens": itens,
             "rodape": f"Área bruta do piso {fmt(piso['area_bruta_m2'])} m² · cotas em metros · áreas úteis entre faces de parede.",
             "code": "PLANTAS", "filename": f"estudio_planta_piso_{k}.png"}
@@ -206,7 +261,7 @@ def _vista(m, d, lado: str, prof_min: Optional[float] = None, claro: bool = Fals
                     for i in range(1, 5):
                         el.append((prof - 0.03, _line([(a, za + (zb - za) * i / 5), (b, za + (zb - za) * i / 5)], tr, 1.0)))
                 elif v["tipo"] != "porta":
-                    folhas = max(1, round((b - a) / 1.2))
+                    folhas = v.get("folhas") or max(1, round((b - a) / 1.2))
                     for i in range(1, folhas):
                         el.append((prof - 0.03, _line([(a + (b - a) * i / folhas, za), (a + (b - a) * i / folhas, zb)], tr, 1.0)))
     for lj in d["lajes"]:

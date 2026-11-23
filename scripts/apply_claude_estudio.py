@@ -2,7 +2,7 @@
 """Liga o Estúdio de Projeto (modelo único) aos dois ficheiros existentes que ele toca. Idempotente.
 
 Uso (na raiz da aplicação):  python3 scripts/apply_claude_estudio.py [--check]
-Os ficheiros novos vêm do ramo com `git checkout FETCH_HEAD -- <ficheiros>`; este script só faz as duas ligações:
+Os ficheiros novos vêm do ramo com `git checkout FETCH_HEAD -- <ficheiros>`; este script só faz as ligações:
   backend/server.py                        → regista as rotas /api/estudio-projeto
   frontend/src/pages/LicenciamentoAuto.jsx → cartão «Estúdio de Projeto» na página do processo
 Se uma âncora não existir exatamente uma vez, escreve ERRO e não altera nada.
@@ -19,6 +19,23 @@ EDICOES = {
          "api_router.include_router(urbanismo_auto_routes.router)\n"
          "from routes import estudio_projeto as estudio_projeto_routes  # noqa: E402  — Estúdio de Projeto (modelo único do edifício)\n"
          "api_router.include_router(estudio_projeto_routes.router)\n"),
+    ]),
+    "backend/routes/urbanismo_auto.py": ("_estudio.anexar_ao_zip", [
+        ('    data = await _anexar_blender(data, d, pid, user["user_id"])\n',
+         '    data = await _anexar_blender(data, d, pid, user["user_id"])\n'
+         '    from routes import estudio_projeto as _estudio  # noqa: PLC0415 — pasta «Estudio-de-Projeto» quando há modelo guardado\n'
+         '    data = await _estudio.anexar_ao_zip(data, pid, user["user_id"])\n'),
+    ]),
+    "backend/engines/assistant_autorizacao_tool.py": ("assistant_estudio_tool", [
+        ('AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}\n',
+         'from engines.assistant_estudio_tool import ESTUDIO_INSTRUCTIONS, ESTUDIO_TOOL_NAMES, ESTUDIO_TOOLS, run_estudio_tool  # noqa: E402\n'
+         'AUTORIZACAO_TOOLS += ESTUDIO_TOOLS        # Estúdio de Projeto: ver e editar o modelo do edifício\n'
+         'AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}\n'),
+        ('\n\ndef _pedido(args: dict) -> dict:\n',
+         '\nAUTORIZACAO_INSTRUCTIONS += ESTUDIO_INSTRUCTIONS\n\n\ndef _pedido(args: dict) -> dict:\n'),
+        ('async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:\n',
+         'async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:\n'
+         '    if name in ESTUDIO_TOOL_NAMES:\n        return await run_estudio_tool(name, args, user, conv)\n'),
     ]),
     "frontend/src/pages/LicenciamentoAuto.jsx": ("EstudioProjetoLazy", [
         ('import { useCallback, useEffect, useRef, useState } from "react";',

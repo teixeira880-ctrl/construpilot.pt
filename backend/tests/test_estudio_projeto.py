@@ -489,3 +489,141 @@ def test_ifc_reabre_valido_e_com_as_mesmas_quantidades():
     dwf = next(x for x in d["paredes"] if x["id"] == "f")
     esperado = ((dwf["comprimento_m"] + dwf["ext3d_a"] + dwf["ext3d_b"]) * 2.7 - 0.9 * 2.1 - 1.2 * 1.2) * 0.30
     assert SH.get_volume(forma.geometry) == pytest.approx(esperado, abs=0.01)
+
+
+# ------------------------------------------------------------------ objetos, mapa de vãos, cotas, notas, exportações, operações
+def test_objetos_mapa_de_vaos_quadro_de_areas_cotas_e_notas():
+    m = modelo(objetos=[{"id": "o1", "piso": "p0", "tipo": "sofa_3", "x": 2.0, "y": 4.0, "rot": 90},
+                        {"id": "o2", "piso": "p0", "tipo": "sofa_3", "x": 2.0, "y": 6.0},
+                        {"id": "o3", "piso": "p0", "tipo": "mesa_redonda", "x": 7.0, "y": 4.0}],
+               cotas=[{"id": "c1", "piso": "p0", "a": [0, 0], "b": [4, 0], "afastamento_m": -1.2}],
+               notas=[{"id": "n1", "piso": "p0", "x": 7, "y": 2, "texto": "Pavimento radiante"}])
+    m["vaos"][1].update(modelo="correr_3", protecao="estore_termico")
+    m = EP.normalizar(m)
+    d = EP.derivar(m)
+    assert d["ok"]
+    o1 = next(o for o in d["objetos"] if o["id"] == "o1")
+    xs, ys = [p[0] for p in o1["pts"]], [p[1] for p in o1["pts"]]
+    assert max(xs) - min(xs) == pytest.approx(0.95, abs=1e-3) and max(ys) - min(ys) == pytest.approx(2.20, abs=1e-3)   # rodado 90°
+    assert {o["tipo"]: o["quantidade"] for o in d["medicoes"]["objetos"]} == {"sofa_3": 2, "mesa_redonda": 1}
+    mv = {l["codigo"]: l for l in d["medicoes"]["mapa_vaos"]}
+    assert set(mv) == {"J1", "P1", "P2"} and mv["J1"]["folhas"] == 3 and "térmico" in mv["J1"]["protecao"]
+    assert mv["P1"]["exterior"] != mv["P2"]["exterior"]
+    assert sum(l["quantidade"] for l in mv.values()) == 3
+    q = d["medicoes"]["quadro_areas"][0]
+    assert q["area_bruta_m2"] == 80.0 and q["area_util_m2"] == pytest.approx(3.64 * 7.4 + 5.64 * 7.4, abs=0.02)
+    assert q["paredes_e_vazios_m2"] == pytest.approx(80.0 - q["area_util_m2"], abs=0.01)
+    assert d["medicoes"]["area_implantacao_m2"] == 80.0
+    pl = D.planta(m, d, 0)
+    textos = [i["txt"] for i in pl["itens"] if i["t"] == "text"]
+    assert "Pavimento radiante" in textos and "J1" in textos and "4,00" in textos                # nota, código do vão e cota do utilizador
+    assert {i.get("cam") for i in pl["itens"]} >= {"PAREDES", "VAOS", "MOBILIARIO", "COTAS", "TEXTO"}
+    with pytest.raises(EP.ErroModelo):
+        modelo(objetos=[{"id": "o", "piso": "p0", "tipo": "nao_existe", "x": 1, "y": 1}])
+
+
+def test_pdf_vetorial_a_escala_e_dxf_em_metros():
+    import ezdxf
+    from ezdxf import bbox
+    from engines.estudio_projeto import exportar as EX
+    m = modelo()
+    d = EP.derivar(m)
+    cj = D.conjunto(m, d)
+    assert EX.escala_que_cabe(cj[0]["itens"], 420, 297) == 50                    # casa de 10 × 8 m cabe a 1:50 num A3
+    pdf = EX.pranchas_pdf({"title": "Moradia"}, cj)
+    assert pdf[:5] == b"%PDF-" and pdf.count(b"/Type /Page\n") + pdf.count(b"/Type /Page ") >= 1
+    import io
+    doc = ezdxf.read(io.StringIO(EX.dxf(cj, "Moradia").decode("utf-8")))
+    assert doc.header["$INSUNITS"] == 6                                          # metros
+    msp = doc.modelspace()
+    camadas = {e.dxf.layer for e in msp}
+    assert {"PAREDES", "VAOS", "COTAS", "TEXTO"} <= camadas
+    # a primeira peça (planta do rés-do-chão) fica na origem: as paredes medem exatamente 10 × 8 m
+    planta = [e for e in msp.query('*[layer=="PAREDES"]') if e.dxftype() != "HATCH"]
+    ext = bbox.extents(planta)
+    assert ext.size.x == pytest.approx(10.0, abs=0.001) and ext.size.y == pytest.approx(8.0, abs=0.001)
+
+
+def test_operacoes_fazem_o_pedido_ou_dizem_porque_nao():
+    from engines.estudio_projeto import operacoes as OP
+    m, feitos, falhas = OP.aplicar(EP.modelo_vazio(), [
+        {"op": "sala", "x0": 0.15, "y0": 0.15, "x1": 9.85, "y1": 7.85, "tipo": "ext_30"},
+        {"op": "parede", "a": [4, 0.15], "b": [4, 7.85]},
+        {"op": "vao", "tipo": "janela", "lado": "tardoz", "largura_m": 1.6},
+        {"op": "vao", "tipo": "porta", "lado": "frente", "pos_m": 2.0},
+        {"op": "vao", "tipo": "janela", "lado": "frente", "pos_m": 2.0},           # ocupado: desloca-se para o lugar livre mais próximo
+        {"op": "materiais", "fachada": "granito", "pavimento": "soalho de carvalho"},
+        {"op": "divisao", "nome": "Divisão 1", "novo_nome": "Cozinha", "pavimento": "microcimento"},
+        {"op": "objeto", "tipo": "cama casal", "divisao": "Divisão 2"},
+        {"op": "cobertura", "tipo": "quatro_aguas", "inclinacao_graus": 20},
+        {"op": "piso_adicionar"}, {"op": "escada", "x": 7, "y": 4, "tipo": "reta"},
+        {"op": "vao", "parede": "nao_ha"}, {"op": "materiais", "fachada": "kriptonite"}, {"op": "voar"},
+        {"op": "vao", "tipo": "portao", "lado": "esquerda", "largura_m": 30},
+    ])
+    assert len(feitos) == 11 and len(falhas) == 4, (feitos, falhas)
+    assert "nao_ha" in falhas[0] and "kriptonite" in falhas[1] and "voar" in falhas[2] and "não cabe" in falhas[3]
+    d = EP.derivar(m)
+    assert d["ok"], d["erros"]
+    assert len(m["pisos"]) == 2 and m["cobertura"]["tipo"] == "quatro_aguas" and len(m["escadas"]) == 1
+    frente = sorted((v["pos_m"], v["largura_m"]) for v in m["vaos"] if v["parede"] == "w1")
+    assert len(frente) == 2 and frente[1][0] - frente[0][0] >= (frente[0][1] + frente[1][1]) / 2          # não se sobrepõem
+    coz = next(dv for dv in d["divisoes"] if dv["nome"] == "Cozinha")
+    assert "icrocimento" in coz["acabamentos"]["pavimento"]["nome"]
+    assert any(a_["elemento"].lower().startswith("fachada") and "ranito" in a_["material"] for a_ in d["medicoes"]["acabamentos"])
+    assert m["materiais"]["fachada"] and "arvalho" in next(dv for dv in d["divisoes"] if dv["nome"] != "Cozinha")["acabamentos"]["pavimento"]["nome"]
+    assert [o["tipo"] for o in m["objetos"]] == ["cama_casal"]
+    r = OP.resumo(m, d)
+    assert r["totais"]["area_bruta_construcao_m2"] == 160.0 and len(r["paredes_exteriores"]) == 8
+    # uma operação que deixaria o modelo inválido não fica
+    m2, f2, x2 = OP.aplicar(m, [{"op": "pe_direito", "piso": 0, "valor": 9}])
+    assert not f2 and x2 and m2["pisos"][0]["pe_direito_m"] == m["pisos"][0]["pe_direito_m"]
+
+
+def test_ifc_leva_os_objetos():
+    from engines.estudio_projeto import ifc as IFC
+    m = modelo(objetos=[{"id": "o1", "piso": "p0", "tipo": "sanita", "x": 7, "y": 4}, {"id": "o2", "piso": "p0", "tipo": "sofa_3", "x": 2, "y": 4},
+                        {"id": "o3", "piso": "p0", "tipo": "frigorifico", "x": 7, "y": 6}])
+    f = IFC.construir(m, EP.derivar(m))
+    assert len(f.by_type("IfcSanitaryTerminal")) == 1 and len(f.by_type("IfcFurniture")) == 1 and len(f.by_type("IfcElectricAppliance")) == 1
+
+
+def test_assistente_ve_e_edita_o_estudio_e_divergencias(env):
+    from engines import assistant_autorizacao_tool as AT
+
+    async def go():
+        assert {"estudio_ver", "estudio_editar"} <= AT.AUTORIZACAO_TOOL_NAMES and "ESTÚDIO DE PROJETO" in AT.AUTORIZACAO_INSTRUCTIONS
+        r = await UA.executar_e_gravar({"texto": "autorização de construção na rua do monte nº7 padim da graça braga"}, USER)
+        pid = r["processo_id"]
+        antes = repr(await env[0].urbanismo_processos.find_one({"processo_id": pid}))
+        v = await AT.run_autorizacao_tool("estudio_ver", {"processo_id": pid}, USER, {})
+        assert v["ok"] and v["origem"] == "processo" and v["divisoes"] and v["paredes_exteriores"]
+        assert (await RE.divergencias(pid, USER))["divergencias"] == []                       # acabado de criar: igual ao processo
+        n0 = sum(l["quantidade"] for l in v["mapa_vaos"])
+        e = await AT.run_autorizacao_tool("estudio_editar", {"processo_id": pid, "operacoes_json":
+            '[{"op":"vao","tipo":"janela","lado":"tardoz","largura_m":0.8,"altura_m":0.6,"peitoril_m":1.5},{"op":"cobertura","tipo":"plana"},{"op":"nada"}]'}, USER, {})
+        assert e["ok"] and e["guardado"] and len(e["feitos"]) == 2 and len(e["falhas"]) == 1
+        assert sum(l["quantidade"] for l in e["resumo"]["mapa_vaos"]) == n0 + 1
+        assert (await RE.obter(pid, USER))["origem"] == "guardado"
+        dv = {x["campo"] for x in (await RE.divergencias(pid, USER))["divergencias"]}
+        assert {"Tipo de cobertura", "Vãos exteriores", "Área de vãos na fachada"} <= dv
+        mau = await AT.run_autorizacao_tool("estudio_editar", {"processo_id": pid, "operacoes_json": "{nao json"}, USER, {})
+        assert not mau["ok"]
+        outro = await AT.run_autorizacao_tool("estudio_ver", {"processo_id": pid}, {"user_id": "u2"}, {})
+        assert not outro["ok"]
+        dxf = await RE.desenhos_dxf(pid, USER)
+        assert b"SECTION" in dxf.body[:200]
+        csv_ = (await RE.medicoes(pid, USER)).body.decode("utf-8")
+        assert "MAPA DE VÃOS" in csv_ and "QUADRO DE ÁREAS" in csv_
+        assert repr(await env[0].urbanismo_processos.find_one({"processo_id": pid})) == antes   # o processo não foi tocado
+        import io
+        import zipfile
+        z = zipfile.ZipFile(io.BytesIO((await UA.exportar(pid, USER)).body))
+        nomes = z.namelist()
+        assert {"Estudio-de-Projeto/LEIA-ME.txt", "Estudio-de-Projeto/Pranchas-A3-a-escala.pdf", "Estudio-de-Projeto/Desenhos.dxf",
+                "Estudio-de-Projeto/Medicoes-geometricas.csv", "Estudio-de-Projeto/Modelo.ifc"} <= set(nomes)
+        assert "Tipo de cobertura" in z.read("Estudio-de-Projeto/LEIA-ME.txt").decode("utf-8")
+        n_proc = len([n for n in nomes if not n.startswith("Estudio-de-Projeto/")])
+        await RE.repor(pid, USER)                                                          # sem modelo guardado: o ZIP é só o do processo
+        z2 = zipfile.ZipFile(io.BytesIO((await UA.exportar(pid, USER)).body))
+        assert len(z2.namelist()) == n_proc and not any(n.startswith("Estudio") for n in z2.namelist())
+    TU._loop_run(go())

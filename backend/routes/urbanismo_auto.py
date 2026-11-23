@@ -442,5 +442,7 @@ async def exportar(pid: str, user=Depends(current_user)):
     data = await run_in_threadpool(UP.export_zip, d, verif, [])
     data = _anexar_relatorio(data, d, coer)
     data = await _anexar_blender(data, d, pid, user["user_id"])
+    from routes import estudio_projeto as _estudio  # noqa: PLC0415 — pasta «Estudio-de-Projeto» quando há modelo guardado
+    data = await _estudio.anexar_ao_zip(data, pid, user["user_id"])
     return Response(content=data, media_type="application/zip", headers={
         "Content-Disposition": content_disposition(nom_document("Processo-licenciamento", d.get("title"), ext="zip"))})

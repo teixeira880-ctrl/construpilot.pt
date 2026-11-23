@@ -232,6 +232,19 @@ def construir(m: Dict[str, Any], d: Dict[str, Any], *, chave: str = "estudio", n
         props(el, "CP_Estudio", {"Largura": float(e["largura_m"]), "AlturaVencida": float(e["altura_m"]), "Blondel": float(e["blondel_m"])})
         contidos[e["piso"]].append(el)
 
+    # ---------- objetos (mobiliário, sanitários, equipamentos): volume de ocupação ----------
+    for o in d.get("objetos") or []:
+        classe = o["ifc"] if o["ifc"] in ("IfcFurniture", "IfcSanitaryTerminal", "IfcElectricAppliance", "IfcBuildingElementProxy") else "IfcBuildingElementProxy"
+        el = ent(classe, o["nome"], f"objeto-{o['id']}")
+        el.ObjectType = o["tipo"]
+        v, fc = _caixa(o["pts"], o["z0"], o["z1"])
+        api("geometry.edit_object_placement", f, product=el, matrix=np.eye(4))
+        api("geometry.assign_representation", f, product=el, representation=api(
+            "geometry.add_mesh_representation", f, context=corpo, vertices=[v], faces=[fc]))
+        props(el, "CP_Estudio", {"Categoria": o["categoria"], "Largura": float(o["largura_m"]), "Profundidade": float(o["prof_m"]),
+                                 "Altura": float(o["z1"] - o["z0"])})
+        contidos[o["piso"]].append(el)
+
     for pid, lista in contidos.items():
         if lista:
             api("spatial.assign_container", f, products=lista, relating_structure=pisos[pid])

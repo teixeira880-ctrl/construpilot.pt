@@ -18,6 +18,7 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
 from engines.estudio_projeto import materiais as MAT
+from engines.estudio_projeto import objetos as OBJ
 from engines.estudio_projeto.modelo import ACABAMENTOS_DIVISAO, espessura
 
 JUNTA = 0.012          # dois eixos a menos desta distância encontram-se
@@ -115,11 +116,46 @@ def _clip(pts: List[Tuple[float, float]], a: float, b: float, c: float) -> List[
     return out
 
 
+def _uma_agua(pg: Polygon, cob: Dict[str, Any], z_topo: float) -> Dict[str, Any]:
+    """Cobertura de uma água: um plano que sobe a partir do lado baixo (frente, tardoz, esquerda ou direita).
+    O plano passa no topo das paredes no ponto mais baixo do contorno; as paredes sobem até ele (empenas)."""
+    from engines.estudio_projeto.cobertura import triangulos
+    tan, beiral = math.tan(math.radians(cob["inclinacao_graus"])), cob["beiral_m"]
+    cos = math.cos(math.radians(cob["inclinacao_graus"]))
+    dx, dy = {"frente": (0.0, 1.0), "tardoz": (0.0, -1.0), "esquerda": (1.0, 0.0), "direita": (-1.0, 0.0)}[cob["lado_baixo"]]
+    beirado = orient(pg.buffer(beiral, join_style=2, mitre_limit=10.0), 1.0) if beiral > 0 else pg
+    if beirado.geom_type != "Polygon":
+        return {"motivo": "O beiral funde partes do contorno: reduza o beiral ou escolha cobertura plana."}
+    d0 = min(x * dx + y * dy for x, y in pg.exterior.coords)
+
+    def z_de(x, y):
+        return z_topo + tan * (x * dx + y * dy - d0)
+    E = list(beirado.exterior.coords)[:-1]
+    face = {"pts": [[R(x), R(y), R(z_de(x, y))] for x, y in E],
+            "tris": [[[R(x), R(y), R(z_de(x, y))] for x, y in list(t.exterior.coords)[:3]] for t in triangulos(beirado)],
+            "area_planta_m2": R(beirado.area, 2), "area_m2": R(beirado.area / cos, 2)}
+    empenas = []
+    P = list(pg.exterior.coords)[:-1]
+    for k in range(len(P)):
+        p, q = P[k], P[(k + 1) % len(P)]
+        zp, zq = z_de(*p), z_de(*q)
+        if max(zp, zq) - z_topo <= 0.01:
+            continue
+        pts3 = [[R(p[0]), R(p[1]), R(z_topo)], [R(q[0]), R(q[1]), R(z_topo)]]
+        pts3 += [[R(x), R(y), R(z)] for (x, y), z in ((q, zq), (p, zp)) if z - z_topo > 1e-6]
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        empenas.append({"pts": pts3, "area_m2": R(L * ((zp - z_topo) + (zq - z_topo)) / 2, 2)})
+    return {"faces": [face], "empenas": empenas, "z_cumeeira": R(max(p3[2] for p3 in face["pts"])), "z_beirado": R(min(p3[2] for p3 in face["pts"])),
+            "beirado": [[R(x), R(y)] for x, y in E], "perimetro_beirado_m": R(beirado.length, 2)}
+
+
 def _aguas(pegada: Polygon, cob: Dict[str, Any], z_topo: float) -> Dict[str, Any]:
     """Águas de uma cobertura inclinada sobre um contorno convexo. z(p) = z_beirado + tan·min(distância às linhas dos
     lados que escoam). Devolve {"faces", "empenas", "z_cumeeira", "z_beirado"} ou {"motivo"} se a forma não permite."""
     tipo, tan, beiral = cob["tipo"], math.tan(math.radians(cob["inclinacao_graus"])), cob["beiral_m"]
     pg = orient(pegada.simplify(0.002), 1.0)
+    if tipo == "uma_agua":                 # um só plano inclinado: vale para qualquer contorno
+        return _uma_agua(pg, cob, z_topo)
     if pg.convex_hull.area - pg.area > 1e-4:          # reentrâncias: exato em contornos ortogonais (L, T, U…)
         from engines.estudio_projeto.cobertura import aguas_ortogonais
         return aguas_ortogonais(pegada, cob, z_topo)
@@ -263,6 +299,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     med_paredes, med_div = [], []
     fachada = {"perimetro_m": 0.0, "area_bruta_m2": 0.0, "area_vaos_m2": 0.0}
     cont_vaos: Dict[tuple, Dict[str, Any]] = {}
+    mapa_v: Dict[tuple, Dict[str, Any]] = {}
     n_pisos = len(m["pisos"])
     fach_casa = MAT.acabamento("fachada", mat_casa.get("fachada"))
     fach_por: Dict[str, float] = {}          # área líquida de fachada por material (parede a parede)
@@ -366,6 +403,17 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                 vaos_piso.append({**v, "piso": piso["id"], "centro": [R(cx), R(cy)], "z0": R(z0 + v["peitoril_m"]),
                                   "z1": R(z0 + v["peitoril_m"] + v["altura_m"]), "exterior": tipo["exterior"]})
                 if v["valido"]:
+                    mv = OBJ.modelo_vao(v["tipo"], v.get("modelo"))
+                    cx_nome = "—" if v["tipo"] == "portao" or (v["tipo"] == "porta" and not tipo["exterior"]) else \
+                        MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["nome"]
+                    kv = (v["tipo"], mv["id"], v["largura_m"], v["altura_m"], v["peitoril_m"], cx_nome, v.get("protecao") or "", tipo["exterior"])
+                    linha = mapa_v.setdefault(kv, {"tipo": v["tipo"], "modelo": mv["nome"], "folhas": mv["folhas"], "largura_m": v["largura_m"],
+                                                   "altura_m": v["altura_m"], "peitoril_m": v["peitoril_m"], "caixilharia": cx_nome,
+                                                   "protecao": OBJ.PROTECOES.get(v.get("protecao") or "", "Sem proteção"),
+                                                   "exterior": tipo["exterior"], "quantidade": 0, "area_m2": 0.0, "ids": []})
+                    linha["quantidade"] += 1
+                    linha["area_m2"] = R(linha["area_m2"] + v["largura_m"] * v["altura_m"], 2)
+                    linha["ids"].append(v["id"])
                     key = (v["tipo"], v["largura_m"], v["altura_m"])
                     c = cont_vaos.setdefault(key, {"tipo": v["tipo"], "largura_m": v["largura_m"], "altura_m": v["altura_m"],
                                                    "quantidade": 0, "area_m2": 0.0, "ids": []})
@@ -383,6 +431,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                                 "vaos": [{"id": v["id"], "tipo": v["tipo"], "u0": v["u0"], "u1": v["u1"], "z0": v["peitoril_m"],
                                           "z1": R(v["peitoril_m"] + v["altura_m"]), "valido": v["valido"],
                                           "lado": v["lado"], "dobradica": v["dobradica"],
+                                          "folhas": OBJ.modelo_vao(v["tipo"], v.get("modelo"))["folhas"],
                                           "cor": MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["cor"]}
                                          for v in vs]})
         for i, pl in enumerate(divs, 1):
@@ -506,6 +555,47 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                "area_vaos_m2": R(fachada["area_vaos_m2"], 2),
                "area_liquida_m2": R(fachada["area_bruta_m2"] - fachada["area_vaos_m2"], 2)}
 
+    # mapa de vãos: um código por conjunto idêntico (tipo, modelo, medidas, caixilharia, proteção)
+    prefixo = {"janela": "J", "porta": "P", "portada": "PV", "portao": "PG"}
+    conta_pref: Dict[str, int] = {}
+    mapa_vaos = []
+    for kv in sorted(mapa_v, key=lambda t: (list(prefixo).index(t[0]), not t[7], t[2], t[3], t[1], t[4], t[5], t[6])):
+        linha = mapa_v[kv]
+        conta_pref[kv[0]] = conta_pref.get(kv[0], 0) + 1
+        mapa_vaos.append({"codigo": f"{prefixo[kv[0]]}{conta_pref[kv[0]]}", **linha})
+    cod_vao = {i: l["codigo"] for l in mapa_vaos for i in l["ids"]}
+    for w in paredes_out:
+        for v in w["vaos"]:
+            v["codigo"] = cod_vao.get(v["id"])
+
+    # objetos (mobiliário, sanitários, equipamentos): ocupação em planta e em altura
+    objetos_out, conta_obj = [], {}
+    z_piso = {p["id"]: p["z0"] for p in pisos_out}
+    for o in m.get("objetos") or []:
+        base = OBJ.OBJETOS[o["tipo"]]
+        r_ = math.radians(o["rot"])
+        co, si = math.cos(r_), math.sin(r_)
+        hw, hp = o["largura_m"] / 2, o["prof_m"] / 2
+        if base["forma"] == "circ":
+            local = [(hw * math.cos(2 * math.pi * i / 24), hp * math.sin(2 * math.pi * i / 24)) for i in range(24)]
+        else:
+            local = [(-hw, -hp), (hw, -hp), (hw, hp), (-hw, hp)]
+        z0o = z_piso[o["piso"]] + base["base_m"]
+        objetos_out.append({"id": o["id"], "piso": o["piso"], "tipo": o["tipo"], "nome": base["nome"], "categoria": base["categoria"],
+                            "forma": base["forma"], "cor": base["cor"], "ifc": base["ifc"], "x": o["x"], "y": o["y"], "rot": o["rot"],
+                            "largura_m": o["largura_m"], "prof_m": o["prof_m"],
+                            "pts": [[R(o["x"] + lx * co - ly * si), R(o["y"] + lx * si + ly * co)] for lx, ly in local],
+                            "frente": [R(o["x"] + hp * si), R(o["y"] - hp * co)],        # meio da face da frente (lado −y local)
+                            "z0": R(z0o), "z1": R(z0o + base["altura_m"])})
+        c_ = conta_obj.setdefault(o["tipo"], {"tipo": o["tipo"], "nome": base["nome"], "categoria": base["categoria"], "quantidade": 0})
+        c_["quantidade"] += 1
+
+    quadro_areas = [{"piso": p["nome"], "area_bruta_m2": p["area_bruta_m2"],
+                     "area_util_m2": R(sum(dv["area_m2"] for dv in divisoes_out if dv["piso"] == p["id"]), 2),
+                     "n_divisoes": sum(1 for dv in divisoes_out if dv["piso"] == p["id"])} for p in pisos_out]
+    for q in quadro_areas:
+        q["paredes_e_vazios_m2"] = R(q["area_bruta_m2"] - q["area_util_m2"], 2)
+
     por_tipo: Dict[str, Dict[str, Any]] = {}
     for w in med_paredes:
         t = por_tipo.setdefault(w["tipo"], {"tipo": w["tipo"], "nome": w["nome_tipo"], "comprimento_liquido_m": 0.0,
@@ -534,6 +624,9 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         "paredes": med_paredes, "por_tipo": list(por_tipo.values()),
         "vaos": sorted(cont_vaos.values(), key=lambda c: (c["tipo"], c["largura_m"], c["altura_m"])),
         "divisoes": med_div, "acabamentos": acabamentos, "lajes": med_lajes,
+        "mapa_vaos": mapa_vaos, "quadro_areas": quadro_areas,
+        "area_implantacao_m2": pisos_out[0]["area_bruta_m2"] if pisos_out else 0.0,
+        "objetos": sorted(conta_obj.values(), key=lambda c: (OBJ.CATEGORIAS_OBJ.index(c["categoria"]), c["nome"])),
         "escadas": [{kk: e[kk] for kk in ("id", "piso", "tipo", "n_espelhos", "n_cobertores", "espelho_m", "cobertor_m", "largura_m",
                                           "blondel_m", "altura_m", "desenvolvimento_m", "area_planta_m2", "vazio_m2")} for e in escadas_out],
         "regra_vazio_escada": f"Vazio aberto na laje onde o pé-direito livre sobre a escada seria inferior a {LIVRE_SOBRE_ESCADA:.2f} m.", "terracos": terracos, "fachada": fachada,
@@ -546,5 +639,5 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                    "n_paredes": len(med_paredes), "n_vaos": sum(c["quantidade"] for c in cont_vaos.values())},
     }
     return {"ok": not erros, "pisos": pisos_out, "paredes": paredes_out, "divisoes": divisoes_out, "lajes": lajes_out, "escadas": escadas_out,
-            "cobertura": cobertura, "cores": MAT.cores(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
+            "objetos": objetos_out, "cobertura": cobertura, "cores": MAT.cores(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
             "limites": [R(min(xs)), R(min(ys)), R(max(xs)), R(max(ys))] if xs else None}

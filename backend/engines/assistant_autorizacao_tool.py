@@ -86,6 +86,8 @@ AUTORIZACAO_TOOLS += [
          "caixilharia": {"type": "string"}},
     ),
 ]
+from engines.assistant_estudio_tool import ESTUDIO_INSTRUCTIONS, ESTUDIO_TOOL_NAMES, ESTUDIO_TOOLS, run_estudio_tool  # noqa: E402
+AUTORIZACAO_TOOLS += ESTUDIO_TOOLS        # Estúdio de Projeto: ver e editar o modelo do edifício
 AUTORIZACAO_TOOL_NAMES = {t["name"] for t in AUTORIZACAO_TOOLS}
 
 AUTORIZACAO_INSTRUCTIONS = (
@@ -110,6 +112,8 @@ AUTORIZACAO_INSTRUCTIONS = (
     "(termos de responsabilidade) são obrigatórios, e que a página do processo permite pedir essa subscrição.\n"
 )
 
+AUTORIZACAO_INSTRUCTIONS += ESTUDIO_INSTRUCTIONS
+
 
 def _pedido(args: dict) -> dict:
     a = {k: v for k, v in (args or {}).items() if v not in (None, "")}
@@ -124,6 +128,8 @@ def _pedido(args: dict) -> dict:
 
 
 async def run_autorizacao_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
+    if name in ESTUDIO_TOOL_NAMES:
+        return await run_estudio_tool(name, args, user, conv)
     if name in ("licenciamento_automatico", "licenciamento_atualizar", "licenciamento_materiais"):
         from routes import urbanismo_auto as UA
         try:
