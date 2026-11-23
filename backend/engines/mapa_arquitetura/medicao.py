@@ -81,6 +81,16 @@ def medir(data: bytes, pe_direito: float | None = None, mapa_camadas: dict | Non
                     p["espessura_laje"] = el["espessura_laje"]
                     p["altura_origem"] = (f"cortes : entre lajes (laje {el['espessura_laje']:.2f}) ; cotas {p['cota']['valor']:.2f}, "
                                           f"piso a piso {p['piso_a_piso']:.2f}")
+            for p in pisos:                      # último piso (sótão) : da laje à face inferior da cobertura, no corte
+                c = (p.get("cota") or {}).get("valor")
+                if p.get("altura") or c is None or not p["paredes"]:
+                    continue
+                pc = cortes.perfil_cobertura(z, lista, c, mapa_camadas)
+                if pc:
+                    p["altura"], p["perfil_cobertura"] = pc["h_media"], pc
+                    p["altura_origem"] = (f"{pc['corte']} : laje → face inferior da cobertura, beirado {pc['h_min']:.2f}, cumeeira "
+                                          f"{pc['h_max']:.2f}, média {pc['h_media']:.2f} em {pc['vao']:.2f} m ; empena sob a cobertura "
+                                          f"{pc['area_perfil']:.2f} m² (triângulo + faixa)")
         except Exception as exc:  # noqa: BLE001
             avisos.append(f"Cortes não lidos ({type(exc).__name__}) : alturas piso a piso das cotas das plantas.")
     return _resumo(pisos, vistas, avisos, pe_direito, papeis_usados, [n for _, _, n in lista])

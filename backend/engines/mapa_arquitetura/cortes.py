@@ -85,3 +85,56 @@ def alturas_entre_lajes(z, lista, pisos, mapa_camadas=None) -> dict:
             (h, esp), _ = lo.most_common(1)[0]
             out[nome] = {"entre_lajes": h, "espessura_laje": esp}
     return out
+
+
+def perfil_cobertura(z, lista, cota_piso, mapa_camadas=None) -> dict | None:
+    """Último piso (sótão) : altura da parede = face superior da laje do piso → face inferior da cobertura, ponto a ponto, nos
+    cortes. Devolve o corte com o perfil mais variável (o que atravessa a cumeeira) : vão, altura no beirado, na cumeeira, média
+    e a área do perfil (= área de uma empena interior entre beirados, triângulo + retângulo)."""
+    from . import camadas, dwfx
+    melhor = None
+    for i, (_, _, nome) in enumerate(lista):
+        if not CORTE.search(nome):
+            continue
+        f = dwfx.ler(z, i, lista)
+        if not f.upm:
+            continue
+        pap = camadas.mapa(f.camadas, mapa_camadas)
+        polys = [Polygon(pl).buffer(0) for e in f.elementos if e.tipo == "path" and e.fill and pap.get(e.camada) == "trama"
+                 for pl in e.pls if len(pl) >= 3]
+        polys = [p for p in polys if p.area > 0.001]
+        if not polys:
+            continue
+        U = unary_union(polys)
+        for xc, k, ya, yb in _colunas(f):
+            perfil, passo = [], 0.05
+            x = xc - 30.0
+            while x <= xc + 30.0:
+                inter = U.intersection(LineString([(x, ya - 10.0), (x, yb + 6.0)]))
+                cot = sorted((round(k - max(c[1] for c in g.coords), 3), round(k - min(c[1] for c in g.coords), 3))
+                             for g in getattr(inter, "geoms", [inter]) if not g.is_empty and g.geom_type == "LineString")
+                laje = [c for c in cot if cota_piso - 0.6 <= c[1] <= cota_piso + 0.05 and 0.08 <= c[1] - c[0] <= 0.6]
+                if laje:
+                    topo = laje[0][1]
+                    cima = [c for c in cot if c[0] > topo + 0.2]
+                    if cima:
+                        perfil.append((x, min(c[0] for c in cima) - topo))
+                x += passo
+            if len(perfil) < 20:
+                continue
+            # troço contínuo mais longo (entre as paredes do beirado)
+            runs, cur = [], [perfil[0]]
+            for a, b in zip(perfil, perfil[1:]):
+                if b[0] - a[0] <= 0.5 and abs(b[1] - a[1]) < 0.3:           # falhas da trama até 0,5 m
+                    cur.append(b)
+                else:
+                    runs.append(cur); cur = [b]
+            runs.append(cur)
+            r = max(runs, key=len)
+            hs = [h for _, h in r]
+            d = {"corte": nome, "vao": round(r[-1][0] - r[0][0], 2), "h_min": round(min(hs), 2), "h_max": round(max(hs), 2),
+                 "h_media": round(sum(hs) / len(hs), 2),
+                 "area_perfil": round(sum((b[0] - a[0]) * (a[1] + b[1]) / 2 for a, b in zip(r, r[1:])), 2)}
+            if melhor is None or (d["h_max"] - d["h_min"], d["vao"]) > (melhor["h_max"] - melhor["h_min"], melhor["vao"]):
+                melhor = d
+    return melhor

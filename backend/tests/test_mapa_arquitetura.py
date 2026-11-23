@@ -229,3 +229,26 @@ def test_corte_altura_entre_lajes():
     f = dwfx.Folha(0, "Corte A", 100.0, els, ["trama corte", "cotas"])
     ls = cortes.lajes(f, camadas.mapa(f.camadas))
     assert ls and sorted((lo, hi) for lo, hi, _ in ls[0][1]) == [(99.7, 100.0), (102.7, 103.0), (105.7, 106.0)]
+
+
+def test_perfil_da_cobertura_no_sotao():
+    """Corte : laje do sótão (topo cota 110,00, y = 10) ; cobertura de duas águas cortada (0,20) : beirado 0,50 acima da laje nas
+    pontas (x 2 e 12) e cumeeira 2,50 a meio (x 7)."""
+    from engines.mapa_arquitetura import cortes
+    def faixa(x0, x1, h0, h1):                      # banda inclinada de 0,20, face inferior h acima da laje (y cresce para baixo)
+        return [(x0, 10 - h0), (x1, 10 - h1), (x1, 10 - h1 - 0.2), (x0, 10 - h0 - 0.2), (x0, 10 - h0)]
+    els = [dwfx.Elemento("cotas", "texto", texto=f"{v:.2f}", pos=(0.0, y)) for v, y in ((104.0, 16.0), (107.0, 13.0), (110.0, 10.0))]
+    els += [dwfx.Elemento("trama corte", "path", [pl], fill="#808080") for pl in (
+        [(1.8, 10), (12.2, 10), (12.2, 10.3), (1.8, 10.3), (1.8, 10)], faixa(1.8, 7, 0.5, 2.5), faixa(7, 12.2, 2.5, 0.5))]
+    f = dwfx.Folha(0, "Corte A", 100.0, els, ["trama corte", "cotas"])
+
+    class Z:          # o perfil só usa dwfx.ler → substituir por esta folha
+        pass
+    orig = dwfx.ler
+    try:
+        dwfx.ler = lambda z, i, lista=None: f
+        pc = cortes.perfil_cobertura(Z(), [("p", "s", "Corte A")], 110.0)
+    finally:
+        dwfx.ler = orig
+    assert pc["h_max"] == pytest.approx(2.5, abs=0.05) and pc["h_min"] == pytest.approx(0.5, abs=0.1)
+    assert pc["area_perfil"] == pytest.approx(10.4 * 1.5, rel=0.03)
