@@ -406,7 +406,7 @@ async def _doc_authorized(d: dict, user_id: str) -> bool:
     return bool(d) and d.get("user_id") == user_id
 
 
-PLAN_ARG_KEYS = ("plan_id", "plan_id_a", "plan_id_b", "dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "base_plan_id")
+PLAN_ARG_KEYS = ("plan_id", "plan_id_a", "plan_id_b", "dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "base_plan_id", "lower_dxf_plan_id")
 CAD_FORMATS = ("dwg", "dxf")
 _PROMOTE_LOCKS: dict = {}
 
