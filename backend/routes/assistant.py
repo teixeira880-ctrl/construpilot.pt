@@ -241,6 +241,10 @@ TOOLS = [
                                                                 "niveau_base_murs_m": {"type": ["number", "null"]}},
                                "required": ["as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"], "additionalProperties": False}, {"type": "null"}]}},
                     "required": ["dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "base_plan_id", "allow_vision", "levels"], "additionalProperties": False}},
+    {"type": "function", "name": "compute_foundations", "strict": True,
+     "description": "Fundações a partir do DWG/DXF de cofragem das fundações (camadas Fondations/Etiquettes de fondations ou AES-Semelle): reagrupa os rótulos impressos (S n A×B×ht, SF n L×ht, As: cota), fecha os contornos desenhados e devolve, sapata a sapata, o volume de betão (S = A×B×ht do rótulo; SF = área desenhada × ht), a cota As e o fundo (As − ht). Nada é estimado: rótulo ilegível ou contorno sem rótulo ficam explícitos. A escavação não é calculada (falta a cota do terreno).",
+     "parameters": {"type": "object", "properties": {"plan_id": {"type": "string", "description": "planta DWG/DXF das fundações importada (um doc_… DWG de um processo também é aceite)"}},
+                    "required": ["plan_id"], "additionalProperties": False}},
     {"type": "function", "name": "generate_conversation_report", "strict": True,
      "description": "Gera o relatório PDF profissional desta conversa a partir dos MESMOS cálculos, constatações, soluções comparadas e fontes já produzidos pelas ferramentas (nenhum valor reescrito). Identifica os documentos analisados (revisão lida na legenda). Fornecer o objeto do controlo numa frase.",
      "parameters": {"type": "object", "properties": {"scope": {"type": "string", "description": "Objeto / âmbito exato do controlo, uma frase"}},
@@ -1218,6 +1222,22 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                                                   formwork_plan_id=args.get("formwork_plan_id"), coupes_plan_id=args.get("coupes_plan_id"),
                                                   allow_vision=bool(args.get("allow_vision")), levels=args.get("levels"), now=_now(), log_usage=_log_usage,
                                                   base_plan_id=args.get("base_plan_id"))
+    if name == "compute_foundations":
+        from engines.metre.fondations_dxf import compact as _fon_compact, fondations_takeoff
+        try:
+            from engines.metre.volumes_run import _dxf_bytes as _fon_loader
+        except ImportError:
+            _fon_loader = None
+        if _fon_loader is not None:
+            raw = await _fon_loader(db, args["plan_id"], uid)
+        else:
+            from engines.plan_sources import load_cad_source as _fon_lcs
+            src = await _fon_lcs(db, args["plan_id"], uid, "converted_dxf") or await _fon_lcs(db, args["plan_id"], uid, "original")
+            raw = src if isinstance(src, (bytes, bytearray)) else (base64.b64decode(src["data_b64"]) if src else None)
+        if not raw or raw[:4] == b"AC10":
+            return {"ok": False, "error": "Nenhum DXF convertido para esta planta de fundações."}
+        res = await asyncio.to_thread(fondations_takeoff, raw)
+        return {"ok": True, **_fon_compact(res)}
     if name in AUTODESK_TOOL_NAMES:
         from engines.autodesk_client import AutodeskError
         from engines.plan_sources import load_cad_source
