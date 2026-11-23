@@ -214,3 +214,42 @@ def test_modelo_do_processo_coincide_com_o_processo(env):
         await RE.repor(pid, USER)
         assert (await RE.obter(pid, USER))["origem"] == "processo"
     TU._loop_run(editar())
+
+
+# ------------------------------------------------------------------ biblioteca de materiais
+def test_biblioteca_de_materiais_e_coerente():
+    from engines.estudio_projeto import materiais as MAT
+    cat = MAT.catalogo()
+    ids = [m["id"] for m in cat["biblioteca"]]
+    assert len(ids) == len(set(ids)) and len(ids) >= 280
+    assert all(m["nome"] and m["categoria"] in cat["categorias"] and m["cor"].startswith("#") and len(m["cor"]) == 7
+               and all(e >= 0 for e in m["espessuras_cm"]) for m in cat["biblioteca"])
+    for k, lista in cat["acabamentos"].items():
+        lids = [x["id"] for x in lista]
+        assert len(lids) == len(set(lids)) and all(len(i) <= 40 for i in lids) and cat["padrao"][k] in lids
+    # os identificadores que o processo de licenciamento já usa continuam a existir, com o mesmo nome
+    from engines.urbanismo_pt.auto import pecas_auto as PA
+    for k, antigos in (("fachada", PA.MATERIAIS_FACHADA), ("cobertura", PA.MATERIAIS_COBERTURA), ("caixilharia", PA.CAIXILHARIA)):
+        atuais = {x["id"]: x["nome"] for x in cat["acabamentos"][k]}
+        assert all(atuais.get(i) == nome for i, nome in antigos.items())
+    # cada parede-tipo usa só materiais da biblioteca e é aceite pelo modelo
+    assert len(cat["paredes_tipo"]) >= 35
+    for tid, t in cat["paredes_tipo"].items():
+        assert all(MAT.existe(c["material"]) for c in t["camadas"]), tid
+    m = EP.normalizar({"pisos": [{"id": "p0"}], "tipos_parede": cat["paredes_tipo"],
+                       "paredes": [{"id": "w", "piso": "p0", "a": [0, 0], "b": [5, 0], "tipo": "ext_clt_ventilada"}]})
+    assert len(m["tipos_parede"]) == len(cat["paredes_tipo"]) + 3
+    w = EP.derivar(m)["medicoes"]["paredes"][0]
+    assert w["espessura_m"] == pytest.approx(0.343, abs=0.0006) and len(w["camadas"]) == 6
+
+
+def test_acabamentos_escolhidos_entram_nas_cores_e_nas_medicoes():
+    d = EP.derivar(modelo(materiais={"fachada": "aco_corten", "cobertura": "zinco_quartzo", "pavimento": "soalho_carvalho",
+                                     "parede_interior": "estuque", "teto": "teto_madeira", "caixilharia": "aluminio_preto"}))
+    assert d["cores"]["fachada"] == "#8a4a2c" and d["cores"]["cobertura"] == "#7c858b"
+    ac = {a["elemento"]: a for a in d["medicoes"]["acabamentos"]}
+    assert ac["Pavimentos"]["material"] == "Soalho de carvalho" and ac["Pavimentos"]["area_m2"] == d["medicoes"]["totais"]["area_util_m2"]
+    assert ac["Fachada exterior"]["material"] == "Chapa de aço corten" and ac["Fachada exterior"]["area_m2"] == d["medicoes"]["fachada"]["area_liquida_m2"]
+    assert ac["Tetos"]["material"] == "Teto em ripado de madeira"
+    desconhecido = EP.derivar(modelo(materiais={"fachada": "nao_existe"}))
+    assert desconhecido["cores"]["fachada"] == "#f1efe9"            # identificador desconhecido → acabamento de omissão

@@ -26,15 +26,17 @@ function leque(pts3) {
 
 function construir(derivado, materiais, pisoVisivel) {
   const grupo = new THREE.Group();
-  const corF = FACHADA[materiais?.fachada] ?? FACHADA.reboco_branco;
+  // cores dos acabamentos escolhidos: vêm do servidor (biblioteca de materiais); os mapas locais são só reserva
+  const cores = derivado.cores || {};
+  const corF = cores.fachada ?? FACHADA[materiais?.fachada] ?? FACHADA.reboco_branco;
   const mExt = new THREE.MeshStandardMaterial({ color: corF, roughness: 0.85 });
-  const mInt = new THREE.MeshStandardMaterial({ color: 0xe9e7e1, roughness: 0.9 });
-  const mLaje = new THREE.MeshStandardMaterial({ color: 0xc9c7c1, roughness: 0.9 });
-  const mCob = new THREE.MeshStandardMaterial({ color: COBERTURA[materiais?.cobertura] ?? COBERTURA.telha_ceramica, roughness: 0.8, side: THREE.DoubleSide });
+  const mInt = new THREE.MeshStandardMaterial({ color: cores.parede_interior ?? 0xe9e7e1, roughness: 0.9 });
+  const mLaje = new THREE.MeshStandardMaterial({ color: cores.pavimento ?? 0xc9c7c1, roughness: 0.9 });
+  const mCob = new THREE.MeshStandardMaterial({ color: cores.cobertura ?? COBERTURA[materiais?.cobertura] ?? COBERTURA.telha_ceramica, roughness: 0.8, side: THREE.DoubleSide });
   const mEmp = new THREE.MeshStandardMaterial({ color: corF, roughness: 0.85, side: THREE.DoubleSide });
   const mVidro = new THREE.MeshPhysicalMaterial({ color: 0x8fb4cc, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.55 });
   const mPorta = new THREE.MeshStandardMaterial({ color: 0x7a4b28, roughness: 0.6 });
-  const mCaix = new THREE.MeshStandardMaterial({ color: CAIXILHO[materiais?.caixilharia] ?? CAIXILHO.aluminio_antracite, roughness: 0.4, metalness: 0.3 });
+  const mCaix = new THREE.MeshStandardMaterial({ color: cores.caixilharia ?? CAIXILHO[materiais?.caixilharia] ?? CAIXILHO.aluminio_antracite, roughness: 0.4, metalness: 0.3 });
   const ate = pisoVisivel == null ? Infinity : pisoVisivel;      // corta a vista acima deste piso (ver o interior)
   const ordem = Object.fromEntries((derivado.pisos || []).map((p, i) => [p.id, i]));
 

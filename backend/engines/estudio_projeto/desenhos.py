@@ -20,9 +20,6 @@ VIDRO = (150, 190, 215)
 LADOS = {"frente": ((1, 0), (0, 1)), "tardoz": ((-1, 0), (0, -1)), "esquerda": ((0, -1), (1, 0)), "direita": ((0, 1), (-1, 0))}
 NOME_LADO = {"frente": "Alçado principal (frente)", "tardoz": "Alçado de tardoz", "esquerda": "Alçado lateral esquerdo",
              "direita": "Alçado lateral direito"}
-COR_FACHADA = {"reboco_branco": (243, 241, 235), "granito": (176, 172, 162), "madeira": (186, 140, 96), "xisto": (104, 98, 92),
-               "tijolo": (190, 110, 84), "betao": (176, 176, 172)}
-COR_COBERTURA = {"telha_ceramica": (186, 96, 66), "telha_preta": (70, 72, 76), "zinco": (140, 150, 156), "plana_seixo": (182, 176, 164)}
 
 
 def fmt(v: float, nd: int = 2) -> str:
@@ -146,9 +143,9 @@ def _proj(lado: str):
 
 
 def _cores(m):
-    mat = m.get("materiais") or {}
-    fach = (mat.get("fachada") or "reboco_branco").replace("misto_granito_reboco", "reboco_branco").replace("misto_madeira_reboco", "reboco_branco")
-    return COR_FACHADA.get(fach, COR_FACHADA["reboco_branco"]), COR_COBERTURA.get(mat.get("cobertura") or "telha_ceramica", COR_COBERTURA["telha_ceramica"])
+    from engines.estudio_projeto import materiais as MAT
+    c = MAT.cores(m.get("materiais") or {})
+    return MAT.rgb(c["fachada"]), MAT.rgb(c["cobertura"])
 
 
 def _vista(m, d, lado: str, prof_min: Optional[float] = None, claro: bool = False) -> List[Tuple[float, dict]]:

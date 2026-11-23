@@ -70,9 +70,8 @@ async def _carregar(pid: str, uid: str) -> Dict[str, Any]:
 
 
 def _catalogo() -> Dict[str, Any]:
-    from engines.urbanismo_pt.auto import pecas_auto as PA
-    return {"tipos_parede": TIPOS_BASE, "vaos": VAO_BASE, "coberturas": list(COBERTURAS),
-            "materiais": {"fachada": PA.MATERIAIS_FACHADA, "cobertura": PA.MATERIAIS_COBERTURA, "caixilharia": PA.CAIXILHARIA}}
+    from engines.estudio_projeto import materiais as MAT
+    return {"tipos_parede": TIPOS_BASE, "vaos": VAO_BASE, "coberturas": list(COBERTURAS), **MAT.catalogo()}
 
 
 @router.get("/processos/{pid}")
@@ -176,6 +175,10 @@ def medicoes_csv(der: Dict[str, Any]) -> str:
         w.writerow([lj["nome"], n(lj["area_m2"]), n(lj["espessura_m"]), n(lj["volume_m3"])])
     for t in md["terracos"]:
         w.writerow([f"Terraço sobre {t['sobre']}", n(t["area_m2"]), "", ""])
+    w.writerow([])
+    w.writerow(["ACABAMENTOS", "Material", "Área (m²)"])
+    for ac in md["acabamentos"]:
+        w.writerow([ac["elemento"], ac["material"], n(ac["area_m2"])])
     c, f, t = md["cobertura"], md["fachada"], md["totais"]
     w.writerow([])
     w.writerow(["COBERTURA", "Tipo", "Inclinação (°)", "Área real (m²)", "Área em planta (m²)", "Perímetro do beirado (m)", "Empenas (m²)"])

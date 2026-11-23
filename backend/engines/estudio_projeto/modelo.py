@@ -12,7 +12,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 VERSAO = 1
-LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 24, "camadas": 8, "rotulos": 300, "coord": 500.0}
+LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 60, "camadas": 8, "rotulos": 300, "coord": 500.0}
 COBERTURAS = ("plana", "uma_agua", "duas_aguas", "quatro_aguas")
 TIPOS_VAO = ("porta", "janela", "portada")
 VAO_BASE = {"porta": {"largura_m": 0.90, "altura_m": 2.10, "peitoril_m": 0.0},
@@ -106,7 +106,7 @@ def normalizar(m: Any) -> Dict[str, Any]:
         if not isinstance(cam, list) or not 1 <= len(cam) <= LIM["camadas"]:
             raise ErroModelo(f"O tipo de parede «{tid}» precisa de 1 a {LIM['camadas']} camadas.")
         camadas = [{"material": _txt((c or {}).get("material"), 60) or "Camada",
-                    "esp_m": _f((c or {}).get("esp_m"), "espessura da camada", 0.002, 1.0)} for c in cam]
+                    "esp_m": _f((c or {}).get("esp_m"), "espessura da camada", 0.0001, 1.0)} for c in cam]
         tipos[tid] = {"nome": _txt(t.get("nome")) or tid, "exterior": bool(t.get("exterior")), "camadas": camadas}
         if not 0.03 <= espessura(tipos[tid]) <= 1.5:
             raise ErroModelo(f"A espessura total do tipo «{tid}» tem de estar entre 3 cm e 1,5 m.")
@@ -173,7 +173,8 @@ def normalizar(m: Any) -> Dict[str, Any]:
     return {"versao": VERSAO, "pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos,
             "cobertura": cobertura, "rotulos": rotulos,
             "laje_terrea_m": _f(m.get("laje_terrea_m"), "laje térrea", 0.08, 1.0, 0.20),
-            "materiais": {k: _txt(mat.get(k), 40) for k in ("fachada", "cobertura", "caixilharia") if mat.get(k)},
+            "materiais": {k: _txt(mat.get(k), 40) for k in ("fachada", "cobertura", "caixilharia", "pavimento", "parede_interior", "teto")
+                          if mat.get(k)},
             "origem": _txt(m.get("origem"), 40) or "manual"}
 
 

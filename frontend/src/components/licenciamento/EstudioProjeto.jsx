@@ -43,6 +43,88 @@ function Sel({ valor, onChange, opcoes, ...resto }) {
   );
 }
 
+// Lista de acabamentos agrupada (fachadas, coberturas, caixilharias, pavimentos…), com a cor de cada opção ao lado.
+function SelAcabamento({ valor, onChange, lista, ...resto }) {
+  const grupos = [...new Set(lista.map((x) => x.grupo))];
+  const atual = lista.find((x) => x.id === valor);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="h-6 w-6 rounded border shrink-0" style={{ background: atual?.cor || "#fff" }} />
+      <select className="w-full border rounded h-8 px-2 bg-background text-sm text-foreground min-w-0" value={atual ? valor : ""} onChange={(e) => onChange(e.target.value)} {...resto}>
+        {!atual && <option value="">—</option>}
+        {grupos.map((g) => <optgroup key={g} label={g}>{lista.filter((x) => x.grupo === g).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</optgroup>)}
+      </select>
+    </div>
+  );
+}
+
+// Biblioteca de materiais para as camadas: pesquisa por nome, filtro por categoria, espessuras de catálogo de cada um.
+function SeletorMaterial({ biblioteca, categorias, onEscolher, onFechar }) {
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("");
+  const limpa = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const termo = limpa(q.trim());
+  const lista = biblioteca.filter((m) => (!cat || m.categoria === cat) && (!termo || limpa(m.nome).includes(termo)));
+  return (
+    <div className="border rounded p-2 space-y-2 bg-background" data-testid="estudio-materiais">
+      <div className="flex gap-2">
+        <Input className="h-8" placeholder="Procurar material…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus data-testid="estudio-materiais-pesquisa" />
+        <Button size="sm" variant="ghost" onClick={onFechar}>Fechar</Button>
+      </div>
+      <Sel valor={cat} onChange={setCat} opcoes={[["", `Todas as categorias (${biblioteca.length} materiais)`], ...categorias.map((c) => [c, c])]} />
+      <div className="max-h-64 overflow-auto divide-y">
+        {lista.map((m) => (
+          <button type="button" key={m.id} className="w-full text-left py-1.5 px-1 hover:bg-muted flex items-center gap-2" onClick={() => onEscolher(m)} data-material={m.id}>
+            <span className="h-4 w-4 rounded-sm border shrink-0" style={{ background: m.cor }} />
+            <span className="min-w-0"><span className="block text-xs text-foreground">{m.nome}</span>
+              <span className="block text-[10px] text-muted-foreground">{m.categoria}{m.espessuras_cm.length ? ` · ${m.espessuras_cm.filter((e) => e > 0).map((e) => String(e).replace(".", ",")).join(" / ")} cm` : ""}</span></span>
+          </button>
+        ))}
+        {!lista.length && <p className="text-xs text-muted-foreground p-2">Nenhum material com esse nome. Pode escrever o nome à mão na camada.</p>}
+      </div>
+    </div>
+  );
+}
+
+function EditorCamadas({ tipo, usos, catalogo, onMudar }) {
+  const [aberta, setAberta] = useState(null);       // índice da camada cujo material está a ser escolhido
+  const camadas = tipo.camadas;
+  const muda = (i, patch) => onMudar({ ...tipo, camadas: camadas.map((c, k) => (k === i ? { ...c, ...patch } : c)) });
+  const porNome = (nome) => catalogo.biblioteca.find((m) => m.nome === nome);
+  return (
+    <div className="space-y-2 border rounded p-2" data-testid="estudio-camadas">
+      <Campo rotulo="Nome da parede"><Input className="h-8" value={tipo.nome} onChange={(e) => onMudar({ ...tipo, nome: e.target.value.slice(0, 80) })} /></Campo>
+      <label className="text-xs flex items-center gap-2"><input type="checkbox" checked={!!tipo.exterior} onChange={(e) => onMudar({ ...tipo, exterior: e.target.checked })} />Parede exterior</label>
+      <p className="text-[11px] text-muted-foreground">Camadas do interior para o exterior. Usada em {usos} parede(s).</p>
+      {camadas.map((c, i) => {
+        const m = porNome(c.material);
+        return (
+          <div key={i} className="space-y-1 border-t pt-2">
+            <div className="flex items-center gap-1">
+              <span className="h-4 w-4 rounded-sm border shrink-0" style={{ background: m?.cor || "#ddd" }} />
+              <button type="button" className="text-xs text-left underline decoration-dotted min-w-0 flex-1" onClick={() => setAberta(aberta === i ? null : i)} data-testid={`estudio-camada-material-${i}`}>{c.material}</button>
+              <button type="button" className="text-muted-foreground disabled:opacity-30" disabled={camadas.length <= 1} title="Remover camada"
+                onClick={() => { setAberta(null); onMudar({ ...tipo, camadas: camadas.filter((_, k) => k !== i) }); }}><Trash2 className="h-3.5 w-3.5" /></button>
+            </div>
+            <div className="flex items-center gap-1 flex-wrap">
+              <div className="w-20"><Num valor={Math.round(c.esp_m * 1e4) / 100} min={0.01} onChange={(x) => muda(i, { esp_m: Math.round(x * 100) / 1e4 })} /></div>
+              <span className="text-[11px] text-muted-foreground">cm</span>
+              {(m?.espessuras_cm || []).filter((e) => e > 0).slice(0, 8).map((e) => (
+                <button type="button" key={e} className={`text-[10px] border rounded px-1 ${Math.abs(c.esp_m * 100 - e) < 1e-6 ? "bg-muted" : ""}`} onClick={() => muda(i, { esp_m: Math.round(e * 100) / 1e4 })}>{String(e).replace(".", ",")}</button>
+              ))}
+            </div>
+            {aberta === i && <SeletorMaterial biblioteca={catalogo.biblioteca} categorias={catalogo.categorias} onFechar={() => setAberta(null)}
+              onEscolher={(nm) => { const e = nm.espessuras_cm.find((x) => x > 0); muda(i, { material: nm.nome, ...(e ? { esp_m: Math.round(e * 100) / 1e4 } : {}) }); setAberta(null); }} />}
+          </div>
+        );
+      })}
+      <Button size="sm" variant="outline" disabled={camadas.length >= 8} data-testid="estudio-camada-nova"
+        onClick={() => { onMudar({ ...tipo, camadas: [...camadas, { material: "Reboco tradicional de cimento e areia", esp_m: 0.015 }] }); setAberta(camadas.length); }}>+ Camada</Button>
+      <div className="text-xs">Espessura total <b>{G.fmt(G.espessuraTipo(tipo) * 100, 1)} cm</b></div>
+    </div>
+  );
+}
+
 // Desenho calculado pelo servidor (SVG mostrado como imagem: nenhum script do SVG é executado).
 function Desenho({ modelo, params, ativo }) {
   const [url, setUrl] = useState(null);
@@ -93,6 +175,8 @@ function Medicoes({ md }) {
       <div><div className="font-medium text-sm mb-1">Divisões</div>
         <T cab={["Divisão", "Piso", "Área útil (m²)", "Perímetro (m)", "Paredes (m²)", "Rodapé (m)"]}
           linhas={md.divisoes.map((d) => [d.nome, d.piso, n(d.area_m2), n(d.perimetro_m), n(d.area_paredes_m2), n(d.rodape_m)])} /></div>
+      {md.acabamentos && <div><div className="font-medium text-sm mb-1">Acabamentos escolhidos</div>
+        <T cab={["Elemento", "Material", "Área (m²)"]} linhas={md.acabamentos.map((a) => [a.elemento, a.material, n(a.area_m2)])} /></div>}
       <div className="grid md:grid-cols-2 gap-4">
         <div><div className="font-medium text-sm mb-1">Vãos</div>
           <T cab={["Tipo", "Largura", "Altura", "Qtd.", "Área (m²)"]} linhas={md.vaos.map((v) => [v.tipo, n(v.largura_m, 3), n(v.altura_m, 3), v.quantidade, n(v.area_m2)])} /></div>
@@ -125,6 +209,7 @@ export default function EstudioProjeto({ pid }) {
   const [eixo, setEixo] = useState("x");
   const [grande, setGrande] = useState(false);
   const [interior, setInterior] = useState(false);
+  const [aEditarCamadas, setAEditarCamadas] = useState(false);
   const [vista, setVista] = useState({ cx: 5, cy: 4, esc: 40 });
   const [largura, setLargura] = useState(700);
   const historia = useRef([]);
@@ -346,7 +431,28 @@ export default function EstudioProjeto({ pid }) {
   const pisoObj = modelo.pisos[idxPiso];
   const wSel = sel?.tipo === "parede" ? modelo.paredes.find((w) => w.id === sel.id) : null;
   const vSel = sel?.tipo === "vao" ? modelo.vaos.find((v) => v.id === sel.id) : null;
-  const tipos = Object.entries(modelo.tipos_parede).map(([k, t]) => [k, `${t.nome}`]);
+  const cat = info.catalogo;
+  const noModelo = Object.entries(modelo.tipos_parede);
+  const daBiblioteca = Object.entries(cat.paredes_tipo || {}).filter(([k]) => !modelo.tipos_parede[k]);
+  // escolher uma parede-tipo da biblioteca copia-a para o modelo (o modelo guarda as suas próprias camadas)
+  const comTipo = (m, tid) => (m.tipos_parede[tid] || !cat.paredes_tipo?.[tid] ? m : { ...m, tipos_parede: { ...m.tipos_parede, [tid]: cat.paredes_tipo[tid] } });
+  const selTipo = (valor, onChange, resto = {}) => (
+    <select className="w-full border rounded h-8 px-2 bg-background text-sm text-foreground" value={valor} onChange={(e) => onChange(e.target.value)} {...resto}>
+      <optgroup label="Neste projeto">{noModelo.map(([k, t]) => <option key={k} value={k}>{t.nome}</option>)}</optgroup>
+      {daBiblioteca.length > 0 && <optgroup label="Biblioteca — exteriores">{daBiblioteca.filter(([, t]) => t.exterior).map(([k, t]) => <option key={k} value={k}>{t.nome}</option>)}</optgroup>}
+      {daBiblioteca.length > 0 && <optgroup label="Biblioteca — interiores">{daBiblioteca.filter(([, t]) => !t.exterior).map(([k, t]) => <option key={k} value={k}>{t.nome}</option>)}</optgroup>}
+    </select>
+  );
+  const personalizar = (w) => {        // edita uma cópia própria, para não mudar as outras paredes do mesmo tipo sem querer
+    if (w.tipo.startsWith("pers_")) { setAEditarCamadas(w.id); return; }
+    let n = 1;
+    while (modelo.tipos_parede[`pers_${n}`]) n += 1;
+    const base = modelo.tipos_parede[w.tipo];
+    const novo = { ...base, nome: `${base.nome} (personalizada)`.slice(0, 80), camadas: base.camadas.map((c) => ({ ...c })) };
+    aplicar(G.mudarParede({ ...modelo, tipos_parede: { ...modelo.tipos_parede, [`pers_${n}`]: novo } }, w.id, { tipo: `pers_${n}` }));
+    setAEditarCamadas(w.id);
+  };
+  const mudaMat = (k, v) => aplicar({ ...modelo, materiais: { ...modelo.materiais, [k]: v } });
   const cob = modelo.cobertura;
   const mudaCob = (patch) => aplicar({ ...modelo, cobertura: { ...cob, ...patch } });
   const mudaPiso = (patch) => aplicar({ ...modelo, pisos: modelo.pisos.map((p) => (p.id === piso ? { ...p, ...patch } : p)) });
@@ -394,7 +500,7 @@ export default function EstudioProjeto({ pid }) {
         </span>
       </div>
 
-      <div className="grid lg:grid-cols-4 gap-3">
+      <div className="grid lg:grid-cols-4 gap-3 items-start">
         <div className="lg:col-span-3 border rounded-lg overflow-hidden bg-white" ref={caixa}>
           <svg ref={svgRef} width="100%" height={H2} style={{ touchAction: "none", cursor: ferramenta === "selecionar" ? "default" : "crosshair", display: "block" }}
             onPointerDown={baixar} onPointerMove={mover} onPointerUp={largar} onPointerLeave={() => { setCursor(null); }} data-testid="estudio-planta">
@@ -459,17 +565,25 @@ export default function EstudioProjeto({ pid }) {
 
         <div className="border rounded-lg p-3 space-y-3 text-sm" data-testid="estudio-painel">
           {ferramenta === "parede" && (
-            <Campo rotulo="Tipo da parede a desenhar"><Sel valor={tipoParede} onChange={setTipoParede} opcoes={tipos} /></Campo>
+            <Campo rotulo="Tipo da parede a desenhar">{selTipo(tipoParede, (t) => { if (!modelo.tipos_parede[t]) aplicar(comTipo(modelo, t)); setTipoParede(t); })}</Campo>
           )}
           {wSel && (
             <div className="space-y-2">
               <div className="font-medium">Parede {wSel.id}</div>
-              <Campo rotulo="Tipo (camadas)"><Sel valor={wSel.tipo} onChange={(t) => aplicar(G.mudarParede(modelo, wSel.id, { tipo: t }))} opcoes={tipos} /></Campo>
+              <Campo rotulo="Tipo (camadas)">{selTipo(wSel.tipo, (t) => { setAEditarCamadas(false); aplicar(G.mudarParede(comTipo(modelo, t), wSel.id, { tipo: t })); }, { "data-testid": "estudio-parede-tipo" })}</Campo>
               <Campo rotulo="Comprimento no eixo (m)"><Num valor={G.r3(G.geoParede(wSel).L)} min={0.1} onChange={(L) => aplicar(G.comprimentoParede(modelo, wSel.id, L))} /></Campo>
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                {modelo.tipos_parede[wSel.tipo].camadas.map((c, i) => <div key={i}>{c.material} — {G.fmt(c.esp_m * 100, 1)} cm</div>)}
-                <div className="text-foreground">Espessura total {G.fmt(esp(wSel) * 100, 1)} cm</div>
-              </div>
+              {aEditarCamadas === wSel.id && wSel.tipo.startsWith("pers_") ? (
+                <EditorCamadas tipo={modelo.tipos_parede[wSel.tipo]} catalogo={cat} usos={modelo.paredes.filter((w) => w.tipo === wSel.tipo).length}
+                  onMudar={(t) => aplicar({ ...modelo, tipos_parede: { ...modelo.tipos_parede, [wSel.tipo]: t } })} />
+              ) : (
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {modelo.tipos_parede[wSel.tipo].camadas.map((c, i) => <div key={i}>{c.material} — {G.fmt(c.esp_m * 100, 1)} cm</div>)}
+                  <div className="text-foreground">Espessura total {G.fmt(esp(wSel) * 100, 1)} cm</div>
+                </div>
+              )}
+              {!(aEditarCamadas === wSel.id && wSel.tipo.startsWith("pers_")) && (
+                <Button size="sm" variant="outline" onClick={() => personalizar(wSel)} data-testid="estudio-editar-camadas">Editar camadas e materiais</Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerParede(modelo, wSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar parede</Button>
             </div>
           )}
@@ -510,6 +624,12 @@ export default function EstudioProjeto({ pid }) {
                   {cob.tipo === "uma_agua" && <Campo rotulo="Lado baixo"><Sel valor={cob.lado_baixo} onChange={(x) => mudaCob({ lado_baixo: x })} opcoes={Object.entries(LADOS)} /></Campo>}
                 </div>
               )}
+              <div className="font-medium pt-2 border-t">Acabamentos</div>
+              {[["fachada", "Fachada"], ["cobertura", "Cobertura"], ["caixilharia", "Caixilharia"], ["pavimento", "Pavimentos"], ["parede_interior", "Paredes interiores"], ["teto", "Tetos"]].map(([k, t]) => (
+                <Campo key={k} rotulo={`${t} (${cat.acabamentos[k].length} opções)`}>
+                  <SelAcabamento valor={modelo.materiais?.[k] || cat.padrao[k]} onChange={(v) => mudaMat(k, v)} lista={cat.acabamentos[k]} data-testid={`estudio-acabamento-${k}`} />
+                </Campo>
+              ))}
             </div>
           )}
           {(erros.length > 0 || avisos.length > 0) && (

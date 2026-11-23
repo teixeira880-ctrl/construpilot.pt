@@ -17,6 +17,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
+from engines.estudio_projeto import materiais as MAT
 from engines.estudio_projeto.modelo import espessura
 
 JUNTA = 0.012          # dois eixos a menos desta distância encontram-se
@@ -415,13 +416,25 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
 
     xs = [c for w in m["paredes"] for c in (w["a"][0], w["b"][0])]
     ys = [c for w in m["paredes"] for c in (w["a"][1], w["b"][1])]
+    mat = m.get("materiais") or {}
+    a_util = sum(d["area_m2"] for d in med_div)
+    acabamentos = [
+        {"elemento": "Fachada exterior", "material": MAT.acabamento("fachada", mat.get("fachada"))["nome"], "area_m2": fachada["area_liquida_m2"]},
+        {"elemento": "Cobertura", "material": MAT.acabamento("cobertura", mat.get("cobertura"))["nome"], "area_m2": cobertura["area_m2"]},
+        {"elemento": "Pavimentos", "material": MAT.acabamento("pavimento", mat.get("pavimento"))["nome"], "area_m2": R(a_util, 2)},
+        {"elemento": "Paredes interiores (faces das divisões)", "material": MAT.acabamento("parede_interior", mat.get("parede_interior"))["nome"],
+         "area_m2": R(sum(d["area_paredes_m2"] for d in med_div), 2)},
+        {"elemento": "Tetos", "material": MAT.acabamento("teto", mat.get("teto"))["nome"], "area_m2": R(a_util, 2)},
+        {"elemento": "Caixilharia (vãos exteriores)", "material": MAT.acabamento("caixilharia", mat.get("caixilharia"))["nome"],
+         "area_m2": fachada["area_vaos_m2"]},
+    ]
     medicoes = {
         "convencao": ("Medições geométricas do modelo: comprimentos líquidos sem contar encontros duas vezes, áreas "
                       "líquidas com os vãos descontados, volumes por camada. Não incluem fixações, argamassas, perdas "
                       "nem preços: não substituem o mapa de quantidades."),
         "paredes": med_paredes, "por_tipo": list(por_tipo.values()),
         "vaos": sorted(cont_vaos.values(), key=lambda c: (c["tipo"], c["largura_m"], c["altura_m"])),
-        "divisoes": med_div, "lajes": med_lajes, "terracos": terracos, "fachada": fachada,
+        "divisoes": med_div, "acabamentos": acabamentos, "lajes": med_lajes, "terracos": terracos, "fachada": fachada,
         "cobertura": {"tipo": cob["tipo"], "inclinacao_graus": cob["inclinacao_graus"] if cob["tipo"] != "plana" else 0.0,
                       "area_m2": cobertura["area_m2"], "area_planta_m2": cobertura["area_planta_m2"],
                       "perimetro_beirado_m": cobertura["perimetro_beirado_m"], "empenas_m2": R(a_empenas, 2),
@@ -431,5 +444,5 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                    "n_paredes": len(med_paredes), "n_vaos": sum(c["quantidade"] for c in cont_vaos.values())},
     }
     return {"ok": not erros, "pisos": pisos_out, "paredes": paredes_out, "divisoes": divisoes_out, "lajes": lajes_out,
-            "cobertura": cobertura, "medicoes": medicoes, "erros": erros, "avisos": avisos,
+            "cobertura": cobertura, "cores": MAT.cores(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
             "limites": [R(min(xs)), R(min(ys)), R(max(xs)), R(max(ys))] if xs else None}
