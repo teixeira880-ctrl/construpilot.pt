@@ -87,7 +87,7 @@ async def run_compute_concrete_volumes(db, *, user_id: str, conversation_id: str
         if braw and braw[:4] != b"AC10":
             base_level = await asyncio.to_thread(_base_from_lower_floor, braw)
         status["base_plan"] = base_level or {"error": "AS da laje do piso inferior não encontrada nessa planta (etiquetas B / espessura / NGF ausentes)"}
-    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels, None, base_level)
+    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels, base_level=base_level)
     compact = json.loads(json.dumps(compact_for_llm(res)))  # string keys only (Mongo)
     rec = {"calc_ref": f"mc_{uuid.uuid4().hex[:10]}", "user_id": user_id, "conversation_id": conversation_id, "tool": "compute_concrete_volumes",
            "args": {"dxf_plan_id": dxf_plan_id, "formwork_plan_id": formwork_plan_id, "coupes_plan_id": coupes_plan_id, "levels": levels},

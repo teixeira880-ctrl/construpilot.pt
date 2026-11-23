@@ -1,27 +1,45 @@
 """Aplica no pod (por âncoras, idempotente): volumes de betão com as cotas IMPRESSAS nas plantas (regra AI/AS do Martinho):
 - AI do pavimento superior = texto «Ai: … NGF» impresso mais frequente quando não há etiqueta de laje (B / esp. / NGF);
 - base das paredes = AS dominante da laje do piso INFERIOR, lida na sua própria planta (novo argumento base_plan_id)."""
+import re
 import sys
+
+PLAN = []          # todas as alterações são verificadas ANTES de escrever qualquer ficheiro
+
+
+def _diag(s, label):
+    key = {"assinatura": "def compute_volumes", "levels_override": "levels_override", "assinatura run": "def run_compute_concrete_volumes",
+           "chamada compute_volumes": "compute_volumes,", "coupes_for_plan": "def coupes_for_plan"}.get(label, label[:20])
+    for i, line in enumerate(s.splitlines(), 1):
+        if key in line:
+            print(f"   linha {i}: {line.strip()[:160]}")
+
 
 def patch(path, pairs, marker):
     s = open(path, encoding="utf-8").read()
     if marker in s:
         print("já aplicado", path); return
     for old, new, label in pairs:
+        if isinstance(old, re.Pattern):
+            m = list(old.finditer(s))
+            if len(m) != 1:
+                print(f"ERRO {path}: âncora «{label}» encontrada {len(m)}× (esperado 1)"); _diag(s, label); sys.exit(1)
+            s = s[:m[0].start()] + m[0].expand(new) + s[m[0].end():]
+            continue
         if s.count(old) != 1:
-            print(f"ERRO {path}: âncora «{label}» encontrada {s.count(old)}× (esperado 1)"); sys.exit(1)
+            print(f"ERRO {path}: âncora «{label}» encontrada {s.count(old)}× (esperado 1)"); _diag(s, label); sys.exit(1)
         s = s.replace(old, new, 1)
-    open(path, "w", encoding="utf-8").write(s)
-    print("OK", path)
+    PLAN.append((path, s))
 
 patch("backend/engines/metre/volumes_tool.py", [
-    ("levels_override: dict | None = None, beams_pairing: dict | None = None) -> dict:",
-     "levels_override: dict | None = None, beams_pairing: dict | None = None,\n                    base_level: dict | None = None) -> dict:", "assinatura"),
+    (re.compile(r"(def compute_volumes\((?:[^()]|\([^()]*\))*?)\)\s*->\s*dict:", re.S),
+     r"\1, base_level: dict | None = None) -> dict:", "assinatura"),
     ("    for k, v in (levels_override or {}).items():\n",
      '''    lp_all = takeoff.get("levels_printed") or {}
     if levels.get("as_plancher_haut_m") is None and levels.get("ai_plancher_haut_m") is None and lp_all.get("ai_texts"):
         # Regra AI/AS: sem etiqueta de laje, a AI do pavimento superior vem dos textos «Ai: … NGF» impressos na própria planta.
-        ai_counts = Counter(round(a["ngf"], 2) for a in lp_all["ai_texts"])
+        from collections import Counter as _Counter
+        ai_counts = _Counter(round(a["ngf"], 2) for a in lp_all["ai_texts"])
         ai_val, n_ai = ai_counts.most_common(1)[0]
         levels["ai_plancher_haut_m"] = ai_val
         levels["source"] = ((levels.get("source") or "") + f" ; AI pavimento superior = texto «Ai:» impresso mais frequente ({n_ai}× {ai_val:.2f} NGF)").strip(" ;")
@@ -36,18 +54,17 @@ patch("backend/engines/metre/volumes_tool.py", [
 ], "base_level: dict | None = None) -> dict:")
 
 patch("backend/engines/metre/volumes_run.py", [
-    ("                                       allow_vision: bool, levels: dict | None, now: str, log_usage=None) -> dict:\n",
-     '''                                       allow_vision: bool, levels: dict | None, now: str, log_usage=None, base_plan_id: str | None = None) -> dict:
-''', "assinatura run"),
-    ("    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels)\n",
-     '''    base_level = None
+    (re.compile(r"(async def run_compute_concrete_volumes\((?:[^()]|\([^()]*\))*?)\)\s*->\s*dict:", re.S),
+     r"\1, base_plan_id: str | None = None) -> dict:", "assinatura run"),
+    (re.compile(r"\n(?P<ind>[ \t]*)res = await asyncio\.to_thread\(compute_volumes, (?P<args>[^\n]*)\)\n"),
+     '''\n    base_level = None
     if base_plan_id:
         bsrc = await load_cad_source(db, base_plan_id, user_id, "converted_dxf") or await load_cad_source(db, base_plan_id, user_id, "original")
         braw = (bsrc if isinstance(bsrc, (bytes, bytearray)) else base64.b64decode(bsrc["data_b64"])) if bsrc else None
         if braw and braw[:4] != b"AC10":
             base_level = await asyncio.to_thread(_base_from_lower_floor, braw)
         status["base_plan"] = base_level or {"error": "AS da laje do piso inferior não encontrada nessa planta (etiquetas B / espessura / NGF ausentes)"}
-    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels, None, base_level)
+    res = await asyncio.to_thread(compute_volumes, \\g<args>, base_level=base_level)
 ''', "chamada compute_volumes"),
     ('async def coupes_for_plan(',
      '''def _base_from_lower_floor(dxf: bytes) -> dict | None:
@@ -89,3 +106,7 @@ patch("backend/engines/metre/tools.py", [
     ("Nunca uma altura de andar típica nem um rácio.",
      "Nunca uma altura de andar típica nem um rácio. Em compute_concrete_volumes passa SEMPRE base_plan_id = a planta DWG do piso inferior (ex.: PH-1.dwg para o RDC, RDC.dwg para o R+1): a ferramenta lê lá a AS da laje.", "regra dos níveis"),
 ], "passa SEMPRE base_plan_id")
+
+for _path, _s in PLAN:
+    open(_path, "w", encoding="utf-8").write(_s)
+    print("OK", _path)
