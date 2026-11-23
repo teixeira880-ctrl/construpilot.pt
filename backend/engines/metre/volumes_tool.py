@@ -91,6 +91,17 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
     if base_level and base_level.get("m") is not None and levels.get("niveau_base_murs_m") is None:
         levels["niveau_base_murs_m"] = base_level["m"]
         levels["source"] = ((levels.get("source") or "") + f" ; base das paredes = {base_level['source']}").strip(" ;")
+    if levels.get("niveau_base_murs_m") is None:
+        # Planta de fundações: a base das paredes/pilares é o topo das sapatas (As dominante dos rótulos), lida nesta mesma planta.
+        try:
+            from engines.metre.fondations_dxf import fondations_takeoff
+            _fon = fondations_takeoff(dxf_bytes)
+            _as_sap = (_fon.get("totals") or {}).get("as_dominante_ngf")
+        except Exception:  # noqa: BLE001
+            _as_sap = None
+        if _as_sap is not None:
+            levels["niveau_base_murs_m"] = _as_sap
+            levels["source"] = ((levels.get("source") or "") + f" ; base das paredes = As {_as_sap:.2f} NGF dominante das sapatas desta planta (topo das fundações)").strip(" ;")
     for k, v in (levels_override or {}).items():
         if v is not None and k in ("as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"):
             levels[k] = v
