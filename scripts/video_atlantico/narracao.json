@@ -1,0 +1,94 @@
+[
+ {
+  "id": "00_intro",
+  "texto": "Bem-vindo ao ConstruPilot. Neste vídeo, acompanhamos uma empresa de construção fictícia, a Atlântico Construções, para ver como a plataforma funciona no dia a dia."
+ },
+ {
+  "id": "01_conta",
+  "texto": "Este é o painel inicial da empresa. A partir daqui, prepara um orçamento, mede numa planta, estima o custo de uma obra ou acompanha as obras em curso."
+ },
+ {
+  "id": "02_contactos",
+  "texto": "Os clientes e os subempreiteiros ficam na mesma lista de contactos, prontos a reutilizar em orçamentos e faturas."
+ },
+ {
+  "id": "03_cliente_ficha",
+  "texto": "Para criar um cliente, basta preencher a ficha: nome, empresa, contactos e morada."
+ },
+ {
+  "id": "04_cliente_criado",
+  "texto": "O cliente fica logo disponível em toda a plataforma."
+ },
+ {
+  "id": "05_obras",
+  "texto": "Em Processos de obra, cada obra reúne as suas plantas, medições, orçamentos e documentos."
+ },
+ {
+  "id": "06_obra_ficha",
+  "texto": "Criar uma obra demora poucos segundos: o nome, o cliente, a morada e o estado."
+ },
+ {
+  "id": "07_obra_criada",
+  "texto": "A obra nasce com o seu percurso completo: plantas, medição, orçamento, envio e assinatura, e depois obra e faturação."
+ },
+ {
+  "id": "08_cinco_obras",
+  "texto": "A empresa tem cinco obras em fases diferentes, da prospeção à obra em curso."
+ },
+ {
+  "id": "09_obra_porto",
+  "texto": "Vejamos uma obra em curso: a remodelação de um apartamento no Porto. A medição está feita e o orçamento foi assinado pelo cliente."
+ },
+ {
+  "id": "10_marcos",
+  "texto": "A obra tem sessenta e nove mil e quinhentos euros assinados, e seis marcos de avanço, repartidos entre a equipa própria e os subempreiteiros."
+ },
+ {
+  "id": "11_orcamento",
+  "texto": "O orçamento é construído artigo a artigo. Aqui são oito linhas, com as quantidades, os preços unitários, o IVA e os totais calculados automaticamente."
+ },
+ {
+  "id": "12_equipa",
+  "texto": "Na equipa, cada trabalhador tem a sua função e o seu valor por hora, para o registo de ponto em obra."
+ },
+ {
+  "id": "13_perfis",
+  "texto": "Passemos à obra colaborativa. Cada obra reúne quatro perfis: o dono de obra, a fiscalização, o arquiteto e as empresas. Cada um só vê e só faz aquilo que lhe compete."
+ },
+ {
+  "id": "14_planos",
+  "texto": "Na caixa de planos, as empresas carregam os seus planos de execução. A fiscalização ou o arquiteto dão o visto, com ou sem observações. Uma nova versão volta a pedir o visto."
+ },
+ {
+  "id": "15_sub_conforme",
+  "texto": "Na aprovação de subempreiteiros, cada pedido é confrontado com o regulamento do dono de obra. Este pedido tem todos os documentos válidos: cumpre o regulamento."
+ },
+ {
+  "id": "16_sub_reservas",
+  "texto": "Neste outro pedido falta o seguro de responsabilidade civil, e uma certidão está quase a expirar. O dono de obra aprovou com reservas, e fixou o prazo para entregar o que falta."
+ },
+ {
+  "id": "17_auto_avanco",
+  "texto": "Os autos de medição são verificados automaticamente. Este auto fatura noventa por cento do contrato, mas o avanço registado pela fiscalização é de setenta e sete por cento. O desvio fica assinalado antes da validação."
+ },
+ {
+  "id": "18_auto_excesso",
+  "texto": "Neste auto, a empresa mediu trezentos e trinta metros quadrados, para trezentos e dez contratados. O excesso de vinte metros quadrados é detetado de imediato."
+ },
+ {
+  "id": "19_planeamento",
+  "texto": "No planeamento, cada empresa carrega o seu cronograma. Em cada reunião de obra, a fiscalização regista o avanço, e os atrasos ficam à vista."
+ },
+ {
+  "id": "20_ata",
+  "texto": "A ata semanal tem três colunas: a empresa e o ponto discutido, a ata em que o ponto foi registado, e o estado: atraso, ponto importante ou para memória."
+ },
+ {
+  "id": "21_portal",
+  "texto": "Cada empresa entra no seu próprio portal. Vê os planos da obra, mas apenas os seus autos, os seus contratos e os seus pedidos. Nunca os das outras empresas."
+ },
+ {
+  "id": "22_fim",
+  "texto": "Do primeiro contacto ao último auto de medição, tudo num só espaço de trabalho. ConstruPilot: construa o seu próximo passo."
+ }
+]
