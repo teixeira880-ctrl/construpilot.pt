@@ -360,7 +360,7 @@ export default function AssistenteBTPChat({ conversationId: initialConvId = null
               <input
                 type="file"
                 multiple
-                accept="image/*,application/pdf,.dwg,.dxf,.ifc"
+                accept="image/*,application/pdf,.dwg,.dxf,.dwfx,.ifc"
                 className="hidden"
                 onChange={(e) => anexarFicheiros(e.target.files)}
               />

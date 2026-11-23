@@ -63,6 +63,8 @@ from engines.baie_detail_tool import (WINDOW_TOOLS, WINDOW_TOOL_NAMES, WINDOW_IN
 from engines.edificio_ba.assistant_tool import (TOOLS as EDIF_TOOLS, TOOL_NAMES as EDIF_TOOL_NAMES, TOOL_STATUS as EDIF_STATUS, INSTRUCTIONS as EDIF_INSTRUCTIONS, execute as execute_edif_tool)
 # Mapa de quantidades medido numa planta ESTRUTURAL em PDF (engines/mapa_estrutura)
 from engines.mapa_estrutura.assistant_tool import (TOOLS as MAPA_ESTR_TOOLS, TOOL_NAMES as MAPA_ESTR_TOOL_NAMES, TOOL_STATUS as MAPA_ESTR_STATUS, INSTRUCTIONS as MAPA_ESTR_INSTRUCTIONS, execute as execute_mapa_estr_tool)
+# Mapa de quantidades de ARQUITETURA medido num desenho DWFX (engines/mapa_arquitetura)
+from engines.mapa_arquitetura.assistant_tool import (TOOLS as MAPA_ARQ_TOOLS, TOOL_NAMES as MAPA_ARQ_TOOL_NAMES, TOOL_STATUS as MAPA_ARQ_STATUS, INSTRUCTIONS as MAPA_ARQ_INSTRUCTIONS, execute as execute_mapa_arq_tool)
 from engines.dossier_tool import (TOOLS as DOSSIER_TOOLS, TOOL_NAMES as DOSSIER_TOOL_NAMES, STATUS as DOSSIER_STATUS, INSTRUCTIONS as DOSSIER_INSTRUCTIONS,  # processos completos / ZIP
                                   execute as execute_dossier_tool, list_dossier, context_text as dossier_context_text)
 
@@ -298,7 +300,7 @@ def tools_for(user: dict) -> list:
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
     quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamento_cad_completo"}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + MAPA_ESTR_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + MAPA_ESTR_TOOLS + MAPA_ARQ_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
     if assistant_clt.allowed(user):
@@ -868,6 +870,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
         return await execute_edif_tool(name, args, user, conv, db)
     if name in MAPA_ESTR_TOOL_NAMES:
         return await execute_mapa_estr_tool(name, args, user, conv, db)
+    if name in MAPA_ARQ_TOOL_NAMES:
+        return await execute_mapa_arq_tool(name, args, user, conv, db)
     if name in CALC_TOOL_NAMES:
         return await execute_calc_tool(name, args, user, conv, db)
     if name in MISSION_TOOL_NAMES:
@@ -1367,6 +1371,7 @@ class MsgIn(BaseModel):
 
 DOC_MAX_MB = 50
 DOC_MIMES = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
+DWFX_MIME = "model/vnd.dwfx+xps"
 
 
 def _guess_kind(filename: str, text: str) -> str:
@@ -1406,10 +1411,12 @@ async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(
     # Validação adicional de extensão/mime mantida abaixo (fallback) por robustez
     # para o fluxo específico de normalização de attachments.
     from core.uploads import validate_upload, ALLOWED_DOCUMENT, ALLOWED_IMAGE, ALLOWED_OFFICE
+    dwfx_up = (file.filename or "").lower().endswith(".dwfx")      # desenho DWFX (AutoCAD) : guardado tal como está
     file = await validate_upload(
         file,
-        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_OFFICE + ["application/octet-stream"],
+        ALLOWED_DOCUMENT + ALLOWED_IMAGE + ALLOWED_OFFICE + ["application/octet-stream"] + ([DWFX_MIME] if dwfx_up else []),
         max_mb=DOC_MAX_MB,
+        override_content_type=DWFX_MIME if dwfx_up else None,
     )
     data = await file.read(DOC_MAX_MB * 1024 * 1024 + 1)
     if not data:
@@ -1420,7 +1427,12 @@ async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(
     name = file.filename or "document"
     ext = name.lower().rsplit(".", 1)[-1] if "." in name else ""
     office = ext in OFFICE_MIMES
-    if office:
+    if dwfx_up:
+        from engines.mapa_arquitetura.dwfx import e_dwfx
+        if not e_dwfx(data):
+            raise HTTPException(415, "O ficheiro .dwfx não é um DWFx válido (exportação DWFx do AutoCAD).")
+        mime = DWFX_MIME
+    elif office:
         mime = OFFICE_MIMES[ext]
     elif mime not in DOC_MIMES:
         if name.lower().endswith(".pdf"):
@@ -1429,11 +1441,17 @@ async def upload_doc(file: UploadFile = File(...), kind: str = "", user=Depends(
             mime = "image/" + ext.replace("jpg", "jpeg")
         else:
             raise HTTPException(415, "Formato aceite: PDF, PNG, JPG, WEBP, XLSX, XLS, CSV, DOCX, TXT")
-    if not office:
+    if dwfx_up:
+        try:
+            from engines.mapa_arquitetura.dwfx import abrir, folhas
+            text = "Desenho DWFX — folhas : " + " ; ".join(n for _, _, n in folhas(abrir(data)))
+        except Exception:  # noqa: BLE001
+            text = "Desenho DWFX"
+    elif not office:
         data, mime = await asyncio.to_thread(normalize_attachment, data)
     if len(data) > DOC_MAX_MB * 1024 * 1024:
         raise HTTPException(413, "Imagem normalizada demasiado volumosa.")
-    text, pages = "", 1
+    text, pages = (text if dwfx_up else ""), 1
     if office:
         try:
             text = await asyncio.to_thread(extract_office_text, data, ext)
@@ -1975,12 +1993,11 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + TERRENOS_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + GEOMETRIA_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + TERRENOS_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + MAPA_ESTR_INSTRUCTIONS + MAPA_ARQ_INSTRUCTIONS + GEOMETRIA_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
         instructions += "\n\n" + MISSION_INSTRUCTIONS
-        instructions += MAPA_ESTR_INSTRUCTIONS
         if any(t.get("name") in assistant_clt.NAMES for t in tools_for(user)):
             instructions += assistant_clt.INSTRUCTIONS
         if any(t.get("name") in assistant_clt_agent.NAMES for t in tools_for(user)):
@@ -2400,6 +2417,7 @@ TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor rev
 # BET-PT motores paridade .fr — merge dos status dos novos motores em ambos os dicionários
 TOOL_STATUS_PT.update(EDIF_STATUS)
 TOOL_STATUS_PT.update(MAPA_ESTR_STATUS)
+TOOL_STATUS_PT.update(MAPA_ARQ_STATUS)
 TOOL_STATUS_PT.update(CALC_STATUS)
 MISSION_STATUS = {"programme_ia_options": "Leitura das opções do motor IA…", "lancer_programme_ia": "Lançamento do programa IA…",
                   "suivre_programme_ia": "Acompanhamento do programa IA…"}
@@ -2407,6 +2425,7 @@ TOOL_STATUS_PT.update(MISSION_STATUS)
 TOOL_STATUS.update(MISSION_STATUS)
 TOOL_STATUS.update(EDIF_STATUS)
 TOOL_STATUS.update(MAPA_ESTR_STATUS)
+TOOL_STATUS.update(MAPA_ARQ_STATUS)
 TOOL_STATUS.update(CALC_STATUS)
 TOOL_STATUS_PT.update(WINDOW_STATUS)
 TOOL_STATUS_PT.update(DOSSIER_STATUS)

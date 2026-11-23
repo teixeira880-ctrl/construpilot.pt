@@ -88,7 +88,24 @@ def medir(docs: list, escala=None, cota_base=None, h_vigas=None, out_dir=None) -
         plantas = [p for lt in leituras for p in lt["plantas"]]
         modelo["files"] = {"xlsx": excel.gerar(modelo, str(out / "Mapa_quantidades_estrutura.xlsx"), titulo),
                            "controlo": controlo.gerar_pdf(plantas, modelo, str(out / "Controlo_medicao_estrutura.pdf"), titulo)}
+        _anexar_controlo(modelo["files"]["xlsx"], plantas)
     return modelo
+
+
+def _anexar_controlo(xlsx: str, plantas: list) -> None:
+    """Rastreabilidade : as imagens do PDF de controlo também na folha «Controlo» do Excel (best-effort)."""
+    try:
+        import cv2
+        from PIL import Image
+
+        from engines import mapa_controlo_xlsx
+        ims = []
+        for ip, p in enumerate(plantas):
+            niv = ", ".join(n.get("nome") or "" for n in p.get("niveis", [])) or f"Planta {ip + 1}"
+            ims.append((f"Controlo da medição — {niv}", Image.fromarray(cv2.cvtColor(controlo.imagem(p), cv2.COLOR_BGR2RGB))))
+        mapa_controlo_xlsx.anexar_imagens(xlsx, ims)
+    except Exception:  # noqa: BLE001
+        log.exception("imagens de controlo no Excel falharam")
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):

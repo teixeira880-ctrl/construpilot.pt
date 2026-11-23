@@ -1,0 +1,177 @@
+"""Testes do mapa de quantidades de arquitetura medido num DWFX (engines/mapa_arquitetura).
+O DWFX de teste é escrito aqui (XPS mínimo com camadas W2X), com medidas conhecidas : edifício 6 × 5 m, paredes exteriores de
+0,20, parede interior de 0,10 a meio → Quarto 2,80 × 4,60 e Sala 2,70 × 4,60 ; uma porta de 0,80 ; alçado com 2 janelas 1,20 × 1,00."""
+from __future__ import annotations
+
+import asyncio
+import io
+import zipfile
+
+import pytest
+from openpyxl import load_workbook
+
+from engines.mapa_arquitetura import assistant_tool, camadas, dwfx, medicao
+
+U = 100.0          # unidades DWF por metro
+DOC = "dwf/documents/D1"
+
+
+def _p(nome, data):
+    return f'<Path Name="{nome}" Stroke="#000000" StrokeThickness="1" Data="{data}"/>'
+
+
+def _ln(x0, y0, x1, y1):
+    return f"M{x0 * U:g},{y0 * U:g}L{x1 * U:g},{y1 * U:g}"
+
+
+def _rect(x0, y0, x1, y1):
+    return _ln(x0, y0, x1, y0) + f"L{x1 * U:g},{y1 * U:g}L{x0 * U:g},{y1 * U:g}Z"
+
+
+def _folha(paths_por_camada, textos, nome):
+    corpo, sync, n = [], [], 0
+    for num, (camada, datas) in enumerate(paths_por_camada, 1):
+        for i, d in enumerate(datas):
+            n += 1
+            nm = f"P_{n}"
+            if i == 0:
+                sync.append(f'<RenditionSync refName="{nm}"><Layer Name="{camada}" Number="{num}"/></RenditionSync>')
+            corpo.append(_p(nm, d))
+    for t, x, y in textos:
+        corpo.append(f'<Glyphs Fill="#000000" FontRenderingEmSize="20" FontUri="f.odttf" OriginX="{x * U:g}" OriginY="{y * U:g}" UnicodeString="{t}"/>')
+    fpage = ('<?xml version="1.0" encoding="utf-8"?><FixedPage xmlns="http://schemas.microsoft.com/xps/2005/06" Width="2000" Height="1000">'
+             '<Canvas RenderTransform="0.24,0,0,0.24,0,0">' + "".join(corpo) + "</Canvas></FixedPage>")
+    w2x = ('<W2X><Units Transform="100,0,0,0,0,100,0,0,0,0,1,0,0,0,0,1"/>' + "".join(sync) + "</W2X>")
+    desc = f'<ePlot:Page xmlns:ePlot="DWF-ePlot:1.2" name="{nome}"/>'
+    return fpage, w2x, desc
+
+
+def _dwfx() -> bytes:
+    parede_ext = [_rect(0, 0, 6, 5), _rect(0.2, 0.2, 5.8, 4.8)]
+    parede_int = [_ln(3.0, 0.2, 3.0, 4.8), _ln(3.1, 0.2, 3.1, 4.8)]
+    porta = ["M3.05,1.6 a 80,80 0 0 1 80,80".replace("3.05", f"{3.05 * U:g}").replace("1.6", f"{1.6 * U:g}")]
+    planta = _folha([("paredes", parede_ext + parede_int), ("fino", porta)],
+                    [("Quarto", 1.0, 2.5), ("Sala", 4.0, 2.5)], "Planta do 1 Andar")
+    alc = _folha([("paredes", [_rect(0, 0, 6, 6)]), ("fino", [_rect(1, 2, 2.2, 3), _rect(3.5, 2, 4.7, 3)])],
+                 [("Alçado Principal", 2.0, 7.5)], "Alcado Principal")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
+        z.writestr("FixedDocumentSequence.fdseq", "<FixedDocumentSequence/>")
+        z.writestr(f"{DOC}/FixedDocument.fdoc", "<FixedDocument>" + "".join(
+            f'<PageContent Source="/{DOC}/sections/S{i}/FixedPage.fpage"/>' for i in (1, 2)) + "</FixedDocument>")
+        for i, (fp, w2x, desc) in ((1, planta), (2, alc)):
+            z.writestr(f"{DOC}/sections/S{i}/FixedPage.fpage", fp)
+            z.writestr(f"{DOC}/sections/S{i}/w2x.xml", w2x)
+            z.writestr(f"{DOC}/sections/S{i}/descriptor.xml", desc)
+    return buf.getvalue()
+
+
+def test_reconhece_dwfx():
+    assert dwfx.e_dwfx(_dwfx())
+    assert not dwfx.e_dwfx(b"%PDF-1.4 ...")
+    assert not dwfx.e_dwfx(b"PK\x03\x04 lixo")
+
+
+def test_leitor_escala_camadas_e_textos():
+    z = dwfx.abrir(_dwfx())
+    f = dwfx.ler(z, 0)
+    assert f.nome == "Planta do 1 Andar" and f.upm == 100.0
+    assert set(f.camadas) == {"paredes", "fino"}
+    xs = [p[0] for e in f.elementos if e.tipo == "path" and e.camada == "paredes" for pl in e.pls for p in pl]
+    assert min(xs) == pytest.approx(0.0) and max(xs) == pytest.approx(6.0)       # metros, transformação da Canvas desfeita
+    arcos = [a for e in f.elementos for a in e.arcos]
+    assert arcos == [pytest.approx(0.8)]
+    assert {e.texto for e in f.elementos if e.tipo == "texto"} == {"Quarto", "Sala"}
+
+
+def test_papeis_das_camadas():
+    m = camadas.mapa(["paredes", "trama corte", "trama", "traço fino", "MUROS", "SANITARIOS", "cozinha", "cotas"])
+    assert m["paredes"] == "paredes" and m["trama corte"] == "trama" and m["trama"] is None
+    assert m["traço fino"] == "fino" and m["MUROS"] == "muros" and m["SANITARIOS"] == "sanitarios" and m["cotas"] is None
+
+
+def test_medicao_planta_e_alcado():
+    m = medicao.medir(_dwfx(), pe_direito=2.5)
+    assert m["ok"], m
+    p = m["pisos"][0]
+    comps = {c["nome"]: c for c in p["compartimentos"]}
+    assert comps["Quarto"]["area"] == pytest.approx(2.8 * 4.6, abs=0.05)
+    assert comps["Sala"]["area"] == pytest.approx(2.7 * 4.6, abs=0.05)
+    assert not any(c["exterior"] for c in comps.values())
+    tipos = {w["tipo"] for w in p["paredes"]}
+    assert "interior" in tipos and "fachada" in tipos
+    interior = sum(w["comprimento"] for w in p["paredes"] if w["tipo"] == "interior")
+    assert interior == pytest.approx(4.6, abs=0.05)
+    assert [(d["L"], d["tipo"]) for d in p["portas"]] == [(0.8, "interior")]
+    r = {x["artigo"]: x["qtd"] for x in m["resumo"]}
+    assert r["Pavimento interior (sem caixa do elevador)"] == pytest.approx(25.30, abs=0.1)
+    assert r["Portas interiores"] == 1
+    assert len(m["alcados"]) == 1
+    assert sorted((d["L"], d["H"]) for d in m["alcados"][0]["vaos"]) == [(1.2, 1.0), (1.2, 1.0)]
+    assert r["Vãos exteriores nos alçados (área)"] == pytest.approx(2.4)
+    assert not any("altura" in q for q in m["perguntas"])
+
+
+def test_sem_altura_pergunta():
+    m = medicao.medir(_dwfx())
+    assert any("altura" in q for q in m["perguntas"])
+
+
+def test_ficheiros_excel_com_controlo(tmp_path):
+    m = assistant_tool.medir([("teste.dwfx", _dwfx())], 2.5, None, str(tmp_path))
+    assert m["ok"]
+    wb = load_workbook(m["files"]["xlsx"])
+    assert {"Mapa", "Pressupostos", "Compartimentos", "Paredes", "Portas", "Vãos", "Controlo"} <= set(wb.sheetnames)
+    assert len(wb["Controlo"]._images) == 2                       # 1 planta + 1 alçado : imagens do que foi medido
+    assert open(m["files"]["controlo"], "rb").read(4) == b"%PDF"
+    for ws in wb:                                                  # nenhuma nota de texto lida como fórmula
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and c.value.startswith("="):
+                    assert "!" in c.value or c.value[1:2].isalpha() or c.value[1:2] in "(", c.value
+
+
+def test_nao_dwfx():
+    assert not assistant_tool.medir([("x.pdf", b"%PDF-1.4")])["ok"]
+
+
+class _Col:
+    def __init__(self, docs=None):
+        self.docs = docs or []
+        self.saved = []
+
+    async def find_one(self, q, proj=None):
+        return next((d for d in self.docs if all(d.get(k) == v for k, v in q.items())), None)
+
+    async def update_one(self, q, upd, upsert=False):
+        self.saved.append(upd["$setOnInsert"])
+
+
+class _DB:
+    def __init__(self, data):
+        import base64
+        self.assistant_docs = _Col([{"doc_id": "doc_1", "user_id": "u1", "filename": "obra.dwfx", "data_b64": base64.b64encode(data).decode()}])
+        self.assistant_artifacts = _Col()
+
+
+def test_ferramenta_do_assistente():
+    db = _DB(_dwfx())
+    res = asyncio.run(assistant_tool.execute("medir_arquitetura_dwfx", {"document_ids": ["doc_1"], "pe_direito_m": 2.5},
+                                             {"user_id": "u1"}, {"conversation_id": "c1"}, db))
+    assert res["ok"], res
+    assert [a["format"] for a in res["artifacts"]] == ["xlsx", "pdf"]
+    assert res["pisos"][0]["portas_interiores"] == 1
+    neg = asyncio.run(assistant_tool.execute("medir_arquitetura_dwfx", {"document_ids": ["doc_1"]}, {"user_id": "outro"}, {}, db))
+    assert not neg["ok"]
+
+
+def test_area_escrita_pelo_arquiteto_e_controlo_cruzado():
+    from engines.mapa_arquitetura import plantas
+    z = dwfx.abrir(_dwfx())
+    f = dwfx.ler(z, 0)
+    f.elementos.append(dwfx.Elemento("TEXTO", "texto", texto="12.88", pos=(1.0, 3.0)))
+    f.elementos.append(dwfx.Elemento("TEXTO", "texto", texto="104.06", pos=(4.0, 3.0)))   # cota, não área
+    r = plantas.medir(f, camadas.mapa(f.camadas))
+    c = {x["nome"]: x for x in r["compartimentos"]}
+    assert c["Quarto"]["area_no_desenho"] == 12.88 and c["Sala"]["area_no_desenho"] is None
