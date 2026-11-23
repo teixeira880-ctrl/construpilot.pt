@@ -16,7 +16,7 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
     wb.remove(wb.active)
     mp = _folha(wb, "Mapa", ["Art.", "Designação", "Un", "Quantidade", "Origem"], [7, 62, 6, 14, 48], f"{titulo} — {AZ}")
     wp = _folha(wb, "Pressupostos", ["Parâmetro", "Valor", "Un", "Origem"], [52, 12, 6, 70], AZ)
-    _linha(wp, 5, ["Piso — cota do pavimento lida na planta", None, "m", "altura das paredes (piso a piso) e origem"], negrito=True)
+    _linha(wp, 5, ["Piso — cota altimétrica do pavimento (plantas)", None, "m", "altura das paredes e origem (cortes : entre lajes ; senão piso a piso)"], negrito=True)
     r = 6
     alt_linha = {}
     for p in modelo["pisos"]:
@@ -75,9 +75,9 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
         ("1.4", "Tetos interiores", "m²", "=D6", "igual ao pavimento interior"),
         ("2", "PAREDES", None, None, None),
         ("2.1", "Paredes de fachada — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"fachada")', "folha Paredes"),
-        ("2.2", "Paredes de fachada — área bruta piso a piso (sem dedução de vãos ; pisos sem altura não entram)", "m²", f'=SUMIFS({P("F")},{P("B")},"fachada")', None),
+        ("2.2", "Paredes de fachada — área bruta (altura de cada piso em Pressupostos ; sem dedução de vãos)", "m²", f'=SUMIFS({P("F")},{P("B")},"fachada")', None),
         ("2.3", "Paredes interiores — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"interior")', None),
-        ("2.4", "Paredes interiores — área bruta piso a piso (sem dedução de portas ; pisos sem altura não entram)", "m²", f'=SUMIFS({P("F")},{P("B")},"interior")', None),
+        ("2.4", "Paredes interiores — área bruta (altura de cada piso em Pressupostos ; sem dedução de portas)", "m²", f'=SUMIFS({P("F")},{P("B")},"interior")', None),
         ("3", "PORTAS E VÃOS", None, None, None),
         ("3.1", "Portas interiores", "un", f'=SUMIFS(Portas!$D$5:$D${max(rd, 5)},Portas!$C$5:$C${max(rd, 5)},"interior")', "folha Portas"),
         ("3.2", "Vãos exteriores nos alçados", "un", f"=COUNT(Vãos!$C$5:$C${max(rv, 5)})", "folha Vãos — conferir no PDF de controlo"),

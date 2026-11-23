@@ -218,3 +218,14 @@ def test_vao_sem_aro_e_grelha_nao_sao_vaos():
     assert alcados._e_vao(box(0, 0, 1, 1), f, pap)
     assert not alcados._e_vao(box(2, 0, 2.7, 1), f, pap)              # só barras verticais por dentro
     assert not alcados._e_vao(box(5, 0, 6, 1), f, pap)                # face sem aro próprio
+
+
+def test_corte_altura_entre_lajes():
+    """Corte sintético : coluna de cotas 100,00 / 103,00 / 106,00 (y = 10, 7, 4) ; lajes cortadas de 0,30 com topo a cada cota."""
+    from engines.mapa_arquitetura import cortes
+    els = [dwfx.Elemento("cotas", "texto", texto=f"{v:.2f}", pos=(0.0, y)) for v, y in ((100.0, 10.0), (103.0, 7.0), (106.0, 4.0))]
+    for y in (10.0, 7.0, 4.0):                       # topo da laje na cota (y), base 0,30 abaixo (y + 0,30)
+        els.append(dwfx.Elemento("trama corte", "path", [[(2, y), (12, y), (12, y + 0.3), (2, y + 0.3), (2, y)]], fill="#808080"))
+    f = dwfx.Folha(0, "Corte A", 100.0, els, ["trama corte", "cotas"])
+    ls = cortes.lajes(f, camadas.mapa(f.camadas))
+    assert ls and sorted((lo, hi) for lo, hi, _ in ls[0][1]) == [(99.7, 100.0), (102.7, 103.0), (105.7, 106.0)]

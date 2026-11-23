@@ -69,6 +69,20 @@ def medir(data: bytes, pe_direito: float | None = None, mapa_camadas: dict | Non
     if sem_escala:
         avisos.append("Folhas sem escala, não medidas : " + ", ".join(sem_escala))
     alturas(pisos, pe_direito)
+    if not pe_direito:
+        try:                                     # cortes verticais : altura entre lajes medida na geometria (mais exata)
+            from . import cortes
+            ent = cortes.alturas_entre_lajes(z, lista, pisos, mapa_camadas)
+            for p in pisos:
+                el = ent.get(p["piso"]) if p.get("altura") else None
+                if el:
+                    p["piso_a_piso"] = p["altura"]
+                    p["altura"] = el["entre_lajes"]
+                    p["espessura_laje"] = el["espessura_laje"]
+                    p["altura_origem"] = (f"cortes : entre lajes (laje {el['espessura_laje']:.2f}) ; cotas {p['cota']['valor']:.2f}, "
+                                          f"piso a piso {p['piso_a_piso']:.2f}")
+        except Exception as exc:  # noqa: BLE001
+            avisos.append(f"Cortes não lidos ({type(exc).__name__}) : alturas piso a piso das cotas das plantas.")
     return _resumo(pisos, vistas, avisos, pe_direito, papeis_usados, [n for _, _, n in lista])
 
 
@@ -136,8 +150,8 @@ def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
     if area:
         sem = [p["piso"] for p in pisos if not p.get("altura") and p["paredes"]]
         nota = f" (sem os pisos {', '.join(sem)} : sem altura)" if sem else ""
-        resumo.insert(5, {"artigo": "Paredes de fachada — área bruta piso a piso, sem dedução de vãos" + nota, "un": "m²", "qtd": round(area["fachada"], 2)})
-        resumo.insert(7, {"artigo": "Paredes interiores — área bruta piso a piso, sem dedução de portas" + nota, "un": "m²", "qtd": round(area["interior"], 2)})
+        resumo.insert(5, {"artigo": "Paredes de fachada — área bruta (altura de cada piso : folha Pressupostos), sem dedução de vãos" + nota, "un": "m²", "qtd": round(area["fachada"], 2)})
+        resumo.insert(7, {"artigo": "Paredes interiores — área bruta (altura de cada piso : folha Pressupostos), sem dedução de portas" + nota, "un": "m²", "qtd": round(area["interior"], 2)})
     perguntas = [f"{v['vista']} : edifício isolado por estimativa — conferir os vãos no desenho de controlo." for v in vistas
                   if v.get("isolamento", "").startswith("estimado")]
     pressupostos = [
@@ -154,8 +168,9 @@ def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
     sem = [p["piso"] for p in pisos if not p.get("altura") and p["paredes"]]
     if sem:
         perguntas.append(f"Pisos sem cota do piso de cima nas plantas ({', '.join(sem)}) : altura das paredes por indicar (as outras foram lidas nas cotas).")
-    pressupostos.append("Altura das paredes = diferença entre as cotas de pavimento escritas nas plantas (piso a piso, inclui a espessura da laje) ; "
-                        "para a alvenaria entre lajes, deduzir a espessura da laje do projeto de estrutura.")
+    pressupostos.append("Altura das paredes : cotas altimétricas de pavimento de cada piso lidas nas plantas (sequência coerente) ; "
+                        "quando há cortes, a altura ENTRE LAJES é medida nas lajes cortadas (topo da laje do piso → face inferior da laje de "
+                        "cima) ; sem corte, fica a altura piso a piso das cotas. Folha Pressupostos : origem de cada altura.")
     if not vistas:
         avisos.append("Nenhum alçado com vãos mensuráveis : vãos exteriores não medidos.")
     nao = ["ETICS / revestimentos de fachada por cor (rótulos de legenda por alçado)", "cobertura (pendentes lidas nos cortes), rufos, caleiras e tubos de queda",
