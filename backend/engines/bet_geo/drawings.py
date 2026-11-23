@@ -486,12 +486,13 @@ def _section(b: Building, R, axis: str, at: float, slab_h: float):
 
 def _draw_section(f: Frame, b, R, segs, beams, walls, slab_h, env, sol, ox, oz, title):
     fl, top = b.floor_level, b.roof_level
+    zref = fl                                   # desenhar relativo ao pavimento (cotas NGF absolutas → folha à escala)
     par = 0.5
     s_min = min(a for a, _ in segs)
     s_max = max(bq for _, bq in segs)
 
     def P(s, z):
-        return (ox + s - s_min, oz + z)
+        return (ox + s - s_min, oz + z - zref)
     # terreno e fundações
     f.line([P(s_min - 2, fl - 0.20), P(s_max + 2, fl - 0.20)], BROWN, 0.6)
     for a, bq in segs:
@@ -520,11 +521,11 @@ def _draw_section(f: Frame, b, R, segs, beams, walls, slab_h, env, sol, ox, oz, 
     xl = P(s_min - 1.6, 0)[0]
     for z, lab in ((fl, f"{fl:+.2f} pavimento"), (fl + env.hsp, f"{fl + env.hsp:+.2f} teto"), (top, f"{top:+.2f} laje"),
                    (top + par, f"{top + par:+.2f} platibanda"), (fl - 0.80, f"{fl - 0.80:+.2f} fundação")):
-        f.line([(xl - 0.6, oz + z), (P(s_max + 0.6, 0)[0], oz + z)], GREY, 0.2, dash=[1, 2])
-        f.text(xl - 0.7, oz + z + 0.06, lab.replace(".", ","), 5.4, INK, align="r")
+        f.line([(xl - 0.6, oz + z - zref), (P(s_max + 0.6, 0)[0], oz + z - zref)], GREY, 0.2, dash=[1, 2])
+        f.text(xl - 0.7, oz + z - zref + 0.06, lab.replace(".", ","), 5.4, INK, align="r")
     f.dim(P(s_min, 0), P(s_max, 0), -1.2)
-    f.dim((P(s_max, 0)[0] + 1.0, oz + fl), (P(s_max, 0)[0] + 1.0, oz + top), 0.0, _n(top - fl))
-    f.text(ox + (s_max - s_min) / 2, oz + top + par + 0.8, title, 8.5, INK, True)
+    f.dim((P(s_max, 0)[0] + 1.0, oz + fl - zref), (P(s_max, 0)[0] + 1.0, oz + top - zref), 0.0, _n(top - fl))
+    f.text(ox + (s_max - s_min) / 2, oz + top - zref + par + 0.8, title, 8.5, INK, True)
 
 
 def sheet_sections(c, b: Building, R, esp: dict, meta: dict, slab_h: float):
@@ -533,7 +534,7 @@ def sheet_sections(c, b: Building, R, esp: dict, meta: dict, slab_h: float):
     cy, cx = fp.centroid.y, fp.centroid.x
     sa = _section(b, R, "x", cy, slab_h)
     sb = _section(b, R, "y", cx, slab_h)
-    H = b.roof_level + 1.5
+    H = (b.roof_level - b.floor_level) + 1.5      # altura RELATIVA: as cotas do projeto podem ser NGF absolutas
     wa, wb = x1 - x0, y1 - y0
     bounds = (-3, -2.0, max(wa, wb) + 3, 2 * (H + 3.5))
     f = Frame(c, "Cortes AA' e BB'", "A02", meta, bounds)
@@ -596,7 +597,8 @@ def _elevation_polys(b: Building, slab_h: float, view: str):
 def sheet_elevations(c, b: Building, esp: dict, meta: dict, slab_h: float):
     x0, y0, x1, y1 = b.roof_slab.bounds
     w = max(x1 - x0, y1 - y0)
-    H = b.roof_level + 1.2
+    zref = b.floor_level                         # desenhar relativo ao pavimento (cotas NGF absolutas → folha à escala)
+    H = (b.roof_level - b.floor_level) + 1.2
     for num, pair in (("A03", ("S", "N")), ("A04", ("E", "O"))):
         f = Frame(c, "Alçados " + " e ".join({"S": "Sul", "N": "Norte", "E": "Nascente", "O": "Poente"}[v] for v in pair), num, meta,
                   (-1, -1.5, w + 1, 2 * H + 3.5))
@@ -608,17 +610,17 @@ def sheet_elevations(c, b: Building, esp: dict, meta: dict, slab_h: float):
             mnx = min(p[0] for _, pr, _, _ in polys for p in pr)
             for _, pr, kind, col in polys:
                 from shapely.geometry import Polygon
-                g = Polygon([(p[0] - mnx, p[1] + oz) for p in pr])
+                g = Polygon([(p[0] - mnx, p[1] - zref + oz) for p in pr])
                 if not g.is_valid:
                     g = g.buffer(0)
                 fill = colors.Color(*col[:3]) if isinstance(col, (tuple, list)) else LIGHT
                 f.poly(g, INK, 0.25, fill=fill)
             mxx = max(p[0] for _, pr, _, _ in polys for p in pr) - mnx
-            f.line([(-0.8, oz + b.floor_level - 0.2), (mxx + 0.8, oz + b.floor_level - 0.2)], BROWN, 0.8)
+            f.line([(-0.8, oz - 0.2), (mxx + 0.8, oz - 0.2)], BROWN, 0.8)
             for z, lab in ((b.floor_level, "±0,00"), (b.roof_level, f"{b.roof_level:+.2f}".replace(".", ",")),
                            (b.roof_level + 0.5, f"{b.roof_level + 0.5:+.2f}".replace(".", ","))):
-                f.text(mxx + 1.0, oz + z, lab, 5.6, INK, align="l")
-                f.line([(mxx + 0.2, oz + z), (mxx + 0.9, oz + z)], INK, 0.3)
+                f.text(mxx + 1.0, oz + z - zref, lab, 5.6, INK, align="l")
+                f.line([(mxx + 0.2, oz + z - zref), (mxx + 0.9, oz + z - zref)], INK, 0.3)
             glass = sorted((min(p[0] for p in pr) - mnx, max(p[0] for p in pr) - mnx, min(p[1] for p in pr), max(p[1] for p in pr))
                            for _, pr, kind, _ in polys if kind == "glass")
             pts = [0.0]
@@ -634,7 +636,7 @@ def sheet_elevations(c, b: Building, esp: dict, meta: dict, slab_h: float):
                     f.dim((a_, oz - 0.2), (b_, oz - 0.2), -0.6, _n(b_ - a_), size=5.0)
             if glass:
                 g0, g1, z0, z1 = max(glass, key=lambda g: g[1] - g[0])
-                f.dim((g0 - 0.1, z0 + oz - b.floor_level * 0), (g0 - 0.1, z1 + oz), 0.4, _n(z1 - z0), size=5.0, color=BLUE)
+                f.dim((g0 - 0.1, z0 - zref + oz), (g0 - 0.1, z1 - zref + oz), 0.4, _n(z1 - z0), size=5.0, color=BLUE)
             f.dim((0, oz - 0.8), (mxx, oz - 0.8), -0.6, _n(mxx), size=6.0)
             f.text(mxx / 2, oz + H + 0.4, "ALÇADO " + {"S": "SUL", "N": "NORTE", "E": "NASCENTE", "O": "POENTE"}[v], 8.5, INK, True)
         f.legend([(colors.HexColor("#f2efe8"), "Reboco / ETICS acabamento areado", "box"),
