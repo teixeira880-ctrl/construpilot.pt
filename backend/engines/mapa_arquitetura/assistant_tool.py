@@ -78,7 +78,15 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
                                         key=lambda p: p["cota"]["valor"], default=None)
                         area_cave = (sum(c["area"] for c in enterrado["compartimentos"] if not c["exterior"])
                                      if enterrado and re.search(r"cave|sub|garag", enterrado["piso"], re.I) else None)
-                        extras += fundacoes.linhas_planta(pl, origem=nome_e, area_laje_terrea=area_cave)
+                        try:
+                            from . import terreno as _ter
+                            z_t = dwfx.abrir(data)
+                            ter = _ter.ler(z_t, dwfx.folhas(z_t))
+                        except Exception as exc:  # noqa: BLE001
+                            ter = {}
+                            modelo["avisos"].append(f"Levantamento topográfico não lido ({type(exc).__name__}) — escavação por medir.")
+                        a_impl = ((enterrado or {}).get("envolvente") or {}).get("area") if area_cave else None
+                        extras += fundacoes.linhas_planta(pl, origem=nome_e, area_laje_terrea=area_cave, terreno=ter, area_implantacao=a_impl)
                         nao = [x for x in nao if not x["designacao"].startswith(("Muros de suporte", "Escavação geral"))]
                     try:                              # lajes, vigas, aço base das lajes e aço dos muros (cortes tipo)
                         from engines.mapa_estrutura import lajes_dossier
@@ -87,10 +95,29 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
                         if est_l:
                             extras += est_l
                             nao = [x for x in nao if not x["designacao"].startswith(("Pilares, vigas, lajes", "Aço A500"))]
-                            nao.append({"capitulo": "Estrutura", "designacao": "Pilares — betão, cofragem e aço (quadro de pilares)",
-                                        "descricao": "quadro de pilares do projeto de estrutura", "un": "m³"})
-                            nao.append({"capitulo": "Estrutura", "designacao": "Reforços desenhados das lajes e armaduras das vigas",
-                                        "descricao": "armaduras desenhadas nas plantas de laje", "un": "kg"})
+                            try:
+                                from engines.mapa_estrutura import pilares
+                                import pymupdf
+                                est_p = pilares.linhas_mapa(pilares.ler(pymupdf.open(stream=pdf, filetype="pdf"),
+                                                                        base_fundacao=(pl or {}).get("cota_sup_linear")), nome_e)
+                            except Exception as exc:  # noqa: BLE001
+                                est_p = []
+                                modelo["avisos"].append(f"{nome_e} : quadro de pilares não lido ({type(exc).__name__}).")
+                            if est_p:
+                                extras += est_p
+                            else:
+                                nao.append({"capitulo": "Estrutura", "designacao": "Pilares — betão, cofragem e aço (quadro de pilares)",
+                                            "descricao": "quadro de pilares do projeto de estrutura", "un": "m³"})
+                            try:
+                                est_r = lajes_dossier.reforcos(pdf, nome_e, {pl["pagina"]} if pl else None)
+                            except Exception as exc:  # noqa: BLE001
+                                est_r = []
+                                modelo["avisos"].append(f"{nome_e} : armaduras desenhadas não lidas ({type(exc).__name__}).")
+                            if est_r:
+                                extras += est_r
+                            else:
+                                nao.append({"capitulo": "Estrutura", "designacao": "Reforços desenhados das lajes e armaduras das vigas",
+                                            "descricao": "armaduras desenhadas nas plantas de laje", "un": "kg"})
                     except Exception as exc:  # noqa: BLE001
                         modelo["avisos"].append(f"{nome_e} : lajes não lidas ({type(exc).__name__}).")
                     q = fundacoes.ler_quadro(pdf)

@@ -7,7 +7,7 @@ como o dossier DUEL / STRUPLANO) — método validado em Coimbra :
 - blocos = células da quadrícula (cada célula dividida pelo comprimento do bloco lido na nota, «0,75 x 0,25 x 0,25 m») ;
 - vigas = rótulo b×h (sem parênteses) + par de arestas afastadas b ao longo do texto ; só conta a retombé (h − espessura da laje) ;
 - aço base : nota «Armadura base … Ø10 af.0,20» (laje maciça, 4 camadas), «Armadura base entre nervuras : Superior 3Ø10 Inferior
-  3Ø10» com «0,90 m entre eixos de nervuras» (LFA), malha da lâmina (Malhasol CQ38, em m²) ; reforços desenhados ficam por medir ;
+  3Ø10» com «0,90 m entre eixos de nervuras» (LFA), malha da lâmina (Malhasol CQ38, em m²) ; reforços desenhados lidos nos rótulos «Ø10af.0,2L=4,2» ; emendas por sobreposição (nota, varões comerciais de 12 m) ;
 - muros : corte tipo do muro (arranques, verticais, horizontais, corridos, armadura da sapata linear) aplicado ao comprimento medido.
 Massa nominal dos varões : EN 10080."""
 from __future__ import annotations
@@ -22,6 +22,23 @@ from shapely.ops import polygonize, unary_union
 from .fundacoes import KG_M, _f
 
 ROT_VIGA = re.compile(r"^(\d,\d+)x(\d,\d+)$")
+BARRA_COMERCIAL = 12.0   # m — comprimento comercial dos varões A500 (Portugal) : uma emenda por sobreposição a cada 12 m de varão corrido
+
+
+def amarracoes(doc) -> tuple:
+    """(amarração, sobreposição) em diâmetros, lidos na nota «AMARRAÇÕES E EMENDAS» («50Ø … amarração», «80Ø … sobreposição»)."""
+    for page in doc:
+        t = " ".join(page.get_text().split())
+        a = re.search(r"(\d+)\s*Ø do varão,? para o comprimento de amarra", t)
+        b = re.search(r"(\d+)\s*Ø do varão,? para o comprimento de sobreposi", t)
+        if a or b:
+            return (int(a.group(1)) if a else None, int(b.group(1)) if b else None)
+    return (None, None)
+
+
+def emendas(L: float) -> int:
+    """Número de emendas de um varão corrido de comprimento L com varões comerciais de 12 m."""
+    return max(0, math.ceil(round(L / BARRA_COMERCIAL, 6)) - 1)
 
 
 def _escala(page) -> float | None:
@@ -211,7 +228,9 @@ def ler_laje(page) -> dict:
             dentro = (not lfa.is_empty) and lfa.intersection(v["poly"]).area > 0.5 * v["poly"].area
             v["e"] = e_lfa if dentro else e_lm
             v["ret"] = round(max(0.0, v["h"] - (v["e"] or 0)), 3)
-    return {"tosco": _f(tos.group(1)) if tos else None, "A_total": laje.area * k * k, "A_LFA": lfa.area * k * k, "A_LM": lm.area * k * k,
+    comp_lm = [g for g in getattr(lm, "geoms", [lm]) if not g.is_empty and g.area * k * k > 0.5]
+    dims_lm = [((g.bounds[2] - g.bounds[0]) * k, (g.bounds[3] - g.bounds[1]) * k, g.area * k * k) for g in comp_lm]
+    return {"dims_lm": dims_lm, "tosco": _f(tos.group(1)) if tos else None, "A_total": laje.area * k * k, "A_LFA": lfa.area * k * k, "A_LM": lm.area * k * k,
             "A_celulas": A_cells, "blocos": blocos, "bloco": blk, "e_lfa": e_lfa, "e_lm": e_lm, "per": laje.boundary.length * k,
             "vigas": [{x: v.get(x) for x in ("sec", "b", "h", "L", "e", "ret")} for v in vg]}
 
@@ -278,12 +297,123 @@ def cortes_muros(doc) -> dict:
     return out
 
 
+def _moldura(page, w):
+    """Menor retângulo desenhado que contém o centro da palavra w (a moldura do pormenor)."""
+    import pymupdf
+    pt = pymupdf.Point((w[0] + w[2]) / 2, (w[1] + w[3]) / 2)
+    rs = [d["rect"] for d in page.get_drawings() if d["rect"].contains(pt) and d["rect"].width > 40 and d["rect"].height > 40]
+    return min(rs, key=lambda r: r.width * r.height) if rs else None
+
+
+def ler_lva(page) -> dict:
+    """Laje de vigotas pré-esforçadas (LVA) : área em planta (cinzento da laje), inclinação medida no pormenor do apoio
+    (arestas inclinadas da laje), entre-eixo das vigotas e betão complementar medidos na secção tipo desenhada."""
+    k = _escala(page)
+    Zp = _zona(page)
+    t = " ".join(page.get_text().split())
+    m = re.search(r"h=(0,\d+)\s*LVA", t)
+    if not k or Zp is None or not m:
+        return {}
+    e = _f(m.group(1))
+    tipo = re.search(r"Secção tipo da laje\s+(\S+)", t)
+    W = page.get_text("words")
+    tit = next((w for w in W if w[4] == "Secção" and "Secção tipo da laje" in " ".join(x[4] for x in W if abs(x[1] - w[1]) < 3 and abs(x[3] - w[3]) < 3
+                                                                                   and x[0] >= w[0] - 1 and x[0] < w[0] + 400)), None)
+    if tit is None:  # texto rodado : procurar pelo bloco
+        tit = next((b[:4] + ("Secção",) for b in page.get_text("blocks") if "Secção tipo da laje" in b[4]), None)
+    fr = _moldura(page, tit) if tit else None
+    if fr is None:
+        return {}
+    k25 = None
+    mm = re.search(r"Escala\s+1\s*[:/]\s*(\d+)", " ".join(page.get_text(clip=fr).split()))
+    if mm:
+        k25 = 0.0254 / 72 * int(mm.group(1))
+    dims = [_f(w[4]) for w in W if fr.contains(__import__("pymupdf").Point((w[0] + w[2]) / 2, (w[1] + w[3]) / 2)) and re.fullmatch(r"0,\d{3}", w[4])]
+    eixo = max(dims) if dims else None
+    # betão complementar : área cinzenta da secção / largura desenhada
+    ps = []
+    cor = Counter()
+    for d in page.get_drawings():
+        f = d.get("fill")
+        if f and len(f) >= 3 and fr.contains(d["rect"]) and all(0.8 <= c <= 0.95 for c in f[:3]):
+            cor[tuple(round(c, 2) for c in f[:3])] += d["rect"].width * d["rect"].height
+    if cor and k25:
+        c0 = cor.most_common(1)[0][0]
+        for d in page.get_drawings():
+            f = d.get("fill")
+            if f and fr.contains(d["rect"]) and tuple(round(c, 2) for c in f[:3]) == c0:
+                for pts in _polys(d):
+                    try:
+                        q = Polygon(pts).buffer(0)
+                    except Exception:  # noqa: BLE001
+                        continue
+                    if q.area > 0:
+                        ps.append(q)
+    sec = unary_union(ps) if ps else None
+    consumo = None
+    if sec is not None and not sec.is_empty:
+        bx = sec.bounds
+        larg = max(bx[2] - bx[0], bx[3] - bx[1]) * k25
+        consumo = sec.area * k25 * k25 / larg if larg > 0.3 else None
+    # inclinação : arestas inclinadas longas no pormenor que mostra «abobadilhas» fora da secção tipo
+    inc = None
+    for w in W:
+        if w[4].lower().startswith("abobadilhas"):
+            f2 = _moldura(page, w)
+            if f2 is None or f2 == fr:
+                continue
+            ang = Counter()
+            for d in page.get_drawings():
+                if not f2.contains(d["rect"]):
+                    continue
+                for it in d["items"]:
+                    if it[0] == "l":
+                        a, b = it[1], it[2]
+                        L = math.hypot(b.x - a.x, b.y - a.y)
+                        if L > 80:
+                            g = math.degrees(math.atan2(abs(b.y - a.y), abs(b.x - a.x)))
+                            g = min(g, 90 - g)
+                            if 3 < g < 45:
+                                ang[round(g, 1)] += L
+            if ang:
+                inc = ang.most_common(1)[0][0]
+                break
+    # área em planta : cinzento da laje dentro da zona dos eixos
+    areas = Counter()
+    for d in page.get_drawings():
+        f = d.get("fill")
+        if f and len(f) >= 3 and all(0.88 <= c <= 0.985 for c in f[:3]) and Zp.intersects(box(*d["rect"])):
+            areas[tuple(round(c, 2) for c in f[:3])] += d["rect"].width * d["rect"].height
+    if not areas:
+        return {}
+    cor_l = areas.most_common(1)[0][0]
+    fills = []
+    for d in page.get_drawings():
+        f = d.get("fill")
+        if f and tuple(round(c, 2) for c in f[:3]) == cor_l:
+            for pts in _polys(d):
+                try:
+                    q = Polygon(pts).buffer(0)
+                except Exception:  # noqa: BLE001
+                    continue
+                if q.area > 0 and Zp.intersects(q):
+                    fills.append(q.intersection(Zp))
+    if not fills:
+        return {}
+    A = unary_union(fills).area * k * k
+    tos = re.search(r"COTA DO TOSCO\s+(\d+[.,]\d+)", t, re.I)
+    return {"A_planta": A, "inclinacao": inc, "A_real": A / math.cos(math.radians(inc)) if inc else A, "e": e,
+            "tipo": tipo.group(1) if tipo else "LVA", "eixo": eixo, "consumo": consumo, "tosco": _f(tos.group(1)) if tos else None,
+            "malha": "CQ38" if re.search(r"CQ\s*38", t) else None}
+
+
 def linhas_mapa(pdf: bytes, origem: str = "", muros: dict | None = None) -> list:
     """Capítulo Estrutura : lajes (betão, cofragem, blocos, aço base), vigas (retombé) e aço dos muros (corte tipo)."""
     import pymupdf
     doc = pymupdf.open(stream=pdf, filetype="pdf")
     out = []
     notas = notas_aco(doc)
+    amar, sob = amarracoes(doc)
     vistos = set()
     for ip, page in enumerate(doc):
         try:
@@ -291,6 +421,13 @@ def linhas_mapa(pdf: bytes, origem: str = "", muros: dict | None = None) -> list
         except Exception:  # noqa: BLE001
             r = {}
         if not r or not r.get("A_total") or r["A_total"] < 10:
+            try:
+                v = ler_lva(page)
+            except Exception:  # noqa: BLE001
+                v = {}
+            if v and v["A_planta"] > 10 and ("lva", round(v["A_planta"], 1)) not in vistos:
+                vistos.add(("lva", round(v["A_planta"], 1)))
+                out += _linhas_lva(v, f"folha {ip + 1}" + (f" de {origem}" if origem else ""))
             continue
         chave = (round(r["A_total"], 1), r.get("tosco"))
         if chave in vistos:
@@ -324,6 +461,20 @@ def linhas_mapa(pdf: bytes, origem: str = "", muros: dict | None = None) -> list
             out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Aço base da laje maciça Ø{lm['d']} af.{lm['s']:.2f} ({lm['camadas']} camadas)",
                             descricao=f"{r['A_LM']:.2f} m² × {lm['camadas']} × (1 / {lm['s']:.2f}) m/m² × {KG_M[lm['d']]:.3f} kg/m ; reforços desenhados por medir",
                             qtd=r["A_LM"] * m_m2 * KG_M[lm["d"]], un="kg", refs="nota «Armadura base»", estado="medido (sem reforços)"))
+            if sob and r.get("dims_lm"):
+                n_em, partes = 0.0, []
+                for bx, by, a in r["dims_lm"]:
+                    for L_, larg in ((bx, a / bx if bx else 0), (by, a / by if by else 0)):
+                        e_ = emendas(L_)
+                        if e_:
+                            nb = larg / lm["s"] * lm["camadas"] / 2
+                            n_em += nb * e_
+                            partes.append(f"{nb:.0f} varões × {e_} (vão {L_:.2f} m)")
+                if n_em:
+                    lv = sob * lm["d"] / 1000
+                    out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Aço base da laje maciça — emendas {sob}Ø (varões de {BARRA_COMERCIAL:.0f} m)",
+                                    descricao=f"{' + '.join(partes)} = {n_em:.0f} emendas × {lv:.2f} m × {KG_M[lm['d']]:.3f} kg/m ; nota «Amarrações e emendas»",
+                                    qtd=n_em * lv * KG_M[lm["d"]], un="kg", refs="emendas"))
         if lf and r["A_LFA"] > 0.5:
             (ns, ds), (ni, di) = lf["sup"], lf["inf"]
             kg = r["A_LFA"] / lf["eixo"] * (ns * KG_M[ds] + ni * KG_M[di])
@@ -350,11 +501,117 @@ def linhas_mapa(pdf: bytes, origem: str = "", muros: dict | None = None) -> list
                     q, d_ = (L / b["s"] + 1) * b["L"], f"({L:.2f}/{b['s']:.2f} + 1) × {b['L']:.2f} m"
                 else:
                     q, d_ = (H / b["s"] + 1) * L, f"({H:.2f}/{b['s']:.2f} + 1) × {L:.2f} m"
+                nem = 0
+                if sob and not b["n"] and not b["L"] and emendas(L):          # horizontais corridas ao longo do muro
+                    nem = (H / b["s"] + 1) * emendas(L)
+                elif sob and b["n"] and emendas(L):
+                    nem = b["n"] * emendas(L)
+                ext = nem * sob * b["d"] / 1000 if nem else 0.0
                 out.append(dict(capitulo="Fundações", piso="Cave", designacao=f"Muro {nome} — aço {b['txt']}",
-                                descricao=f"{d_} × {KG_M.get(b['d'], 0):.3f} kg/m ; {c['titulo']}", qtd=q * KG_M.get(b["d"], 0), un="kg", refs=nome,
-                                estado="medido (sem emendas)"))
+                                descricao=(f"{d_}" + (f" + {nem:.0f} emendas × {sob}Ø ({sob * b['d'] / 1000:.2f} m)" if nem else "")
+                                           + f" × {KG_M.get(b['d'], 0):.3f} kg/m ; {c['titulo']}"),
+                                qtd=(q + ext) * KG_M.get(b["d"], 0), un="kg", refs=nome,
+                                estado="medido" + (" (com emendas)" if nem else "")))
             for k_ in c["corridos"]:
+                nem = k_["n"] * emendas(L) if sob else 0
+                ext = nem * sob * k_["d"] / 1000 if nem else 0.0
                 out.append(dict(capitulo="Fundações", piso="Cave", designacao=f"Muro {nome} — aço {k_['txt']}",
-                                descricao=f"{k_['n']} × {L:.2f} m × {KG_M.get(k_['d'], 0):.3f} kg/m ; {c['titulo']}",
-                                qtd=k_["n"] * L * KG_M.get(k_["d"], 0), un="kg", refs=nome, estado="medido (sem emendas)"))
+                                descricao=(f"{k_['n']} × {L:.2f} m" + (f" + {nem} emendas × {sob}Ø ({sob * k_['d'] / 1000:.2f} m)" if nem else "")
+                                           + f" × {KG_M.get(k_['d'], 0):.3f} kg/m ; {c['titulo']}"),
+                                qtd=(k_["n"] * L + ext) * KG_M.get(k_["d"], 0), un="kg", refs=nome,
+                                estado="medido" + (" (com emendas)" if nem else "")))
+    return out
+
+
+def _linhas_lva(v: dict, org: str) -> list:
+    piso = f"Laje cota {v['tosco']:.2f}".replace(".", ",") if v.get("tosco") else "Laje de cobertura (LVA)"
+    A, Ap, inc = v["A_real"], v["A_planta"], v.get("inclinacao")
+    ar = (f"{Ap:.2f} m² em planta / cos {inc:.1f}° = {A:.2f} m²" if inc else f"{Ap:.2f} m² em planta (inclinação não lida)")
+    out = []
+    if v.get("consumo"):
+        out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Laje de vigotas {v['tipo']} h = {v['e']:.2f} — betão complementar",
+                        descricao=f"{ar} × {v['consumo']:.3f} m³/m² (área de betão da secção tipo desenhada / largura) ; {org}",
+                        qtd=A * v["consumo"], un="m³", refs="LVA"))
+    else:
+        out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Laje de vigotas {v['tipo']} h = {v['e']:.2f} — betão complementar",
+                        descricao="secção tipo não legível", qtd=None, un="m³", refs="LVA", estado="a medir"))
+    out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Laje de vigotas {v['tipo']} h = {v['e']:.2f} — área (vigotas + abobadilhas)",
+                    descricao=f"{ar} ; {org}", qtd=A, un="m²", refs="LVA"))
+    if v.get("eixo"):
+        out.append(dict(capitulo="Estrutura", piso=piso, designacao="Vigotas pré-esforçadas — comprimento",
+                        descricao=f"{A:.2f} m² / {v['eixo']:.3f} m entre eixos (secção tipo)", qtd=A / v["eixo"], un="m", refs="LVA"))
+    if v.get("malha"):
+        out.append(dict(capitulo="Estrutura", piso=piso, designacao=f"Malha da lâmina de compressão {v['malha']}",
+                        descricao=f"área da laje {A:.2f} m²", qtd=A, un="m²", refs="LVA"))
+    return out
+
+
+ROT_CONT = re.compile(r"^(\d+)Ø(\d+)(?:af\.?0?,\d+)?\s*L\s*=\s*(\d+(?:,\d+)?)$")
+ROT_AF = re.compile(r"^Ø(\d+)af\.?(0?,\d+)\s*L\s*=\s*(\d+(?:,\d+)?)(?:-\d+(?:,\d+)?)?$")
+
+
+def _rotulos(page):
+    """Rótulos de armadura da folha, juntando «2Ø16» + «L=2,4» quando vêm em palavras separadas."""
+    W = page.get_text("words")
+    out = []
+    for i, w in enumerate(W):
+        t = w[4]
+        if "Ø" in t and "L=" not in t and i + 1 < len(W) and W[i + 1][4].startswith("L=") and W[i + 1][5:7] == w[5:7]:
+            t = t + W[i + 1][4]
+        if "L=" in t and "Ø" in t:
+            out.append(t.replace(" ", ""))
+    return out
+
+
+def reforcos(pdf: bytes, origem: str = "", excluir: set | None = None) -> list:
+    """Armaduras desenhadas com rótulo (vigas, reforços das lajes, escadas, cobertura) : cada rótulo «nØd L=x» desenhado é contado
+    n × x ; os rótulos «Ød af.s L=x» sem número de varões (dependem da faixa de distribuição desenhada) ficam listados a medir.
+    Piso = cota do tosco da própria folha ou da última planta de laje anterior."""
+    import pymupdf
+    doc = pymupdf.open(stream=pdf, filetype="pdf")
+    amar, sob = amarracoes(doc)
+    out, piso = [], None
+    for ip, page in enumerate(doc):
+        t = " ".join(page.get_text().split())
+        tos = re.search(r"COTA DO TOSCO\s+(\d+[.,]\d+)", t, re.I)
+        if tos:
+            piso = f"Laje cota {_f(tos.group(1)):.2f}".replace(".", ",")
+        if excluir and ip in excluir:
+            continue
+        rot = _rotulos(page)
+        if not rot:
+            continue
+        cob = re.search(r"Laje do Teto\s+(\S+(?:\s+\(\w+\))?)", t)
+        p_ = "Laje de cobertura (LVA)" if (cob and re.search(r"cobertura", cob.group(0), re.I)) else (piso or f"Folha {ip + 1}")
+        org = f"folha {ip + 1}" + (f" de {origem}" if origem else "")
+        por_d, n_rot, sem_n = {}, {}, []
+        n_emendas = {}
+        for r in rot:
+            m = ROT_CONT.match(r)
+            if m:
+                n, d, L = int(m.group(1)), int(m.group(2)), _f(m.group(3))
+                if d not in KG_M or not L:
+                    continue
+                por_d[d] = por_d.get(d, 0.0) + n * L
+                n_rot[d] = n_rot.get(d, 0) + 1
+                if sob and emendas(L):
+                    n_emendas[d] = n_emendas.get(d, 0) + n * emendas(L)
+                continue
+            m = ROT_AF.match(r)
+            if m:
+                sem_n.append(r)
+        for d in sorted(por_d):
+            out.append(dict(capitulo="Estrutura", piso=p_, designacao=f"Armaduras desenhadas Ø{d} (vigas / reforços)",
+                            descricao=f"{n_rot[d]} rótulos «nØ{d} L=…» : Σ n × L = {por_d[d]:.2f} m × {KG_M[d]:.3f} kg/m ; {org}",
+                            qtd=por_d[d] * KG_M[d], un="kg", refs="rótulos"))
+            if n_emendas.get(d):
+                lv = sob * d / 1000
+                out.append(dict(capitulo="Estrutura", piso=p_, designacao=f"Armaduras desenhadas Ø{d} — emendas {sob}Ø (varões > {BARRA_COMERCIAL:.0f} m)",
+                                descricao=f"{n_emendas[d]} emendas × {lv:.2f} m × {KG_M[d]:.3f} kg/m", qtd=n_emendas[d] * lv * KG_M[d], un="kg",
+                                refs="emendas"))
+        if sem_n:
+            out.append(dict(capitulo="Estrutura", piso=p_, designacao="Reforços «Ø af. L=» sem número de varões",
+                            descricao=f"{len(sem_n)} rótulos ({', '.join(sorted(set(sem_n))[:6])}{'…' if len(set(sem_n)) > 6 else ''}) : n.º de varões = "
+                                      f"faixa de distribuição desenhada / afastamento ; {org}",
+                            qtd=None, un="kg", refs="rótulos", estado="a medir"))
     return out

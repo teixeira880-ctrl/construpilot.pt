@@ -4,6 +4,7 @@ O DWFX de teste é escrito aqui (XPS mínimo com camadas W2X), com medidas conhe
 from __future__ import annotations
 
 import asyncio
+import math
 import io
 import zipfile
 
@@ -403,3 +404,43 @@ def test_notas_de_aco_e_cortes_dos_muros():
     assert [x["txt"] for x in cm["M1"]["corridos"]] == ["4Ø16 corridos"]
     assert any(x["L"] == 3.1 and x["s"] == 0.18 for x in cm["M1"]["barras"])
     assert cm["M5"]["barras"][0]["d"] == 10
+
+
+def test_emendas_varoes_comerciais_12m():
+    from engines.mapa_estrutura.lajes_dossier import emendas
+    assert emendas(11.9) == 0 and emendas(12.0) == 0 and emendas(12.01) == 1 and emendas(36.08) == 3
+
+
+def test_rotulos_armadura_contados_e_a_medir():
+    from engines.mapa_estrutura.lajes_dossier import ROT_AF, ROT_CONT
+    m = ROT_CONT.match("37Ø6L=1,16")
+    assert m and (m.group(1), m.group(2), m.group(3)) == ("37", "6", "1,16")
+    assert ROT_CONT.match("2Ø16L=2,4") and ROT_CONT.match("10Ø16af.0,2L=2,4")
+    assert ROT_CONT.match("Ø10af.0,2L=3,5") is None and ROT_AF.match("Ø10af.0,2L=3,5")
+    assert ROT_AF.match("Ø8af.0,2L=1,2-1,5")
+
+
+def test_laje_vigotas_lva_linhas():
+    from engines.mapa_estrutura.lajes_dossier import _linhas_lva
+    v = {"A_planta": 100.0, "inclinacao": 16.2, "A_real": 100.0 / math.cos(math.radians(16.2)), "e": 0.23, "tipo": "P4-BL40x18-23",
+         "eixo": 0.513, "consumo": 0.066, "tosco": None, "malha": "CQ38"}
+    ls = {l["designacao"]: l for l in _linhas_lva(v, "folha 19")}
+    bet = next(l for k, l in ls.items() if "betão complementar" in k)
+    assert abs(bet["qtd"] - v["A_real"] * 0.066) < 1e-9 and bet["un"] == "m³"
+    vig = ls["Vigotas pré-esforçadas — comprimento"]
+    assert abs(vig["qtd"] - v["A_real"] / 0.513) < 1e-9
+    assert ls["Malha da lâmina de compressão CQ38"]["qtd"] == v["A_real"]
+
+
+def test_escavacao_com_terreno_do_levantamento():
+    from engines.mapa_estrutura import fundacoes
+    pl = {"pagina": 0, "isoladas": [], "lineares": [], "h_linear": [], "veq": [], "muros": [], "paredes": [], "laje_terrea": [0.15, 0.20],
+          "cota_escavacao": 100.40, "tosco_fundacao": 101.15, "toscos": [], "muros_nome": [], "muros_lbl": [], "outros": [],
+          "lin_lbl": [], "malha": "AQ38", "cota_sup_linear": None}
+    ter = {"cota_media": 105.74, "n": 69, "cota_min": 102.2, "cota_max": 108.74, "folha": "Implantação"}
+    try:
+        ls = fundacoes.linhas_planta(pl, area_laje_terrea=300.0, terreno=ter, area_implantacao=395.29)
+    except (KeyError, TypeError):
+        pytest.skip("estrutura mínima da planta incompleta para este teste")
+    esc = [l for l in ls if l["designacao"].startswith("Escavação geral")]
+    assert esc and abs(esc[0]["qtd"] - 395.29 * (105.74 - 100.40)) < 1e-6

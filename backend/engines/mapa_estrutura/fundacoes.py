@@ -241,7 +241,8 @@ def muros_por_nome(pl: dict) -> dict:
     return {"por_nome": {k: round(v, 2) for k, v in por.items()}, "H": H, "L": round(sum(por.values()), 2)}
 
 
-def linhas_planta(pl: dict, quadro: dict | None = None, origem: str = "", area_laje_terrea: float | None = None) -> list:
+def linhas_planta(pl: dict, quadro: dict | None = None, origem: str = "", area_laje_terrea: float | None = None,
+                  terreno: dict | None = None, area_implantacao: float | None = None) -> list:
     """Linhas do mapa a partir da planta de fundação : sapatas lineares, VEQ, muros, paredes do núcleo, laje térrea."""
     from shapely.ops import unary_union
     if not pl:
@@ -333,7 +334,16 @@ def linhas_planta(pl: dict, quadro: dict | None = None, origem: str = "", area_l
                     dict(capitulo="Movimento de terras", piso="Cave", designacao=f"Tout-venant compactado {e_tv:.2f} m sob a laje térrea", descricao=f"{A:.2f} m² × {e_tv:.2f}",
                          qtd=A * e_tv, un="m³", refs="laje térrea")]
             if pl.get("cota_escavacao") and pl.get("tosco_fundacao"):
-                out.append(dict(capitulo="Movimento de terras", piso="Cave", designacao=f"Escavação geral até à cota {pl['cota_escavacao']:.2f}",
-                                descricao="área da implantação × (cota do terreno natural − cota de escavação) : cota do terreno no levantamento topográfico",
-                                qtd=None, un="m³", refs="", estado="a medir"))
+                ce = pl["cota_escavacao"]
+                if terreno and terreno.get("cota_media") and area_implantacao and terreno["cota_media"] > ce:
+                    dz = terreno["cota_media"] - ce
+                    out.append(dict(capitulo="Movimento de terras", piso="Cave", designacao=f"Escavação geral até à cota {ce:.2f}",
+                                    descricao=(f"{area_implantacao:.2f} m² (envolvente da cave) × ({terreno['cota_media']:.2f} − {ce:.2f}) ; terreno natural = "
+                                               f"média da superfície triangulada de {terreno['n']} pontos cotados do levantamento dentro do lote "
+                                               f"(cotas {terreno['cota_min']:.2f} a {terreno['cota_max']:.2f}, folha «{terreno.get('folha', '')}»)"),
+                                    qtd=area_implantacao * dz, un="m³", refs="levantamento", estado="medido (sem taludes)"))
+                else:
+                    out.append(dict(capitulo="Movimento de terras", piso="Cave", designacao=f"Escavação geral até à cota {ce:.2f}",
+                                    descricao="área da implantação × (cota do terreno natural − cota de escavação) : cota do terreno no levantamento topográfico",
+                                    qtd=None, un="m³", refs="", estado="a medir"))
     return out
