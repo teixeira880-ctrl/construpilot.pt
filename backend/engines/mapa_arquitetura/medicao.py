@@ -60,6 +60,9 @@ def medir(data: bytes, pe_direito: float | None = None, mapa_camadas: dict | Non
         for v in alcados.medir(f, pap, larguras=larguras):
             if v["vaos"]:
                 vistas.append(v)
+    vistas, repetidas = alcados.sem_repetidas(vistas)
+    for v in repetidas:
+        avisos.append(f"{v['vista']} : mesma fachada que «{v['repete']}» — não somada (conferir).")
     if not pisos and not vistas:
         return {"ok": False, "avisos": avisos + (["Folhas sem escala do modelo (Units) : " + ", ".join(sem_escala)] if sem_escala else [])
                 + ["Nenhuma planta nem alçado mensurável : confirmar que o DWFX foi exportado do espaço do modelo / layouts com escala."]}
@@ -92,19 +95,21 @@ def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
     if pe_direito:
         resumo.insert(6, {"artigo": f"Paredes interiores (área bruta, altura {pe_direito:.2f} m, sem dedução de portas)", "un": "m²",
                           "qtd": round(par["interior"] * pe_direito, 2)})
-    perguntas, pressupostos = [], [
+    perguntas = [f"{v['vista']} : edifício isolado por estimativa — conferir os vãos no desenho de controlo." for v in vistas
+                  if v.get("isolamento", "").startswith("estimado")]
+    pressupostos = [
         "Medido no DWFX com a escala do modelo (Units do W2X) e as camadas do CAD ; nada estimado por rácio.",
         "Compartimentos fechados pelas paredes e pelas linhas de vão que tocam as paredes ; área à face interior das paredes.",
         "Nome do compartimento = rótulo da planta ; sem rótulo : loiças (instalação sanitária), equipamento (cozinha) ou paredes de 0,25 (caixa do elevador).",
         "Controlo cruzado : quando o arquiteto escreveu a área dentro do compartimento, ela aparece ao lado da medida (folha Compartimentos).",
         "Paredes = pares de linhas paralelas (0,07–0,45 m) na camada de paredes ; fachada / interior pelo lado dos compartimentos.",
         "Portas = arcos de abertura (largura = raio) ; a menos de 0,6 m do contorno exterior contam como porta de fachada.",
-        "Vãos dos alçados = retângulo exterior do aro ; folhas encostadas juntas num vão ; vizinhos separados pela largura da fachada da planta tipo.",
+        "Vãos dos alçados = retângulo exterior do aro ; folhas encostadas juntas num vão ; o edifício é isolado na vista pelo seu contorno "
+        "(duas linhas verticais com a largura da fachada lida na planta e o mesmo cimo) : vizinhos, chaminés acima das paredes e retângulos "
+        "cheios de trama de terreno ficam de fora ; a mesma fachada desenhada duas vezes conta uma vez.",
     ]
     if not pe_direito:
         perguntas.append("Qual é a altura entre lajes (ou o pé-direito) para passar as paredes de metros a m² ?")
-    if any(v for v in vistas):
-        perguntas.append("Conferir no desenho de controlo se cada alçado ficou só com o edifício (sem vizinhos nem muros).")
     if not vistas:
         avisos.append("Nenhum alçado com vãos mensuráveis : vãos exteriores não medidos.")
     nao = ["ETICS / revestimentos de fachada por cor (rótulos de legenda por alçado)", "cobertura (pendentes lidas nos cortes), rufos, caleiras e tubos de queda",

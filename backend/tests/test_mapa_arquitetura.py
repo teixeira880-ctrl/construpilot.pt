@@ -16,8 +16,8 @@ U = 100.0          # unidades DWF por metro
 DOC = "dwf/documents/D1"
 
 
-def _p(nome, data):
-    return f'<Path Name="{nome}" Stroke="#000000" StrokeThickness="1" Data="{data}"/>'
+def _p(nome, data, fill=False):
+    return f'<Path Name="{nome}" Stroke="#000000" StrokeThickness="1"' + (' Fill="#DCDCDC"' if fill else "") + f' Data="{data}"/>'
 
 
 def _ln(x0, y0, x1, y1):
@@ -36,7 +36,7 @@ def _folha(paths_por_camada, textos, nome):
             nm = f"P_{n}"
             if i == 0:
                 sync.append(f'<RenditionSync refName="{nm}"><Layer Name="{camada}" Number="{num}"/></RenditionSync>')
-            corpo.append(_p(nm, d))
+            corpo.append(_p(nm, d, fill="terreno" in camada))
     for t, x, y in textos:
         corpo.append(f'<Glyphs Fill="#000000" FontRenderingEmSize="20" FontUri="f.odttf" OriginX="{x * U:g}" OriginY="{y * U:g}" UnicodeString="{t}"/>')
     fpage = ('<?xml version="1.0" encoding="utf-8"?><FixedPage xmlns="http://schemas.microsoft.com/xps/2005/06" Width="2000" Height="1000">'
@@ -52,8 +52,12 @@ def _dwfx() -> bytes:
     porta = ["M3.05,1.6 a 80,80 0 0 1 80,80".replace("3.05", f"{3.05 * U:g}").replace("1.6", f"{1.6 * U:g}")]
     planta = _folha([("paredes", parede_ext + parede_int), ("fino", porta)],
                     [("Quarto", 1.0, 2.5), ("Sala", 4.0, 2.5)], "Planta do 1 Andar")
-    alc = _folha([("paredes", [_rect(0, 0, 6, 6)]), ("fino", [_rect(1, 2, 2.2, 3), _rect(3.5, 2, 4.7, 3)])],
-                 [("Alçado Principal", 2.0, 7.5)], "Alcado Principal")
+    # alçado : contorno 6 m (= largura da planta) ; 2 janelas ; vizinho à direita (x 8–12) com uma janela ; chaminé acima das paredes ;
+    # retângulo coberto de trama cheia de terreno (abaixo do solo) — só as 2 janelas são vãos da fachada
+    alc = _folha([("paredes", [_rect(0, 0, 6, 6), _rect(8, 1, 12, 6)]),
+                  ("fino", [_rect(1, 2, 2.2, 3), _rect(3.5, 2, 4.7, 3), _rect(9, 2, 10.2, 3), _rect(1, -1.5, 1.6, -0.6), _rect(2, 6.5, 3, 7.5)]),
+                  ("Trama terreno", [_rect(0, 6.4, 7, 7.6)])],
+                 [("Alçado Principal", 2.0, 8.5)], "Alcado Principal")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
         z.writestr("[Content_Types].xml", "<Types/>")
@@ -175,3 +179,16 @@ def test_area_escrita_pelo_arquiteto_e_controlo_cruzado():
     r = plantas.medir(f, camadas.mapa(f.camadas))
     c = {x["nome"]: x for x in r["compartimentos"]}
     assert c["Quarto"]["area_no_desenho"] == 12.88 and c["Sala"]["area_no_desenho"] is None
+
+
+def test_alcados_isola_edificio_e_vistas_repetidas():
+    from engines.mapa_arquitetura import alcados
+    m = medicao.medir(_dwfx())
+    v = m["alcados"][0]
+    assert v["isolamento"].startswith("contorno")
+    assert v["zona"][0] == pytest.approx(0.0) and v["zona"][2] == pytest.approx(6.0)
+    a = {"vista": "Alçado Lat. Direito (pelo lote)", "vaos": [1, 2, 3]}
+    b = {"vista": "Alçado Lat. Direito (pelo vizinho)", "vaos": [1]}
+    c = {"vista": "Alçado Lat. Esquerdo", "vaos": [1]}
+    ficam, rep = alcados.sem_repetidas([b, a, c])
+    assert [x["vista"] for x in ficam] == [a["vista"], c["vista"]] and rep[0]["repete"] == a["vista"]

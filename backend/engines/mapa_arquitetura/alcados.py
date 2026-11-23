@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-from shapely.geometry import LineString, box
+from shapely.geometry import LineString, Polygon, box
 from shapely.ops import polygonize, unary_union
 
 TITULO = re.compile(r"al[cç]ado", re.I)
@@ -101,19 +101,55 @@ def _prolonga(V, folha, papeis, tol=0.05, maxext=1.3):
     return out
 
 
-def _isola(V, zona, largura):
-    """Edifícios vizinhos desenhados na mesma vista : janela horizontal com a largura da fachada (lida na planta, + 1 m) na
-    posição que contém mais área de vãos. Sem largura conhecida, fica a vista inteira."""
-    if not largura or largura >= zona[2] - zona[0] or not V:
-        return V, zona
+def _contorno(folha, papeis, zona, largura, V, tol=0.2):
+    """Contorno do edifício na vista : par de linhas verticais longas (≥ 4 m) afastadas da largura da fachada lida na planta.
+    Devolve (x0, x1, topo) ou None ; topo = cimo das paredes (o que fica todo acima, chaminés / remates, não é vão de fachada)."""
+    from collections import defaultdict
+    col = defaultdict(list)
+    for e in folha.elementos:
+        if e.tipo == "path" and papeis.get(e.camada) in ("paredes", "fino", "trama"):
+            for pl in e.pls:
+                for a, b in zip(pl, pl[1:]):
+                    if abs(a[0] - b[0]) < 0.01 and abs(a[1] - b[1]) > 0.1 and zona[0] - 0.5 <= a[0] <= zona[2] + 0.5:
+                        col[round(a[0], 2)].append((min(a[1], b[1]), max(a[1], b[1])))
+    vs = []                                  # troços colineares juntos (a linha da fachada é cortada por varandas e palas)
+    for x, iv in col.items():
+        iv.sort()
+        runs = []
+        for a, b in iv:
+            if runs and a <= runs[-1][1] + 0.3:
+                runs[-1][1] = max(runs[-1][1], b)
+            else:
+                runs.append([a, b])
+        vs += [(x, a, b) for a, b in runs if b - a >= 4.0]
     best = None
-    for x0 in sorted({v.bounds[0] - 0.5 for v in V} | {v.bounds[2] + 0.5 - largura for v in V}):
-        a = sum(v.area for v in V if v.bounds[0] >= x0 - 1e-6 and v.bounds[2] <= x0 + largura + 1e-6)
-        if best is None or a > best[0] + 1e-6:
-            best = (a, x0)
-    x0 = best[1]
-    z = (x0, zona[1], x0 + largura, zona[3])
-    return [v for v in V if v.bounds[0] >= x0 - 1e-6 and v.bounds[2] <= x0 + largura + 1e-6], z
+    for i, (xa, ya, yb) in enumerate(vs):
+        for xb, yc, yd in vs[i + 1:]:
+            x0, x1 = min(xa, xb), max(xa, xb)
+            if abs((x1 - x0) - largura) > tol or abs(ya - yc) > 0.3 or min(yb, yd) - max(ya, yc) < 3.0:   # mesmo cimo de fachada
+                continue
+            n = sum(1 for v in V if v.bounds[0] >= x0 - 0.05 and v.bounds[2] <= x1 + 0.05)
+            if best is None or n > best[0]:
+                best = (n, x0, x1, min(ya, yc))
+    return best[1:] if best else None
+
+
+def _janela(V, zona, largura):
+    """Sem contorno : janela com a largura da fachada (+1 m) na posição com MAIS vãos (bandas > 6 m não contam)."""
+    if not largura or largura >= zona[2] - zona[0] or not V:
+        return zona
+    W = [v for v in V if v.bounds[2] - v.bounds[0] <= 6.0]
+    best = None
+    for x0 in sorted({v.bounds[0] - 0.5 for v in W} | {v.bounds[2] + 0.5 - largura for v in W}):
+        n = sum(1 for v in W if v.bounds[0] >= x0 - 1e-6 and v.bounds[2] <= x0 + largura + 1e-6)
+        if best is None or n > best[0]:
+            best = (n, x0)
+    return (best[1], zona[1], best[1] + largura, zona[3]) if best else zona
+
+
+def _base(titulo: str) -> str:
+    t = re.sub(r"\(.*?\)|/.*$", "", titulo.lower())
+    return re.sub(r"[^a-z]", "", t.replace("primcipal", "principal"))
 
 
 def medir(folha, papeis, passo=3.1, larguras=None) -> list:
@@ -122,10 +158,31 @@ def medir(folha, papeis, passo=3.1, larguras=None) -> list:
     res = []
     for titulo, zona in vistas(folha, papeis):
         V = _retangulos(folha, papeis, zona)
+        isolamento = "vista inteira"
         if larguras:
-            V, zona = _isola(V, zona, (larguras[1] if re.search(r"lat", titulo, re.I) else larguras[0]) + 1.0)
+            lat = bool(re.search(r"lat", titulo, re.I))
+            c = None
+            for L in ((larguras[1], larguras[0]) if lat else (larguras[0], larguras[1])):
+                c = _contorno(folha, papeis, zona, L, V)
+                if c:
+                    break
+            if c:
+                x0, x1, topo = c
+                V = [v for v in V if v.bounds[0] >= x0 - 0.05 and v.bounds[2] <= x1 + 0.05 and v.bounds[3] > topo + 0.05]
+                zona = (x0, zona[1], x1, zona[3])
+                isolamento = "contorno do edifício (largura da planta)"
+            else:
+                zona = _janela(V, zona, (larguras[1] if lat else larguras[0]) + 1.0)
+                V = [v for v in V if v.bounds[0] >= zona[0] - 1e-6 and v.bounds[2] <= zona[2] + 1e-6]
+                isolamento = "estimado (sem contorno claro) — a confirmar"
         V = _junta(_prolonga(_junta(V), folha, papeis))
         V = [v for v in V if not any(u is not v and u.buffer(0.03).contains(v) for u in V)]
+        V = [v for v in V if v.bounds[2] - v.bounds[0] <= 6.0]      # faixas juntas de várias folhas / terreno não são vãos
+        terra = [Polygon(pl).buffer(0) for e in folha.elementos if e.tipo == "path" and e.fill and papeis.get(e.camada) == "terreno"
+                 for pl in e.pls if len(pl) >= 3]
+        if terra:                                                   # retângulo coberto por trama CHEIA de terreno = abaixo do solo
+            T = unary_union(terra)
+            V = [v for v in V if T.intersection(v).area < 0.5 * v.area]
         altos = [v.bounds[3] for v in V if v.bounds[3] - v.bounds[1] > 0.8]
         topo = min(altos) if altos else 0.0
         vaos = [{"nivel": int(round((v.bounds[3] - topo) / passo)), "x": round(v.bounds[0], 2),
@@ -133,7 +190,22 @@ def medir(folha, papeis, passo=3.1, larguras=None) -> list:
         Z = box(*zona).buffer(1.0)
         linhas = [pl for e in folha.elementos if e.tipo == "path" and papeis.get(e.camada) in ("paredes", "fino", "trama")
                   for pl in e.pls if len(pl) > 1 and Z.contains(LineString(pl))]
-        res.append({"vista": titulo, "folha": folha.nome, "zona": [round(z, 2) for z in zona], "_linhas": linhas,
+        res.append({"vista": titulo, "folha": folha.nome, "zona": [round(z, 2) for z in zona], "_linhas": linhas, "isolamento": isolamento,
                     "_caixas": [list(v.bounds) for v in V],
                     "vaos": sorted(vaos, key=lambda d: (d["nivel"], d["x"]))})
     return res
+
+
+def sem_repetidas(vistas_: list) -> tuple:
+    """A mesma fachada desenhada em duas vistas com o mesmo título (ex. «Lat. Direito (pelo lote)» e «(pelo vizinho)») :
+    soma-se só a vista com mais vãos ; a outra fica listada como repetida, para conferir."""
+    grupos = {}
+    for v in vistas_:
+        grupos.setdefault(_base(v["vista"]), []).append(v)
+    ficam, repetidas = [], []
+    for g in grupos.values():
+        g = sorted(g, key=lambda v: -len(v["vaos"]))
+        ficam.append(g[0])
+        repetidas += [{**v, "repete": g[0]["vista"]} for v in g[1:]]
+    ordem = {id(v): i for i, v in enumerate(vistas_)}
+    return sorted(ficam, key=lambda v: ordem[id(v)]), repetidas

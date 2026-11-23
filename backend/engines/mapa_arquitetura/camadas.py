@@ -7,6 +7,7 @@ import unicodedata
 
 PADROES = {
     "trama": r"trama|hatch|hachur|achur",
+    "terreno": r"terreno|terrain|\bterre\b|\bsolo\b|ground|linhaterra",
     "muros": r"muros?\b|vedac|cl[oô]ture|fence|boundary",
     "paredes": r"parede|wall|\bmur\b|alvenar|cloison|tijolo",
     "fino": r"fino|thin|\bfin\b|v[aã]os?\b|janela|window|fenetre|caixilh|tracofino",
@@ -24,6 +25,8 @@ def papel(nome: str, forcado: dict | None = None) -> str | None:
     if forcado and nome in forcado:
         return forcado[nome]
     n = _norm(nome)
+    if re.search(PADROES["terreno"], n):
+        return "terreno"
     if re.search(PADROES["trama"], n):
         return "trama"
     for k in ("muros", "paredes", "sanitarios", "cozinha", "fino", "texto"):
