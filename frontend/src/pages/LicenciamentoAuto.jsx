@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Box, CheckCircle2, Download, FileText, Image as ImageIcon, Loader2, MapPin, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
+import { AlertTriangle, Box, CheckCircle2, Download, FileText, Image as ImageIcon, Loader2, MapPin, PenLine, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,9 @@ import { api } from "@/lib/api";
 import Casa3D from "@/components/licenciamento/Casa3D";
 import ImplantacaoMapa from "@/components/licenciamento/ImplantacaoMapa";
 import ImagensBlender from "@/components/licenciamento/ImagensBlender";
+
+// Estúdio de Projeto (editor do modelo único): só é carregado quando o utilizador o abre
+const EstudioProjetoLazy = lazy(() => import("@/components/licenciamento/EstudioProjeto"));
 
 const ETAPA_LABEL = {
   localizar: "Localizar a morada", dados_oficiais: "Ler PDM, servidões, cadastro e ortofotomapa (DGT)",
@@ -121,6 +124,7 @@ function Processo({ pid }) {
   const [resp, setResp] = useState({ area_terreno_m2: "", nome: "", nif: "" });
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
+  const [estudio, setEstudio] = useState(false);
   const casa = useRef(null);
 
   const carregar = useCallback(async () => {
@@ -209,6 +213,17 @@ function Processo({ pid }) {
           <span className="text-xs text-muted-foreground">Ortofotomapa oficial · arraste a casa · linhas vermelhas = afastamento em falta</span>
         </div>
         <ImplantacaoMapa pid={pid} auto={a} onAplicado={carregar} />
+      </Card>
+
+      <Card className="p-4 space-y-3" data-testid="lic-auto-estudio">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-medium flex items-center gap-2"><PenLine className="h-4 w-4" />Estúdio de Projeto</div>
+          <Button size="sm" variant={estudio ? "outline" : "default"} onClick={() => setEstudio(x => !x)} data-testid="lic-auto-estudio-abrir">
+            {estudio ? "Fechar o Estúdio" : "Abrir o Estúdio"}</Button>
+        </div>
+        {!estudio && <p className="text-sm text-muted-foreground">Edite a casa em planta — paredes, portas, janelas, pisos e cobertura. O 3D,
+          os alçados, os cortes e as medições são calculados a partir do mesmo modelo, com as medidas deste processo como ponto de partida.</p>}
+        {estudio && <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}><EstudioProjetoLazy pid={pid} /></Suspense>}
       </Card>
 
       <ImagensBlender pid={pid} />
