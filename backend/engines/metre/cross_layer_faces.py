@@ -140,22 +140,49 @@ def summary(m: dict) -> dict:
 _NGF = re.compile(r"(\d{2,3}[.,]\d{1,3})\s*(?:NGF|m\b)?", re.I)
 
 
+_SLAB_SYMBOL_LAYERS = re.compile(r"FLOR-(IDEN|SYMB)|SENS DE PORT|DALLE", re.I)
+_LEVEL_TXT = re.compile(r"^\+?(\d{2,3}[.,]\d{1,3})\s*(?:NGF)?\s*([FBfb])?$")
+_AI_ANY = re.compile(r"A[iI]\s*:\s*\+?(\d{2,3}[.,]\d{1,3})")
+
+
 def level_labels(msp, u: float) -> dict:
-    """Etiquetas impressas na planta: laje «B / espessura / cota NGF» (camada *FLOR-IDEN*) e textos «Ai: …» / «As: …».
-    Regra do utilizador: parede = AS da laje de baixo → AI da laje de cima; os valores vêm sempre das etiquetas, nunca de uma altura típica."""
+    """Cotas impressas na planta (regra AI/AS do utilizador: parede = AS da laje de baixo → AI da laje de cima; nunca uma altura típica).
+
+    Formatos lidos:
+    - etiqueta de laje «B / espessura / cota NGF» (camada *FLOR-IDEN*, Suresnes);
+    - símbolo de laje Revit: número de cota + espessura em símbolos separados (S-FLOR-SYMB, «Symbole de sens de portée»);
+    - norma AES: cota da laje seguida de «b» (bruto = AS da laje) ou «f» (acabado = pavimento final, NUNCA usado como AS);
+    - textos «Ai: …» onde quer que estejam no texto; os Ai de lintéis («LT(Ai: …)»), de vigas (camada *Poutre*) e de
+      courettes/trémies ficam em listas próprias: a base de um lintel ou de uma viga não é o topo das paredes."""
     thick, lv, ai, as_ = [], [], [], []
+    finished, ai_lintels, ai_beams, ai_other = [], [], [], []
     # msp pode ser o modelspace ou uma lista já filtrada por vistas (plan_views): iterar e filtrar pelo tipo serve para os dois
     for e in (x for x in msp if x.dxftype() in ("TEXT", "MTEXT")):
         t = (e.plain_text() if e.dxftype() == "MTEXT" else e.dxf.text).replace("\n", " ").strip()
         p = e.dxf.insert
         xy = (round(p.x * u, 2), round(p.y * u, 2))
         lay = e.dxf.layer.upper()
-        if "FLOR-IDEN" in lay and re.fullmatch(r"\d{2}", t):
+        val = lambda m: float(m.group(1).replace(",", "."))  # noqa: E731
+        if _SLAB_SYMBOL_LAYERS.search(lay) and re.fullmatch(r"\d{2}", t) and 10 <= int(t) <= 60:
             thick.append({"cm": int(t), "xy": xy})
+        elif _SLAB_SYMBOL_LAYERS.search(lay) and (m := _LEVEL_TXT.match(t)) and ("." in t or "," in t):
+            kind = (m.group(2) or "").lower()
+            if kind == "f":
+                finished.append({"ngf": val(m), "xy": xy, "layer": e.dxf.layer})
+            else:
+                lv.append({"ngf": val(m), "xy": xy, "brut": kind == "b"})
         elif "FLOR-IDEN" in lay and "NGF" in t.upper() and (m := _NGF.search(t)):
-            lv.append({"ngf": float(m.group(1).replace(",", ".")), "xy": xy})
-        elif re.match(r"^A[iI]\s*:", t) and "fini" not in t.lower() and (m := _NGF.search(t)):
-            ai.append({"ngf": float(m.group(1).replace(",", ".")), "xy": xy, "layer": e.dxf.layer})
+            lv.append({"ngf": float(m.group(1).replace(",", ".")), "xy": xy, "brut": False})
+        elif (m := _AI_ANY.search(t)) and "fini" not in t.lower():
+            rec = {"ngf": val(m), "xy": xy, "layer": e.dxf.layer}
+            if t.upper().startswith("LT") or "LINTEAU" in lay:
+                ai_lintels.append(rec)
+            elif "POUTRE" in lay or "BEAM" in lay:
+                ai_beams.append(rec)
+            elif "TREMIE" in lay or re.match(r"^V[HB]", t.upper()):
+                ai_other.append(rec)
+            else:
+                ai.append(rec)
         elif re.match(r"^\(?A[sS]\s*:", t) and (m := _NGF.search(t)):
             as_.append({"ngf": float(m.group(1).replace(",", ".")), "xy": xy})
     slabs = []
@@ -164,6 +191,16 @@ def level_labels(msp, u: float) -> dict:
         if near and math.dist(near["xy"], th["xy"]) < 2.0:
             slabs.append({"as_ngf": near["ngf"], "thickness_cm": th["cm"], "ai_ngf": round(near["ngf"] - th["cm"] / 100, 3), "xy": th["xy"]})
     dom = Counter((s["as_ngf"], s["thickness_cm"]) for s in slabs).most_common(1)
+    # Uma cota «dominante» tem de ser a de uma laje inteira: ≥ 3 etiquetas iguais, ou a única etiqueta da planta.
+    if dom and not (dom[0][1] >= 3 or len({(s["as_ngf"], s["thickness_cm"]) for s in slabs}) == 1):
+        dom = []
+    note = ("Etiquetas lidas na planta. AI laje = AS − espessura. A base das paredes é a AS da laje do piso inferior (planta de baixo). "
+            "Cotas «f» (acabado) nunca usadas como AS; Ai de lintéis, vigas e trémies não são o topo das paredes.")
+    if not dom and finished:
+        note += (f" Esta planta só tem {len(finished)} cotas de acabado («f») e nenhuma AS bruta («b») com espessura: "
+                 "a AS da laje não está impressa — pedir a cota bruta ou a espessura em vez de a supor.")
     return {"slab_tags": slabs, "ai_texts": ai, "as_texts": as_,
             "dominant": {"as_plancher_haut_m": dom[0][0][0], "epaisseur_dalle_m": dom[0][0][1] / 100} if dom else None,
-            "note": "Etiquetas lidas na planta. AI laje = AS − espessura. A base das paredes é a AS da laje do piso inferior (planta de baixo)."}
+            "slab_levels_unpaired": [v for v in lv if not any(s["as_ngf"] == v["ngf"] for s in slabs)][:40],
+            "finished_levels": finished[:60], "ai_lintels": ai_lintels[:80], "ai_beams": ai_beams[:60], "ai_other": ai_other[:40],
+            "note": note}

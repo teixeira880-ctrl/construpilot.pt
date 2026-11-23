@@ -25,7 +25,7 @@ def _floor(texts, slab_tags=()):
 
 
 def test_base_from_lower_floor_reads_dominant_as():
-    b = _base_from_lower_floor(_floor([], [(23, 89.26), (23, 89.26), (20, 89.16)]))
+    b = _base_from_lower_floor(_floor([], [(23, 89.26), (23, 89.26), (23, 89.26), (20, 89.16)]))
     assert b["m"] == 89.26 and "piso inferior" in b["source"]
 
 
