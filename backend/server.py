@@ -266,6 +266,9 @@ api_router.include_router(portal_routes.router)
 from routes import portal_chat as portal_chat_routes  # noqa: E402
 api_router.include_router(portal_chat_routes.pro_router)
 api_router.include_router(portal_chat_routes.router)
+from routes import obra_colab as obra_colab_routes  # noqa: E402
+api_router.include_router(obra_colab_routes.pro_router)
+api_router.include_router(obra_colab_routes.portal_router)
 from routes import speech as speech_routes  # noqa: E402
 api_router.include_router(speech_routes.router)
 api_router.include_router(notifications_routes.router)
@@ -728,6 +731,9 @@ async def _seed_impl():
     await _journey_indexes()
     await db.chantiers.create_index("chantier_id", unique=True)
     await db.chantiers.create_index("ref", unique=True, sparse=True)
+    for _coll in ("obra_planos", "obra_subs", "obra_autos", "obra_contratos", "obra_cronogramas", "obra_atas",
+                  "obra_comparacoes", "obra_colab_settings"):
+        await db[_coll].create_index("chantier_id")
     await db.chantier_participants.create_index("participant_id", unique=True)
     await db.chantier_participants.create_index([("chantier_ref", 1), ("email", 1)])
     await db.chantier_participants.create_index([("email", 1), ("status", 1)])

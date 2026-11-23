@@ -5,7 +5,7 @@ import { ArrowLeft, HardHat, User, MapPin, Pencil, Trash2, FileText, Ruler, Laye
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { api, eur } from "@/lib/api";
+import { api, API, eur } from "@/lib/api";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ChantierFormDialog, CHANTIER_STATUS } from "@/components/chantiers/ChantierFormDialog";
 import { ShareParticipantsPanel, MilestonesPanel, PublishToggle } from "@/components/chantiers/SharePanels";
@@ -16,6 +16,7 @@ import { PhotoCompareDialog } from "@/components/chantiers/PhotoCompareDialog";
 import { ChantierPilot } from "@/components/chantiers/ChantierPilot";
 import { ChantierCostsPanel } from "@/components/chantiers/ChantierCostsPanel";
 import { ProjectFlow } from "@/components/chantiers/ProjectFlow";
+import { ObraColab } from "@/components/colab/ObraColab";
 
 const FILE = process.env.REACT_APP_BACKEND_URL + "/api/site/file?path=";
 const DOC_STATUS = { draft: "Rascunho", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "Em atraso", partial: "Parcial", cancelled: "Anulado" };
@@ -97,8 +98,8 @@ function ChantierDetailContent() {
   const [compareOpen, setCompareOpen] = useState(false);
   const [params, setParams] = useSearchParams();
   const requestedTab = params.get("tab");
-  const tab = ["documents", "budget", "exchanges", "reception"].includes(requestedTab) ? requestedTab : ["messages", "issues"].includes(requestedTab) ? "exchanges" : "overview";
-  const tabs = [["overview", "Visão geral"], ["documents", "Plantas e documentos"], ["budget", "Orçamento e compras"], ["exchanges", "Conversas"], ["reception", "Receção"]];
+  const tab = ["documents", "budget", "exchanges", "reception", "colab"].includes(requestedTab) ? requestedTab : ["messages", "issues"].includes(requestedTab) ? "exchanges" : "overview";
+  const tabs = [["overview", "Visão geral"], ["documents", "Plantas e documentos"], ["budget", "Orçamento e compras"], ["exchanges", "Conversas"], ["reception", "Receção"], ["colab", "Obra colaborativa"]];
   const selectTab = key => { const next = new URLSearchParams(params); next.set("tab", key); setParams(next); };
   const [inbox, setInbox] = useState({ unread: {}, open_issues: 0, new_issues: 0 });
 
@@ -156,7 +157,7 @@ function ChantierDetailContent() {
       </header>
 
       <ProjectFlow c={c} chantierId={chantierId} onTab={selectTab} />
-      <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 rounded-2xl bg-secondary/40 p-2 border border-border/70" aria-label="Secções do processo" data-testid="chantier-tabs">
+      <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 rounded-2xl bg-secondary/40 p-2 border border-border/70" aria-label="Secções do processo" data-testid="chantier-tabs">
         {tabs.map(([key, label]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => selectTab(key)} data-testid={`chantier-tab-${key}`} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${tab === key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background"}`}>{label}{key === "exchanges" && inbox.new_issues > 0 ? ` (${inbox.new_issues})` : ""}</button>)}
       </nav>
       {tab === "overview" && <>
@@ -210,6 +211,7 @@ function ChantierDetailContent() {
       </>}
       {tab === "budget" && <ChantierCostsPanel chantierId={chantierId} />}
       {tab === "reception" && <ReceptionPanel chantierId={chantierId} />}
+      {tab === "colab" && <ObraColab client={api} base={`/chantiers/${chantierId}/colab`} fileBase={`${API}/chantiers/${chantierId}/colab`} />}
 
 
       {tab === "overview" && c.photos.length > 0 && (
