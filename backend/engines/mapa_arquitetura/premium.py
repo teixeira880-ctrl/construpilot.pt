@@ -261,7 +261,8 @@ def _capa(pags) -> bytes | None:
 
 NAO_MEDIDO_PADRAO = [
     {"capitulo": "Movimento de terras", "designacao": "Escavação geral e para fundações", "descricao": "cotas do terreno + planta de fundação (projeto de estrutura)", "un": "m³"},
-    {"capitulo": "Fundações", "designacao": "Sapatas, vigas de fundação, muros de suporte — betão, cofragem, betão de limpeza", "descricao": "planta de fundação do projeto de estrutura", "un": "m³"},
+    {"capitulo": "Fundações", "designacao": "Sapatas isoladas — betão, cofragem, betão de limpeza, aço", "descricao": "juntar o PDF do projeto de estrutura (quadro de elementos de fundação)", "un": "m³", "_chave": "sapatas"},
+    {"capitulo": "Fundações", "designacao": "Muros de suporte, sapatas lineares, vigas de fundação, laje térrea", "descricao": "planta de fundação do projeto de estrutura", "un": "m³"},
     {"capitulo": "Estrutura", "designacao": "Pilares, vigas, lajes — betão e cofragem", "descricao": "plantas de estrutura (ferramenta medir_planta_estrutural)", "un": "m³"},
     {"capitulo": "Estrutura", "designacao": "Aço A500 — armaduras peça a peça", "descricao": "desenhos de armaduras do projeto de estrutura", "un": "kg"},
 ]

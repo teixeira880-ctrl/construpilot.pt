@@ -33,6 +33,7 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… dos ficheiros .dwfx"},
          "pe_direito_m": {"type": "number", "description": "Só se o utilizador a indicar explicitamente : por defeito a altura de cada piso é lida automaticamente nas cotas de pavimento das plantas (piso a piso)."},
+         "documentos_estrutura": {"type": "array", "items": {"type": "string"}, "description": "Opcional : doc_… dos PDF do projeto de ESTRUTURA anexados (o quadro de elementos de fundação entra no mapa : sapatas, betão, cofragem, betão de limpeza, aço)."},
          "mapa_camadas": {"type": "object", "description": "Opcional : {nome da camada: paredes|trama|fino|sanitarios|cozinha|muros} quando os nomes do gabinete não são reconhecidos."}},
          "required": ["document_ids"], "additionalProperties": False}},
 ]
@@ -42,6 +43,7 @@ INSTRUCTIONS = (
     "\n\nMAPA DE QUANTIDADES DE ARQUITETURA (medir_arquitetura_dwfx) : quando o utilizador anexa um .dwfx e pede o mapa de quantidades, as "
     "medições ou as áreas, chama medir_arquitetura_dwfx com os documentos, sem pedir nada antes. Nunca digas que não há motor para mapas de "
     "quantidades : há medir_arquitetura_dwfx (arquitetura em DWFX), medir_planta_estrutural (estrutura em PDF) e medir_camadas_cad (DWG/DXF). "
+    "Se também houver PDF do projeto de estrutura anexado, passa-o em documentos_estrutura (sapatas do quadro de fundações entram no mapa). "
     "Depois : 1) apresenta o resumo tal como vem, sem recalcular nem completar com rácios ; 2) lista os pressupostos e faz as perguntas "
     "devolvidas ; 3) diz o que NÃO está incluído ; 4) os ficheiros aparecem como botões : convida a conferir o PDF / a folha Controlo do Excel, "
     "que mostram o que foi medido pintado sobre o desenho. A altura das paredes é lida automaticamente nas cotas das plantas : não a perguntes ; só se o utilizador indicar outra, volta a chamar com pe_direito_m. "
@@ -52,7 +54,7 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None) -> dict:
+def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutura: list | None = None) -> dict:
     """docs = [(nome, bytes .dwfx)] — mede o primeiro DWFX legível (um projeto por chamada)."""
     avisos = []
     for nome, data in docs:
@@ -65,13 +67,25 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None) -> dict:
             out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
             titulo = Path(nome).stem[:60]
             from . import premium
+            extras, nao = [], list(premium.NAO_MEDIDO_PADRAO)
+            for nome_e, pdf in estrutura or []:
+                try:
+                    from engines.mapa_estrutura import fundacoes
+                    q = fundacoes.ler_quadro(pdf)
+                    if q:
+                        extras += fundacoes.linhas_mapa(q, nome_e)
+                        nao = [x for x in nao if x.get("_chave") != "sapatas"]
+                        if q.get("recobrimento") is None:
+                            modelo["avisos"].append(f"{nome_e} : recobrimento não lido nas notas — aço das sapatas por medir.")
+                except Exception as exc:  # noqa: BLE001
+                    modelo["avisos"].append(f"{nome_e} : quadro de fundações não lido ({type(exc).__name__}).")
             xlsx = excel.gerar(modelo, str(out / "Mapa_quantidades.xlsx"), titulo)
-            premium.gerar_xlsx(modelo, xlsx, titulo, nao_medido=premium.NAO_MEDIDO_PADRAO)
+            premium.gerar_xlsx(modelo, xlsx, titulo, extras=extras, nao_medido=nao)
             pags = premium.desenhos(modelo, titulo)                 # plantas, alçados e cortes com os elementos numerados
             mapa_controlo_xlsx.anexar_imagens(xlsx, pags, "Plantas, alçados e cortes com cada elemento numerado (W paredes, P portas, "
                                                           "C compartimentos, V vãos) : os números são os do mapa.")
             modelo["files"] = {"xlsx": xlsx, "controlo": premium.gerar_pdf(modelo, str(out / "Mapa_quantidades.pdf"), titulo,
-                                                                           nao_medido=premium.NAO_MEDIDO_PADRAO)}
+                                                                           extras=extras, nao_medido=nao)}
         return modelo
     return {"ok": False, "avisos": avisos or ["Nenhum DWFX nos documentos."]}
 
@@ -130,10 +144,16 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, doc_loader=
     except (PermissionError, ValueError) as exc:
         return {"ok": False, "error": str(exc)}
     pd, mc = args.get("pe_direito_m") or None, args.get("mapa_camadas") or None
-    request_id = hashlib.sha256(("".join(ids) + str(pd) + str(mc)).encode()).hexdigest()[:16]
+    est = []
+    if args.get("documentos_estrutura"):
+        try:
+            est = [(n, d) for n, d in await _carregar(db, [x for x in args["documentos_estrutura"] if x], uid) if d[:4] == b"%PDF"]
+        except (PermissionError, ValueError) as exc:
+            return {"ok": False, "error": str(exc)}
+    request_id = hashlib.sha256(("".join(ids) + str(pd) + str(mc) + str(args.get("documentos_estrutura"))).encode()).hexdigest()[:16]
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            modelo = await asyncio.wait_for(asyncio.to_thread(medir, docs, pd, mc, tmp), 300)
+            modelo = await asyncio.wait_for(asyncio.to_thread(medir, docs, pd, mc, tmp, est), 300)
             if not modelo.get("ok"):
                 return {"ok": False, "error": " ".join(modelo.get("avisos") or ["Desenho não legível."]),
                         "o_que_falta": "DWFX exportado do AutoCAD (layouts com escala), com as camadas de paredes e os rótulos dos compartimentos."}

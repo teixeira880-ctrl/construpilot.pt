@@ -271,3 +271,35 @@ def test_mapa_premium_pdf_e_excel(tmp_path):
     wb = load_workbook(x)
     assert wb.sheetnames[:2] == ["Mapa", "Elementos numerados"]
     assert any(c.value == "a medir" for row in wb["Mapa"].iter_rows() for c in row)
+
+
+def _pdf_quadro_fundacoes() -> bytes:
+    """Quadro de elementos de fundação desenhado aqui (reportlab), com o texto das notas do recobrimento."""
+    import io
+    from reportlab.pdfgen import canvas
+    b = io.BytesIO()
+    c = canvas.Canvas(b, pagesize=(800, 400))
+    c.setFont("Helvetica", 7)
+    c.drawString(300, 380, "QUADRO DE ELEMENTOS DE FUNDAÇÃO")
+    for x, t in ((60, "Referências"), (180, "Dimensões"), (260, "Altura"), (320, "Armadura"), (420, "Armadura")):
+        c.drawString(x, 360, t)
+    for y, (ref, dim, h, ax, ay) in zip((340, 325), (("P14, P27 e P28", "1,6x1,6", "0,5", "10Ø12af.0,15", "10Ø12af.0,15"),
+                                                     ("P11", "2,2x2,2", "0,5", "11Ø16af.0,2", "11Ø16af.0,2"))):
+        for x, t in ((60, ref), (180, dim), (260, h), (320, ax), (420, ay)):
+            c.drawString(x, y, t)
+    c.drawString(60, 100, "Betonagem contra o terreno com recobrimento de 80 mm")
+    c.save()
+    return b.getvalue()
+
+
+def test_quadro_de_fundacoes_no_mapa():
+    from engines.mapa_estrutura import fundacoes
+    q = fundacoes.ler_quadro(_pdf_quadro_fundacoes())
+    assert q["recobrimento"] == 0.08
+    r = {x["ref_txt"]: x for x in q["linhas"]}
+    assert r["P14, P27 e P28"]["n"] == 3 and r["P11"]["lx"] == 2.2 and r["P11"]["h"] == 0.5
+    L = fundacoes.linhas_mapa(q)
+    betao = sum(x["qtd"] for x in L if x["designacao"].endswith("— betão"))
+    assert betao == pytest.approx(3 * 1.6 * 1.6 * 0.5 + 2.2 * 2.2 * 0.5)
+    aco = sum(x["qtd"] for x in L if x["un"] == "kg")
+    assert aco == pytest.approx(3 * 2 * 10 * (1.6 - 0.16) * 0.888 + 2 * 11 * (2.2 - 0.16) * 1.578, rel=1e-6)
