@@ -6,7 +6,8 @@ import { PortalMessages, PortalIssues } from "@/components/portal/PortalTabs";
 import { PortalDocuments } from "@/components/portal/PortalDocuments";
 import { PortalReceptions } from "@/components/portal/PortalReceptions";
 import { PortalPlanning } from "@/components/portal/PortalPlanning";
-import { HardHat, KeyRound, Mail, ArrowRight, LogOut, Phone, CheckCircle2, Clock, AlertTriangle, Circle, Camera, ChevronDown, MessageSquare, TrendingUp, FileText, ClipboardCheck } from "lucide-react";
+import { ObraColab } from "@/components/colab/ObraColab";
+import { HardHat, KeyRound, Mail, ArrowRight, LogOut, Phone, CheckCircle2, Clock, AlertTriangle, Circle, Camera, ChevronDown, MessageSquare, TrendingUp, FileText, ClipboardCheck, Users } from "lucide-react";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 export const portalApi = axios.create({ baseURL: `${BASE}/api/portal`, withCredentials: true });
@@ -89,7 +90,7 @@ export function PortalChantier() {
   const { ref } = useParams();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
-  const requestedTab = ["progress", "documents", "receptions", "messages", "issues"].includes(params.get("tab")) ? params.get("tab") : "progress";
+  const requestedTab = ["progress", "documents", "receptions", "messages", "issues", "colab"].includes(params.get("tab")) ? params.get("tab") : "progress";
   const setTab = (t) => setParams(t === "progress" ? {} : { tab: t }, { replace: true });
   const [data, setData] = useState(null);
   const [me, setMe] = useState(null);
@@ -111,7 +112,7 @@ export function PortalChantier() {
   const others = (me?.chantiers || []).filter((c) => c.available);
   const canDocs = participant.role === "client" && (participant.permissions?.quotes || participant.permissions?.invoices);
   const canRecept = participant.role === "client";
-  const tabs = [["progress", "Avanço", TrendingUp, true], ["documents", "Orçamentos e faturas", FileText, !!canDocs], ["receptions", "Receção", ClipboardCheck, !!canRecept], ["messages", "Mensagens", MessageSquare, !!participant.permissions?.chat], ["issues", "Problemas", AlertTriangle, !!participant.permissions?.report_issue]].filter((t) => t[3]);
+  const tabs = [["progress", "Avanço", TrendingUp, true], ["documents", "Orçamentos e faturas", FileText, !!canDocs], ["receptions", "Receção", ClipboardCheck, !!canRecept], ["messages", "Mensagens", MessageSquare, !!participant.permissions?.chat], ["issues", "Problemas", AlertTriangle, !!participant.permissions?.report_issue], ["colab", "Obra colaborativa", Users, true]].filter((t) => t[3]);
   const tab = tabs.some(t => t[0] === requestedTab) ? requestedTab : "progress";
   return (
     <Frame company={company}>
@@ -133,12 +134,13 @@ export function PortalChantier() {
         </section>
 
         {tabs.length > 1 && (
-          <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 rounded-2xl border border-[#dfd0be] bg-[#fffaf3] p-2" aria-label="O seu espaço da obra" data-testid="portal-tabs">
+          <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 rounded-2xl border border-[#dfd0be] bg-[#fffaf3] p-2" aria-label="O seu espaço da obra" data-testid="portal-tabs">
             {tabs.map(([k, l, I]) => <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k} data-testid={`portal-tab-${k}`}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-3 min-h-12 text-sm font-medium transition-colors ${tab === k ? "text-white" : "text-slate-600 hover:bg-slate-100"}`} style={tab === k ? { background: accent } : undefined}><I className="h-4 w-4 shrink-0" /> {l}</button>)}
           </nav>
         )}
 
+        {tab === "colab" && <ObraColab client={portalApi} base={`/${ref}/colab`} fileBase={`${BASE}/api/portal/${ref}/colab`} />}
         {tab === "messages" && <PortalMessages portalApi={portalApi} chantierRef={ref} participantId={me?.participant?.participant_id} />}
         {tab === "issues" && <PortalIssues portalApi={portalApi} chantierRef={ref} canReport={!!participant.permissions?.report_issue} />}
         {tab === "documents" && canDocs && <PortalDocuments portalApi={portalApi} chantierRef={ref} accent={accent} />}
