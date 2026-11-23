@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 import hashlib
 import logging
 import tempfile
@@ -71,6 +72,14 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
             for nome_e, pdf in estrutura or []:
                 try:
                     from engines.mapa_estrutura import fundacoes
+                    pl = fundacoes.ler_planta(pdf)
+                    if pl:
+                        enterrado = min((p for p in modelo["pisos"] if (p.get("cota") or {}).get("valor")),
+                                        key=lambda p: p["cota"]["valor"], default=None)
+                        area_cave = (sum(c["area"] for c in enterrado["compartimentos"] if not c["exterior"])
+                                     if enterrado and re.search(r"cave|sub|garag", enterrado["piso"], re.I) else None)
+                        extras += fundacoes.linhas_planta(pl, origem=nome_e, area_laje_terrea=area_cave)
+                        nao = [x for x in nao if not x["designacao"].startswith(("Muros de suporte", "Escavação geral"))]
                     q = fundacoes.ler_quadro(pdf)
                     if q:
                         extras += fundacoes.linhas_mapa(q, nome_e)

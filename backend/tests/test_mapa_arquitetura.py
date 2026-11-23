@@ -316,3 +316,45 @@ def test_excel_mostra_valores_sem_recalcular(tmp_path):
                 if isinstance(c.value, str) and c.value.startswith("="):
                     assert c2.value is not None, (nome, c.coordinate, c.value)
     assert v["Mapa (resumo)"]["D6"].value == pytest.approx(25.30, abs=0.1)
+
+
+def _pdf_planta_fundacao() -> bytes:
+    import io
+    from reportlab.pdfgen import canvas
+    k = 72 / 0.0254 / 50                        # pontos por metro a 1:50
+    b = io.BytesIO()
+    c = canvas.Canvas(b, pagesize=(2000, 1400))
+    c.setFont("Helvetica", 7)
+    c.drawString(50, 1350, "Planta de Fundação (Cave)")
+    c.drawString(50, 1340, "PLANTA Escala 1:50")
+    c.drawString(50, 1330, "COTA DO LIMPO 101,15 COTA DO TOSCO 101,15 COTA GERAL DE ESCAVAÇÃO 100,40")
+    c.drawString(50, 1320, "0,15 0,15 LAJE TÉRREA Malhasol (AQ38)")
+    def ret(x, y, w, h, g):
+        c.setFillGray(g)
+        c.rect(200 + x * k, 200 + y * k, w * k, h * k, stroke=0, fill=1)
+    ret(0, 0, 10.0, 1.0, 0.96)                  # sapata linear 10 × 1,0
+    ret(0, 0.375, 10.0, 0.25, 0.86)             # muro 10 × 0,25
+    ret(3, 5, 1.6, 1.6, 0.96)                   # sapata isolada
+    c.setFillGray(0)
+    c.drawString(200 + 2 * k, 200 + 1.6 * k, "MURO M1 (0,25)")
+    x0, y0 = 200 + 5 * k, 200 - 1.2 * k
+    c.drawString(x0, y0, "Sapata linear de M1")
+    c.drawString(x0, y0 - 9, "1,0 x 0,4")
+    c.drawString(x0, y0 - 18, "Cota sup, 100,90")
+    c.drawString(x0, y0 - 27, "Cota inf, 100,50")
+    c.showPage()
+    c.setFont("Helvetica", 7)
+    c.drawString(50, 1330, "COTA DO LIMPO 104,06 COTA DO TOSCO 103,86")
+    c.save()
+    return b.getvalue()
+
+
+def test_planta_de_fundacao_muros_e_sapatas_lineares():
+    from engines.mapa_estrutura import fundacoes
+    pl = fundacoes.ler_planta(_pdf_planta_fundacao())
+    assert pl["escala"] == 50 and pl["cota_sup_linear"] == 100.9 and pl["laje_terrea"] == [0.15, 0.15]
+    assert len(pl["isoladas"]) == 1 and len(pl["lineares"]) == 1 and len(pl["muros"]) == 1
+    L = {x["designacao"]: x["qtd"] for x in fundacoes.linhas_planta(pl, area_laje_terrea=100.0)}
+    assert L["Muros de suporte e = 0.25 m — betão"] == pytest.approx(10 * (103.86 - 100.90) * 0.25, rel=0.01)
+    assert L["Sapatas lineares dos muros h = 0.40 m — betão"] == pytest.approx(10 * 1.0 * 0.4, rel=0.01)
+    assert L["Laje térrea e = 0.15 m — betão"] == pytest.approx(15.0)
