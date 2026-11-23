@@ -1,0 +1,13 @@
+[
+ {"id": "01_intro", "titulo": "Estúdio de Projeto", "texto": "Este é o Estúdio de Projeto do ConstruPilot. A casa do seu processo de licenciamento abre já desenhada, com as medidas reais. A partir de um único modelo, obtém a planta, o três D, os alçados, os cortes e as medições."},
+ {"id": "02_desenhar", "titulo": "Desenhar paredes e salas", "texto": "Para desenhar, escolha a ferramenta Sala e clique em dois cantos: as quatro paredes aparecem de uma vez. Com a ferramenta Parede, escreva o comprimento e carregue em Enter para ter a medida exata. Para deslocar uma parede, basta selecioná-la e arrastar: as paredes vizinhas acompanham."},
+ {"id": "03_vaos", "titulo": "Portas e janelas", "texto": "As portas e as janelas colocam-se com um clique sobre a parede. Em cada vão, escolha o modelo, a caixilharia e a proteção solar. Cada um recebe um código, que aparece na planta e no mapa de vãos."},
+ {"id": "04_mobiliario", "titulo": "Mobiliário, cotas e notas", "texto": "No Mobiliário, tem setenta e oito peças: sala, quarto, cozinha, casa de banho e equipamentos técnicos. Coloque, rode e ajuste as dimensões. Acrescente cotas entre dois pontos e notas de texto, que saem nas pranchas."},
+ {"id": "05_materiais", "titulo": "Materiais e acabamentos", "texto": "Tudo é editável. Clique numa divisão para escolher o pavimento, as paredes e o teto. Clique numa parede para mudar a fachada ou as camadas, com uma biblioteca de quase trezentos materiais."},
+ {"id": "06_3d", "titulo": "3D e estudo de sol", "texto": "O três D atualiza-se sozinho, com as texturas de cada acabamento. O estudo de sol usa a latitude e a orientação reais do terreno: escolha o mês e a hora e veja as sombras. Pode ainda mudar de vista e guardar a imagem."},
+ {"id": "07_visita", "titulo": "Visita virtual", "texto": "Com a Visita virtual, entra na casa à altura dos olhos e percorre as divisões, com as setas ou com os botões no ecrã."},
+ {"id": "08_alcados", "titulo": "Alçados e cortes", "texto": "Os alçados e os cortes são calculados a partir do mesmo modelo. No corte, desloque o plano para a posição que pretende."},
+ {"id": "09_medicoes", "titulo": "Medições", "texto": "As medições saem da geometria, sem estimativas: paredes uma a uma, camadas, divisões, quadro de áreas, mapa de vãos, escadas e cobertura."},
+ {"id": "10_exportar", "titulo": "Exportar e comparar com o processo", "texto": "Por fim, descarregue as pranchas em PDF à escala, os desenhos em DXF, o modelo em IFC e as medições. O separador Processo mostra as diferenças entre o Estúdio e o processo de licenciamento."},
+ {"id": "11_fim", "titulo": "ConstruPilot", "texto": "Estúdio de Projeto, do ConstruPilot. Desenhe uma vez, obtenha tudo."}
+]
