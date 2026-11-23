@@ -16,7 +16,8 @@ from PIL import Image, ImageDraw
 from .controlo import _bbox, _fonte
 
 ORDEM = ["Estaleiro", "Movimento de terras", "Fundações", "Estrutura", "Alvenarias", "Fachadas e isolamento", "Cobertura",
-         "Caixilharias e serralharias", "Portas e carpintarias", "Pavimentos", "Tetos", "Revestimentos", "Remates e águas pluviais"]
+         "Caixilharias e serralharias", "Portas e carpintarias", "Pavimentos", "Tetos", "Revestimentos", "Remates e águas pluviais",
+         "Arranjos exteriores e espaço público"]
 COR = {"fachada": (210, 60, 40), "interior": (40, 110, 200), "exterior / muro": (120, 120, 120)}
 
 

@@ -358,3 +358,20 @@ def test_planta_de_fundacao_muros_e_sapatas_lineares():
     assert L["Muros de suporte e = 0.25 m — betão"] == pytest.approx(10 * (103.86 - 100.90) * 0.25, rel=0.01)
     assert L["Sapatas lineares dos muros h = 0.40 m — betão"] == pytest.approx(10 * 1.0 * 0.4, rel=0.01)
     assert L["Laje térrea e = 0.15 m — betão"] == pytest.approx(15.0)
+
+
+def test_legenda_dos_pavimentos_exteriores():
+    from engines.mapa_arquitetura import exteriores
+    els = [dwfx.Elemento("TEXTO", "texto", texto=t, pos=(0, y)) for t, y in (
+        ('1 - Passeio em "Paver" cor amarelo, c/ 0,06m de espessura', 1.0), ("2 - Camada de areia com 0.06m de espessura", 2.0),
+        ("3 - Camada de base em material granular britado de granulometria extensa", 3.0), ("com 0.15 m de espessura após compactação", 3.5),
+        ("8 - Betão betuminoso com 4 cm de espessura", 4.0), ("10 - Sub base granular com 15 cm de espessura", 5.0))]
+    f = dwfx.Folha(0, "Espaço público", 100.0, els, [])
+    leg = {n: (t, e) for n, t, e in exteriores.legenda(f)}
+    assert leg[1][1] == 0.06 and leg[3][1] == 0.15 and leg[8][1] == 0.04 and leg[10][1] == 0.15
+    assert exteriores._grupo(leg[1][0]) == "passeio" and exteriores._grupo(leg[8][0]) == "arruamento"
+    ex = {"folha": "x", "zonas": [{"camada": "Paver", "tipo": "passeio", "area": 100.0, "n": 1}], "legenda": exteriores.legenda(f),
+          "lancil": 20.0, "muros": [], "area_cedida": None}
+    L = {r["designacao"][:40]: r["qtd"] for r in exteriores.linhas_mapa(ex)}
+    assert any(v == pytest.approx(6.0) for k, v in L.items() if "camada 1" in k)
+    assert any(v == pytest.approx(15.0) for k, v in L.items() if "camada 3" in k)

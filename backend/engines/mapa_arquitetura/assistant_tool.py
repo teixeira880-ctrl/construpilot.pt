@@ -88,6 +88,12 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
                             modelo["avisos"].append(f"{nome_e} : recobrimento não lido nas notas — aço das sapatas por medir.")
                 except Exception as exc:  # noqa: BLE001
                     modelo["avisos"].append(f"{nome_e} : quadro de fundações não lido ({type(exc).__name__}).")
+            try:                                             # estrada de acesso, passeios, lancis, muros de vedação
+                from . import exteriores
+                z_ = dwfx.abrir(data)
+                extras += exteriores.linhas_mapa(exteriores.medir(z_, dwfx.folhas(z_)))
+            except Exception as exc:  # noqa: BLE001
+                modelo["avisos"].append(f"Arranjos exteriores não lidos ({type(exc).__name__}).")
             xlsx = excel.gerar(modelo, str(out / "Mapa_quantidades.xlsx"), titulo)
             premium.gerar_xlsx(modelo, xlsx, titulo, extras=extras, nao_medido=nao)
             pags = premium.desenhos(modelo, titulo)                 # plantas, alçados e cortes com os elementos numerados
