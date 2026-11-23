@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Camera, Download, Sun } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, Download, Footprints, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sol as posicaoSol, vetorSol, fmt } from "@/components/licenciamento/estudioGeo";
 
@@ -271,6 +271,7 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
   const [hora, setHora] = useState(15);
   const [texturas, setTexturas] = useState(true);
   const [aExportar, setAExportar] = useState(false);
+  const [visita, setVisita] = useState(false);         // visita virtual: câmara à altura dos olhos, dentro da casa
   const latitude = contexto?.latitude ?? 39.5;         // sem processo georreferenciado: centro de Portugal continental
   const azFrente = contexto?.azimute_frente ?? 180;
   const ps = posicaoSol(latitude, DIA_DO_MES[mes], hora);
@@ -298,7 +299,9 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     sol.shadow.mapSize.set(2048, 2048);
     Object.assign(sol.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 160 });
     const ceu = new THREE.HemisphereLight(0xeaf3ff, 0x8a8a7a, 1.5);
-    scene.add(sol, sol.target, ceu);
+    const lanterna = new THREE.PointLight(0xfff4e0, 0, 0, 0);        // luz interior da visita virtual (apagada fora dela)
+    camera.add(lanterna);
+    scene.add(sol, sol.target, ceu, camera);
     const chao = new THREE.Mesh(new THREE.CircleGeometry(120, 48), new THREE.MeshStandardMaterial({ color: 0xb9c7a4, roughness: 1 }));
     chao.rotation.x = -Math.PI / 2; chao.position.y = -0.22; chao.receiveShadow = true;
     scene.add(chao);
@@ -306,7 +309,14 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI / 2.02;
     let raf;
-    const loop = () => { controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(loop); };
+    const loop = () => {
+      const v = st.current.visita;
+      if (v) {      // à altura dos olhos: a câmara olha na direção (rumo, inclinação) a partir do ponto onde está
+        camera.position.set(v.x, v.z + 1.65, -v.y);
+        camera.lookAt(v.x + Math.cos(v.rumo) * Math.cos(v.incl), v.z + 1.65 + Math.sin(v.incl), -(v.y + Math.sin(v.rumo) * Math.cos(v.incl)));
+      } else controls.update();
+      renderer.render(scene, camera); raf = requestAnimationFrame(loop);
+    };
     loop();
     const onResize = () => { const ww = el.clientWidth || w; renderer.setSize(ww, altura); camera.aspect = ww / altura; camera.updateProjectionMatrix(); };
     window.addEventListener("resize", onResize);
@@ -314,9 +324,19 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     // clique (sem arrastar) numa peça → selecionar essa peça no editor
     const raio = new THREE.Raycaster();
     let baixo = null;
-    const down = (ev) => { baixo = [ev.clientX, ev.clientY]; };
+    const down = (ev) => { baixo = [ev.clientX, ev.clientY]; ultimo = [ev.clientX, ev.clientY]; };
+    let ultimo = null;
+    const arrastar = (ev) => {      // na visita, arrastar roda o olhar
+      const v = st.current.visita;
+      if (!v || !ultimo || !(ev.buttons & 1)) return;
+      v.rumo += (ev.clientX - ultimo[0]) * 0.006;      // arrastar para a direita puxa a cena: o olhar vai para a esquerda
+      v.incl = Math.max(-1.2, Math.min(1.2, v.incl + (ev.clientY - ultimo[1]) * 0.005));
+      ultimo = [ev.clientX, ev.clientY];
+    };
+    renderer.domElement.addEventListener("pointermove", arrastar);
     const up = (ev) => {
-      if (!baixo || Math.hypot(ev.clientX - baixo[0], ev.clientY - baixo[1]) > 5 || !st.current.grupo) return;
+      ultimo = null;
+      if (st.current.visita || !baixo || Math.hypot(ev.clientX - baixo[0], ev.clientY - baixo[1]) > 5 || !st.current.grupo) return;
       const r = renderer.domElement.getBoundingClientRect();
       raio.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), camera);
       const hit = raio.intersectObjects(st.current.grupo.children, false).find((x) => x.object.userData.alvo);
@@ -325,12 +345,13 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     renderer.domElement.addEventListener("pointerdown", down);
     renderer.domElement.addEventListener("pointerup", up);
 
-    st.current = { renderer, scene, camera, controls, sol, ceu, enquadrado: false };
+    st.current = { renderer, scene, camera, controls, sol, ceu, lanterna, enquadrado: false };
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointerdown", down);
       renderer.domElement.removeEventListener("pointerup", up);
+      renderer.domElement.removeEventListener("pointermove", arrastar);
       controls.dispose();
       if (st.current.grupo) libertar(st.current.grupo);
       if (st.current.lote) libertar(st.current.lote);
@@ -338,6 +359,7 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
       renderer.dispose();
       el.innerHTML = "";
       st.current = {};
+      setVisita(false);
     };
   }, [altura]);
 
@@ -402,6 +424,34 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     s.scene.background = new THREE.Color(dia ? (ps.altura < 8 ? 0xf2d9c4 : 0xe6eef4) : 0x1c2530);
   }, [ps.altura, ps.azimute, azFrente, derivado, altura]);
 
+  // entra na maior divisão do piso visível (ou do rés-do-chão); sai para a perspetiva
+  const alternarVisita = () => {
+    const s = st.current;
+    if (!s.camera) return;
+    if (s.visita) { s.visita = null; s.lanterna.intensity = 0; s.controls.enabled = true; s.camera.fov = 40; s.camera.updateProjectionMatrix(); setVisita(false); verDe("perspetiva"); return; }
+    const pid = (derivado.pisos || [])[pisoVisivel ?? 0]?.id;
+    const dv = [...(derivado.divisoes || [])].filter((d) => d.piso === pid).sort((a, b) => b.area_m2 - a.area_m2)[0];
+    if (!dv) return;
+    // começa numa ponta da divisão, a olhar ao comprido dela
+    const xs = dv.pts.map((q) => q[0]), ys = dv.pts.map((q) => q[1]);
+    const lx = Math.max(...xs) - Math.min(...xs), ly = Math.max(...ys) - Math.min(...ys);
+    s.visita = lx >= ly ? { x: Math.min(...xs) + Math.min(0.8, lx * 0.2), y: dv.centro[1], z: dv.z0 ?? 0, rumo: 0, incl: -0.08 }
+      : { x: dv.centro[0], y: Math.min(...ys) + Math.min(0.8, ly * 0.2), z: dv.z0 ?? 0, rumo: Math.PI / 2, incl: -0.08 };
+    s.lanterna.intensity = 1.6; s.controls.enabled = false; s.camera.fov = 68; s.camera.updateProjectionMatrix();
+    setVisita(true);
+  };
+  const andar = (frente, lado, rodar = 0) => {
+    const v = st.current.visita;
+    if (!v) return;
+    v.rumo += rodar;
+    v.x += (Math.cos(v.rumo) * frente + Math.sin(v.rumo) * lado) * 0.4;
+    v.y += (Math.sin(v.rumo) * frente - Math.cos(v.rumo) * lado) * 0.4;
+  };
+  const teclaVisita = (ev) => {
+    if (!visita) return;
+    const m = { ArrowUp: [1, 0, 0], w: [1, 0, 0], ArrowDown: [-1, 0, 0], s: [-1, 0, 0], ArrowLeft: [0, 0, 0.12], ArrowRight: [0, 0, -0.12], a: [0, -1, 0], d: [0, 1, 0] }[ev.key];
+    if (m) { ev.preventDefault(); ev.stopPropagation(); andar(...m); }
+  };
   const verDe = (k) => {
     const s = st.current;
     if (!s.camera || !s.centro) return;
@@ -439,9 +489,23 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
   if (erro) return <div className="p-6 text-sm text-muted-foreground border rounded">O seu navegador não suporta 3D (WebGL).</div>;
   return (
     <div className="space-y-2">
-      <div ref={mount} style={{ width: "100%", height: altura }} className="rounded-lg overflow-hidden border" data-testid="estudio-3d" />
+      <div className="relative outline-none" tabIndex={0} onKeyDown={teclaVisita}>
+        <div ref={mount} style={{ width: "100%", height: altura }} className="rounded-lg overflow-hidden border" data-testid="estudio-3d" />
+        {visita && (
+          <div className="absolute bottom-3 right-3 grid grid-cols-3 gap-1" data-testid="estudio-3d-andar">
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(0, 0, 0.26)} title="Rodar à esquerda">↺</Button>
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(1, 0)} title="Avançar" data-andar="frente"><ArrowUp className="h-4 w-4" /></Button>
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(0, 0, -0.26)} title="Rodar à direita">↻</Button>
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(0, -1)} title="Passo à esquerda"><ArrowLeft className="h-4 w-4" /></Button>
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(-1, 0)} title="Recuar"><ArrowDown className="h-4 w-4" /></Button>
+            <Button size="sm" variant="secondary" className="h-10 w-10 p-0" onClick={() => andar(0, 1)} title="Passo à direita"><ArrowRight className="h-4 w-4" /></Button>
+          </div>
+        )}
+        {visita && <p className="absolute top-2 left-3 text-[11px] bg-background/80 rounded px-2 py-0.5">Visita virtual · olhos a 1,65 m · arraste para olhar · setas ou botões para andar</p>}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5" data-testid="estudio-3d-vistas">
-        {VISTAS.map(([k, t]) => <Button key={k} size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => verDe(k)} data-vista={k}>{t}</Button>)}
+        <Button size="sm" variant={visita ? "default" : "outline"} className="h-7 px-2 text-xs" onClick={alternarVisita} data-testid="estudio-3d-visita"><Footprints className="h-3.5 w-3.5 mr-1" />{visita ? "Sair da visita" : "Visita virtual"}</Button>
+        {!visita && VISTAS.map(([k, t]) => <Button key={k} size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => verDe(k)} data-vista={k}>{t}</Button>)}
         <label className="text-xs flex items-center gap-1 ml-2"><input type="checkbox" checked={texturas} onChange={(e) => setTexturas(e.target.checked)} data-testid="estudio-3d-texturas" />Texturas</label>
         <span className="ml-auto flex gap-1.5">
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={imagem} data-testid="estudio-3d-imagem"><Camera className="h-3.5 w-3.5 mr-1" />Imagem (PNG)</Button>
