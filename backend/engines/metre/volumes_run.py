@@ -82,7 +82,10 @@ async def run_compute_concrete_volumes(db, *, user_id: str, conversation_id: str
             return {"ok": False, **status["coupes"], "plan_id": coupes_plan_id}
     base_level = None
     if base_plan_id:
-        bsrc = await load_cad_source(db, base_plan_id, user_id, "converted_dxf") or await load_cad_source(db, base_plan_id, user_id, "original")
+        try:
+            bsrc = await load_cad_source(db, base_plan_id, user_id, "converted_dxf") or await load_cad_source(db, base_plan_id, user_id, "original")
+        except Exception:  # noqa: BLE001 — planta inexistente/inacessível: ignorar, nunca falhar o cálculo inteiro em ciclo
+            bsrc = None
         braw = (bsrc if isinstance(bsrc, (bytes, bytearray)) else base64.b64decode(bsrc["data_b64"])) if bsrc else None
         if braw and braw[:4] != b"AC10":
             base_level = await asyncio.to_thread(_base_from_lower_floor, braw)
