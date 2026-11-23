@@ -16,12 +16,18 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
     wb.remove(wb.active)
     mp = _folha(wb, "Mapa", ["Art.", "Designação", "Un", "Quantidade", "Origem"], [7, 62, 6, 14, 48], f"{titulo} — {AZ}")
     wp = _folha(wb, "Pressupostos", ["Parâmetro", "Valor", "Un", "Origem"], [52, 12, 6, 70], AZ)
-    _linha(wp, 5, ["Altura das paredes (entre lajes / pé-direito)", modelo.get("pe_direito"), "m",
-                   "indicada pelo utilizador" if modelo.get("pe_direito") else "POR INDICAR — sem ela as paredes ficam só em metros"], {2: N2}, (2,))
-    r = 7
+    _linha(wp, 5, ["Piso — cota do pavimento lida na planta", None, "m", "altura das paredes (piso a piso) e origem"], negrito=True)
+    r = 6
+    alt_linha = {}
+    for p in modelo["pisos"]:
+        c = (p.get("cota") or {}).get("valor")
+        _linha(wp, r, [f"{p['piso']} — cota {c:.2f}" if c is not None else f"{p['piso']} — sem cota", p.get("altura"), "m",
+                       p.get("altura_origem") or ""], {2: N2}, (2,))
+        alt_linha[p["piso"]] = r
+        r += 1
+    r += 1
     for t in modelo["pressupostos"]:
         _linha(wp, r, [t]); r += 1
-    H = "Pressupostos!$B$5"
 
     wc = _folha(wb, "Compartimentos", ["Piso", "Compartimento", "Área (m²)", "Perímetro (m)", "Interior / exterior", "Nome por", "Área escrita no desenho (m²)", "Diferença (m²)"], [16, 40, 12, 13, 16, 12, 14, 12], AZ)
     r = 5
@@ -40,7 +46,8 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
         for w in p["paredes"]:
             agg[(w["tipo"], round(w["espessura"] * 20) / 20)] += w["comprimento"]
         for (tipo, t), L in sorted(agg.items()):
-            _linha(wpa, r, [p["piso"], tipo, t, round(L, 2), f"={H}", f'=IF(ISNUMBER(E{r}),D{r}*E{r},"")'], {3: N2, 4: N2, 5: N2, 6: N2}, (3, 4)); r += 1
+            _linha(wpa, r, [p["piso"], tipo, t, round(L, 2), f"=Pressupostos!$B${alt_linha[p['piso']]}", f'=IF(ISNUMBER(E{r}),D{r}*E{r},"")'],
+                   {3: N2, 4: N2, 5: N2, 6: N2}, (3, 4)); r += 1
     rp = r - 1
     P = lambda col: f"Paredes!${col}$5:${col}${max(rp, 5)}"
 
@@ -68,9 +75,9 @@ def gerar(modelo: dict, caminho: str, titulo: str = "") -> str:
         ("1.4", "Tetos interiores", "m²", "=D6", "igual ao pavimento interior"),
         ("2", "PAREDES", None, None, None),
         ("2.1", "Paredes de fachada — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"fachada")', "folha Paredes"),
-        ("2.2", "Paredes de fachada — área bruta (sem dedução de vãos)", "m²", f'=IF(ISNUMBER({H}),SUMIFS({P("F")},{P("B")},"fachada"),"falta a altura")', None),
+        ("2.2", "Paredes de fachada — área bruta piso a piso (sem dedução de vãos ; pisos sem altura não entram)", "m²", f'=SUMIFS({P("F")},{P("B")},"fachada")', None),
         ("2.3", "Paredes interiores — comprimento", "m", f'=SUMIFS({P("D")},{P("B")},"interior")', None),
-        ("2.4", "Paredes interiores — área bruta (sem dedução de portas)", "m²", f'=IF(ISNUMBER({H}),SUMIFS({P("F")},{P("B")},"interior"),"falta a altura")', None),
+        ("2.4", "Paredes interiores — área bruta piso a piso (sem dedução de portas ; pisos sem altura não entram)", "m²", f'=SUMIFS({P("F")},{P("B")},"interior")', None),
         ("3", "PORTAS E VÃOS", None, None, None),
         ("3.1", "Portas interiores", "un", f'=SUMIFS(Portas!$D$5:$D${max(rd, 5)},Portas!$C$5:$C${max(rd, 5)},"interior")', "folha Portas"),
         ("3.2", "Vãos exteriores nos alçados", "un", f"=COUNT(Vãos!$C$5:$C${max(rv, 5)})", "folha Vãos — conferir no PDF de controlo"),

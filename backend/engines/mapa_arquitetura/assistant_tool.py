@@ -32,7 +32,7 @@ TOOLS = [
          "arquitetura e há um .dwfx anexado. Para a estrutura em PDF usar medir_planta_estrutural. Demora 5 a 60 s."),
      "parameters": {"type": "object", "properties": {
          "document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… dos ficheiros .dwfx"},
-         "pe_direito_m": {"type": "number", "description": "Altura das paredes (entre lajes ou pé-direito), se o utilizador a indicar ; sem ela as paredes ficam em metros."},
+         "pe_direito_m": {"type": "number", "description": "Só se o utilizador a indicar explicitamente : por defeito a altura de cada piso é lida automaticamente nas cotas de pavimento das plantas (piso a piso)."},
          "mapa_camadas": {"type": "object", "description": "Opcional : {nome da camada: paredes|trama|fino|sanitarios|cozinha|muros} quando os nomes do gabinete não são reconhecidos."}},
          "required": ["document_ids"], "additionalProperties": False}},
 ]
@@ -44,7 +44,7 @@ INSTRUCTIONS = (
     "quantidades : há medir_arquitetura_dwfx (arquitetura em DWFX), medir_planta_estrutural (estrutura em PDF) e medir_camadas_cad (DWG/DXF). "
     "Depois : 1) apresenta o resumo tal como vem, sem recalcular nem completar com rácios ; 2) lista os pressupostos e faz as perguntas "
     "devolvidas ; 3) diz o que NÃO está incluído ; 4) os ficheiros aparecem como botões : convida a conferir o PDF / a folha Controlo do Excel, "
-    "que mostram o que foi medido pintado sobre o desenho. Se o utilizador indicar a altura das paredes, volta a chamar com pe_direito_m. "
+    "que mostram o que foi medido pintado sobre o desenho. A altura das paredes é lida automaticamente nas cotas das plantas : não a perguntes ; só se o utilizador indicar outra, volta a chamar com pe_direito_m. "
     "É uma medição a validar pelo projetista.")
 
 

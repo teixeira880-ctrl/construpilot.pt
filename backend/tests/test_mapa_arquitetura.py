@@ -192,3 +192,29 @@ def test_alcados_isola_edificio_e_vistas_repetidas():
     c = {"vista": "Alçado Lat. Esquerdo", "vaos": [1]}
     ficam, rep = alcados.sem_repetidas([b, a, c])
     assert [x["vista"] for x in ficam] == [a["vista"], c["vista"]] and rep[0]["repete"] == a["vista"]
+
+
+def test_altura_das_paredes_pelas_cotas_das_plantas():
+    pisos = [{"piso": "Cave", "paredes": [1], "cota": {"candidatos": {27.75: 2, 101.28: 1}}},     # 27,75 = área escrita : fica de fora
+             {"piso": "R/C", "paredes": [1], "cota": {"candidatos": {104.08: 2, 101.24: 1}}},
+             {"piso": "1.º", "paredes": [1], "cota": {"candidatos": {107.08: 2, 104.06: 3}}},     # 104,06 = cota do piso de baixo
+             {"piso": "Sótão", "paredes": [1], "cota": {"candidatos": {110.08: 1}}}]
+    medicao.alturas(pisos)
+    assert [p["cota"]["valor"] for p in pisos] == [101.28, 104.08, 107.08, 110.08]
+    assert [p["altura"] for p in pisos] == [2.8, 3.0, 3.0, None]
+    medicao.alturas(pisos, pe_direito=2.7)
+    assert all(p["altura"] == 2.7 for p in pisos)
+
+
+def test_vao_sem_aro_e_grelha_nao_sao_vaos():
+    from shapely.geometry import box
+    from engines.mapa_arquitetura import alcados
+    f = dwfx.Folha(0, "t", 100.0, [
+        dwfx.Elemento("fino", "path", [[(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]]),                       # janela com aro
+        dwfx.Elemento("fino", "path", [[(2 + 0.1 * k, 0.05), (2 + 0.1 * k, 0.95)] for k in range(1, 6)]),  # grelha (TGBT)
+        dwfx.Elemento("fino", "path", [[(2, 0), (2.7, 0), (2.7, 1), (2, 1), (2, 0)]]),
+    ], ["fino"])
+    pap = {"fino": "fino"}
+    assert alcados._e_vao(box(0, 0, 1, 1), f, pap)
+    assert not alcados._e_vao(box(2, 0, 2.7, 1), f, pap)              # só barras verticais por dentro
+    assert not alcados._e_vao(box(5, 0, 6, 1), f, pap)                # face sem aro próprio

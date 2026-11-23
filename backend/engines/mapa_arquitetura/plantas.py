@@ -109,6 +109,31 @@ def portas(folha):
     return out
 
 
+COTA = re.compile(r"[+]?(\d{1,4}[.,]\d{2})")
+
+
+def _cota_piso(folha, interiores) -> dict | None:
+    """Cota do pavimento do piso = valor de cota (nnn.nn) mais repetido DENTRO dos compartimentos interiores da planta
+    (as cotas do terreno e dos outros pisos ficam fora). Devolve {valor, ocorrencias, candidatos}."""
+    from collections import Counter
+    if not interiores:
+        return None
+    U = unary_union(interiores)
+    c, c_cam = Counter(), Counter()
+    for e in folha.elementos:
+        if e.tipo == "texto":
+            m = COTA.fullmatch(e.texto.strip())
+            if m and U.contains(Point(e.pos)):
+                v = round(float(m.group(1).replace(",", ".")), 2)
+                c[v] += 1
+                if re.search(r"cota|level|n[ií]v|alt|elev", e.camada or "", re.I):
+                    c_cam[v] += 1
+    c = c_cam or c                  # há camada de cotas : as áreas escritas (m²) não contam como cota
+    if not c:
+        return None
+    return {"candidatos": dict(c.most_common()), "valor": None, "ocorrencias": 0}
+
+
 def medir(folha, papeis, ponte=0.55) -> dict:
     blocos, vaos, par = envolvente(folha, papeis)
     if not par:
@@ -167,6 +192,7 @@ def medir(folha, papeis, ponte=0.55) -> dict:
         i2 = interiores is not None and interiores.contains(l2)
         tipo = "interior" if (i1 and i2) else ("fachada" if (i1 or i2) else "exterior / muro")
         paredes.append({"espessura": round(t, 2), "comprimento": round(w["L"], 2), "tipo": tipo})
+    cota = _cota_piso(folha, [c["_geo"] for c in comps if not c["exterior"]])
     for c in comps:
         g = c.pop("_geo")
         c["_poly"] = [list(g.exterior.coords)]
@@ -178,6 +204,6 @@ def medir(folha, papeis, ponte=0.55) -> dict:
         b = unary_union(blocos).bounds
         dims = (round(b[2] - b[0], 2), round(b[3] - b[1], 2))
     linhas = [list(ln.coords) for ln in par]
-    return {"ok": True, "compartimentos": comps, "paredes": paredes, "portas": pts, "_dims": dims, "_linhas": linhas,
+    return {"ok": True, "compartimentos": comps, "paredes": paredes, "portas": pts, "_dims": dims, "_linhas": linhas, "cota": cota,
             "envolvente": {"area": round(sum(b.area for b in blocos), 2), "perimetro": round(sum(b.length for b in blocos), 2),
                            "blocos": len(blocos)}}

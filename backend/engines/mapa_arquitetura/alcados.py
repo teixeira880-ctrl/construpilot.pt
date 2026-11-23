@@ -60,6 +60,36 @@ def _retangulos(folha, papeis, zona):
     return [v for v in vaos if Z.contains(v)]
 
 
+def _e_vao(v, folha, papeis) -> bool:
+    """Um vão tem aro próprio desenhado (≥ 1 segmento sobre o contorno do retângulo) ; uma face fechada por linhas que só se
+    cruzam (laje + escada…) não é vão. Painel só com barras verticais por dentro (grelha de quadro elétrico / TGBT, guarda)
+    também não é vão."""
+    from shapely.geometry import box as _b
+    borda = _b(*v.bounds).exterior.buffer(0.012)
+    dentro = _b(*v.bounds).buffer(-0.03)
+    proprios = h = vt = 0
+    for e in folha.elementos:
+        if e.tipo != "path" or papeis.get(e.camada) not in CAM_VAO:
+            continue
+        for pl in e.pls:
+            for a, b in zip(pl, pl[1:]):
+                s = LineString([a, b])
+                if s.length < 0.05:
+                    continue
+                if borda.contains(s):
+                    proprios += 1
+                elif dentro.intersects(s):
+                    if abs(a[1] - b[1]) < 0.01:
+                        h += 1
+                    elif abs(a[0] - b[0]) < 0.01:
+                        vt += 1
+    if proprios < 1:
+        return False
+    if vt >= 4 and h == 0 and (v.bounds[2] - v.bounds[0]) < 1.0:
+        return False
+    return True
+
+
 def _junta(rs, tol=0.07):
     rs = [list(r.bounds) for r in rs]
     mudou = True
@@ -178,6 +208,7 @@ def medir(folha, papeis, passo=3.1, larguras=None) -> list:
         V = _junta(_prolonga(_junta(V), folha, papeis))
         V = [v for v in V if not any(u is not v and u.buffer(0.03).contains(v) for u in V)]
         V = [v for v in V if v.bounds[2] - v.bounds[0] <= 6.0]      # faixas juntas de várias folhas / terreno não são vãos
+        V = [v for v in V if _e_vao(v, folha, papeis)]
         terra = [Polygon(pl).buffer(0) for e in folha.elementos if e.tipo == "path" and e.fill and papeis.get(e.camada) == "terreno"
                  for pl in e.pls if len(pl) >= 3]
         if terra:                                                   # retângulo coberto por trama CHEIA de terreno = abaixo do solo

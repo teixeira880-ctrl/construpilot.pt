@@ -68,7 +68,43 @@ def medir(data: bytes, pe_direito: float | None = None, mapa_camadas: dict | Non
                 + ["Nenhuma planta nem alçado mensurável : confirmar que o DWFX foi exportado do espaço do modelo / layouts com escala."]}
     if sem_escala:
         avisos.append("Folhas sem escala, não medidas : " + ", ".join(sem_escala))
+    alturas(pisos, pe_direito)
     return _resumo(pisos, vistas, avisos, pe_direito, papeis_usados, [n for _, _, n in lista])
+
+
+def alturas(pisos: list, pe_direito: float | None = None) -> None:
+    """Altura das paredes de cada piso, sem perguntar : diferença entre a cota do pavimento deste piso e a do piso de cima
+    (cotas escritas nas plantas). Cotas escolhidas em sequência crescente (cada piso acima do anterior). O último piso não tem
+    piso de cima : fica sem altura (não se inventa). pe_direito indicado pelo utilizador sobrepõe-se a tudo."""
+    # sequência de cotas : cada piso escolhe um candidato ; ligação entre pisos seguidos vale +5 se a diferença for 2–6 m
+    # (pé-direito plausível) — as áreas escritas (27,75 m²…) e as cotas dos outros pisos não formam a sequência
+    cands = [list(((p.get("cota") or {}).get("candidatos") or {}).items())[:8] + [(None, 0)] for p in pisos]
+    best = [{v: (n, [v]) for v, n in cands[0]}] if pisos else []
+    for i in range(1, len(pisos)):
+        cur = {}
+        for v, n in cands[i]:
+            opts = []
+            for u, (sc, path) in best[-1].items():
+                ligado = u is not None and v is not None and 2.0 <= v - u <= 6.0
+                incoerente = u is not None and v is not None and v <= u
+                opts.append((sc + n + (5 if ligado else 0) - (100 if incoerente else 0), path + [v]))
+            cur[v] = max(opts, key=lambda t: t[0])
+        best.append(cur)
+    escolha = max(best[-1].values(), key=lambda t: t[0])[1] if best else []
+    for p, v in zip(pisos, escolha):
+        cand = (p.get("cota") or {}).get("candidatos") or {}
+        p["cota"] = {"valor": v, "ocorrencias": cand.get(v, 0) if v is not None else 0, "candidatos": cand}
+    for i, p in enumerate(pisos):
+        if pe_direito:
+            p["altura"], p["altura_origem"] = pe_direito, "indicada pelo utilizador"
+            continue
+        a = p["cota"]["valor"]
+        b = next((q["cota"]["valor"] for q in pisos[i + 1:] if q["cota"]["valor"] is not None), None)
+        h = round(b - a, 2) if a is not None and b is not None else None
+        if h is not None and 2.0 <= h <= 6.0:
+            p["altura"], p["altura_origem"] = h, f"cotas das plantas {a:.2f} → {b:.2f} (piso a piso)"
+        else:
+            p["altura"], p["altura_origem"] = None, "sem cota do piso de cima nas plantas"
 
 
 def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
@@ -92,9 +128,16 @@ def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
         {"artigo": "Vãos exteriores nos alçados", "un": "un", "qtd": len(vaos)},
         {"artigo": "Vãos exteriores nos alçados (área)", "un": "m²", "qtd": round(sum(d["L"] * d["H"] for d in vaos), 2)},
     ]
-    if pe_direito:
-        resumo.insert(6, {"artigo": f"Paredes interiores (área bruta, altura {pe_direito:.2f} m, sem dedução de portas)", "un": "m²",
-                          "qtd": round(par["interior"] * pe_direito, 2)})
+    area = defaultdict(float)
+    for p in pisos:
+        if p.get("altura"):
+            for w in p["paredes"]:
+                area[w["tipo"]] += w["comprimento"] * p["altura"]
+    if area:
+        sem = [p["piso"] for p in pisos if not p.get("altura") and p["paredes"]]
+        nota = f" (sem os pisos {', '.join(sem)} : sem altura)" if sem else ""
+        resumo.insert(5, {"artigo": "Paredes de fachada — área bruta piso a piso, sem dedução de vãos" + nota, "un": "m²", "qtd": round(area["fachada"], 2)})
+        resumo.insert(7, {"artigo": "Paredes interiores — área bruta piso a piso, sem dedução de portas" + nota, "un": "m²", "qtd": round(area["interior"], 2)})
     perguntas = [f"{v['vista']} : edifício isolado por estimativa — conferir os vãos no desenho de controlo." for v in vistas
                   if v.get("isolamento", "").startswith("estimado")]
     pressupostos = [
@@ -108,8 +151,11 @@ def _resumo(pisos, vistas, avisos, pe_direito, papeis, folhas_nomes) -> dict:
         "(duas linhas verticais com a largura da fachada lida na planta e o mesmo cimo) : vizinhos, chaminés acima das paredes e retângulos "
         "cheios de trama de terreno ficam de fora ; a mesma fachada desenhada duas vezes conta uma vez.",
     ]
-    if not pe_direito:
-        perguntas.append("Qual é a altura entre lajes (ou o pé-direito) para passar as paredes de metros a m² ?")
+    sem = [p["piso"] for p in pisos if not p.get("altura") and p["paredes"]]
+    if sem:
+        perguntas.append(f"Pisos sem cota do piso de cima nas plantas ({', '.join(sem)}) : altura das paredes por indicar (as outras foram lidas nas cotas).")
+    pressupostos.append("Altura das paredes = diferença entre as cotas de pavimento escritas nas plantas (piso a piso, inclui a espessura da laje) ; "
+                        "para a alvenaria entre lajes, deduzir a espessura da laje do projeto de estrutura.")
     if not vistas:
         avisos.append("Nenhum alçado com vãos mensuráveis : vãos exteriores não medidos.")
     nao = ["ETICS / revestimentos de fachada por cor (rótulos de legenda por alçado)", "cobertura (pendentes lidas nos cortes), rufos, caleiras e tubos de queda",
