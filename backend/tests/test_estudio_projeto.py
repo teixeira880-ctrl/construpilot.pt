@@ -282,3 +282,52 @@ def test_acabamentos_divisao_a_divisao():
     # uma divisão sem rótulo usa os acabamentos da casa
     d2 = EP.derivar(modelo(rotulos=[], materiais={"pavimento": "microcimento_pav"}))
     assert {x["acabamentos"]["pavimento"]["id"] for x in d2["divisoes"]} == {"microcimento_pav"}
+
+
+def test_fachada_por_parede_caixilharia_por_vao_e_faces_das_divisoes():
+    paredes = casa()
+    paredes[0]["fachada"] = "madeira_cedro"                                   # só a parede da frente em cedro
+    vaos = [{"id": "v1", "parede": "f", "tipo": "porta", "pos_m": 2.0, "caixilharia": "madeira_carvalho_cx"},
+            {"id": "v2", "parede": "f", "tipo": "janela", "pos_m": 7.0},
+            {"id": "v3", "parede": "i", "tipo": "porta", "pos_m": 3.0}]
+    m = modelo(paredes=paredes, vaos=vaos)
+    assert m["paredes"][0]["fachada"] == "madeira_cedro" and "fachada" not in m["paredes"][1]
+    d = EP.derivar(m)
+    par = {w["id"]: w for w in d["paredes"]}
+    assert par["f"]["cor"] == "#c58a5a" and par["d"]["cor"] == "#f1efe9" and par["f"]["fachada"]["nome"] == "Ripado de cedro"
+    # o comprimento de fachada das quatro paredes soma o perímetro exterior, sem repetir os cunhais
+    assert sum(par[k]["fachada_m"] for k in "fdte") == pytest.approx(36.0, abs=0.01)
+    assert {v["id"]: v["cor"] for v in par["f"]["vaos"]} == {"v1": "#a9773f", "v2": "#2f3235"}
+    ac = d["medicoes"]["acabamentos"]
+    fach = {a["material"]: a["area_m2"] for a in ac if a["elemento"] == "Fachada exterior"}
+    assert set(fach) == {"Ripado de cedro", "Reboco pintado a branco"}
+    assert sum(fach.values()) == pytest.approx(d["medicoes"]["fachada"]["area_liquida_m2"], abs=0.03)   # nada a mais nem a menos
+    assert fach["Ripado de cedro"] == pytest.approx(par["f"]["fachada_m"] * 2.95 - 3.33, abs=0.02)
+    caix = {a["material"]: a["area_m2"] for a in ac if a["elemento"].startswith("Caixilharia")}
+    assert caix == {"Madeira de carvalho": 1.89, "Alumínio lacado antracite com corte térmico, vidro duplo": 1.44}
+    # faces da sala: quatro lados; a porta de entrada e a porta interior abrem-se em duas delas
+    sala = next(x for x in d["divisoes"] if x["nome"] == "Sala")
+    assert len(sala["faces"]) == 4 and sala["z1"] - sala["z0"] == pytest.approx(2.7)
+    furos = sorted(f["id"] for face in sala["faces"] for f in face["vaos"])
+    assert furos == ["v1", "v3"]
+    face_porta = next(face for face in sala["faces"] if any(f["id"] == "v1" for f in face["vaos"]))
+    f1 = face_porta["vaos"][0]
+    assert f1["u1"] - f1["u0"] == pytest.approx(0.9, abs=0.002) and (f1["z0"], f1["z1"]) == (0.0, 2.1)
+    assert D.svg(D.alcado(m, d, "frente")).count("rgb(197,138,90)") >= 1      # o alçado usa a cor da parede
+
+
+def test_no_3d_os_encontros_nao_se_sobrepoem():
+    from shapely.geometry import Polygon as Pg
+    d = EP.derivar(modelo())
+    solidos = []
+    for w in d["paredes"]:
+        L, h = w["comprimento_m"], w["esp_m"] / 2
+        ux, uy = (w["b"][0] - w["a"][0]) / L, (w["b"][1] - w["a"][1]) / L
+        a = (w["a"][0] - ux * w["ext3d_a"], w["a"][1] - uy * w["ext3d_a"])
+        b = (w["b"][0] + ux * w["ext3d_b"], w["b"][1] + uy * w["ext3d_b"])
+        solidos.append(Pg([(a[0] - uy * h, a[1] + ux * h), (b[0] - uy * h, b[1] + ux * h), (b[0] + uy * h, b[1] - ux * h), (a[0] + uy * h, a[1] - ux * h)]))
+    for i in range(len(solidos)):
+        for j in range(i + 1, len(solidos)):
+            assert solidos[i].intersection(solidos[j]).area < 1e-6
+    # e juntos cobrem exatamente a planta das paredes (área bruta menos as divisões)
+    assert sum(s.area for s in solidos) == pytest.approx(80.0 - sum(x["area_m2"] for x in d["divisoes"]), abs=0.02)

@@ -207,6 +207,34 @@ def _aguas(pegada: Polygon, cob: Dict[str, Any], z_topo: float) -> Dict[str, Any
             "beirado": [[R(x), R(y)] for x, y in E], "perimetro_beirado_m": R(beirado.length, 2)}
 
 
+def _faces_divisao(anel: List[List[float]], vaos_piso: List[dict], geo: Dict[str, dict]) -> List[Dict[str, Any]]:
+    """Faces de parede viradas para a divisão (um troço por lado do contorno), com os vãos que se abrem em cada uma.
+    Servem para vestir cada face, no 3D, com o acabamento de paredes da divisão."""
+    faces = []
+    for q in range(len(anel)):
+        a, b = anel[q], anel[(q + 1) % len(anel)]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < 0.02:
+            continue
+        ex, ey = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+        furos = []
+        for v in vaos_piso:
+            if not v["valido"]:
+                continue
+            g = geo[v["parede"]]
+            if abs(ex * g["u"][1] - ey * g["u"][0]) > 1e-3:
+                continue
+            dx, dy = v["centro"][0] - a[0], v["centro"][1] - a[1]
+            if abs(-dx * ey + dy * ex) > g["t"] / 2 + 0.03:
+                continue
+            s = dx * ex + dy * ey
+            s0, s1 = max(0.0, s - v["largura_m"] / 2), min(L, s + v["largura_m"] / 2)
+            if s1 - s0 > 0.02:
+                furos.append({"id": v["id"], "u0": R(s0), "u1": R(s1), "z0": v["peitoril_m"], "z1": R(v["peitoril_m"] + v["altura_m"])})
+        faces.append({"a": a, "b": b, "vaos": furos})
+    return faces
+
+
 def _por_material(divisoes, elemento: str, chave: str, campo: str, mat_casa: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Área de um acabamento interior somada por material, divisão a divisão (cada divisão conta uma vez)."""
     tot: Dict[str, float] = {}
@@ -234,6 +262,10 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     med_paredes, med_div = [], []
     fachada = {"perimetro_m": 0.0, "area_bruta_m2": 0.0, "area_vaos_m2": 0.0}
     cont_vaos: Dict[tuple, Dict[str, Any]] = {}
+    n_pisos = len(m["pisos"])
+    fach_casa = MAT.acabamento("fachada", mat_casa.get("fachada"))
+    fach_por: Dict[str, float] = {}          # área líquida de fachada por material (parede a parede)
+    caix_por: Dict[str, float] = {}          # área de vãos exteriores por caixilharia
 
     for k, piso in enumerate(m["pisos"]):
         z0, z1 = cz[k]["z0"], cz[k]["z1"]
@@ -265,12 +297,34 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         pegadas.append(pegada)
         # parte de cada parede na planta (sem contar encontros duas vezes)
         ordem = sorted(vivos, key=lambda w: (not tipos[w["tipo"]]["exterior"], -geo[w["id"]]["t"], w["id"]))
+        # no 3D cada encontro pertence a uma só parede: a dona do encontro avança até à face exterior, as outras
+        # param na face dela — sem volumes sobrepostos, cada parede mostra só o seu acabamento
+        posto = {w["id"]: i for i, w in enumerate(ordem)}
+        for w in vivos:
+            g = geo[w["id"]]
+            for ponta, chave in ((w["a"], "e3a"), (w["b"], "e3b")):
+                pt = Point(ponta)
+                juntas = [o for o in vivos if o["id"] != w["id"] and geo[o["id"]]["eixo"].distance(pt) < JUNTA]
+                donas = [geo[o["id"]]["t"] / 2 for o in juntas if posto[o["id"]] < posto[w["id"]]]
+                g[chave] = -max(donas) if donas else (max(geo[o["id"]]["t"] / 2 for o in juntas) if juntas else 0.0)
         tomado = None
         parte_area: Dict[str, float] = {}
         for w in ordem:
             c = corpos[w["id"]]
             parte_area[w["id"]] = (c if tomado is None else c.difference(tomado)).area
             tomado = c if tomado is None else unary_union([tomado, c])
+        # comprimento de fachada (face exterior real) que cabe a cada parede exterior, sem repetir os cunhais
+        fach_len: Dict[str, float] = {}
+        e_cima = m["pisos"][k + 1]["laje_m"] if k + 1 < n_pisos else m["cobertura"]["laje_m"]
+        if pegada is not None and not pegada.is_empty:
+            resto = unary_union([p.exterior for p in _polys(pegada)])
+            for w in ordem:
+                if tipos[w["tipo"]]["exterior"] and not resto.is_empty:
+                    cb = corpos[w["id"]].buffer(1e-4)
+                    fach_len[w["id"]] = resto.intersection(cb).length
+                    resto = resto.difference(cb)
+            if not resto.is_empty and resto.length > 0.01:      # contorno feito por paredes de tipo interior
+                fach_por[fach_casa["nome"]] = fach_por.get(fach_casa["nome"], 0.0) + resto.length * (altura + e_cima)
         # divisões
         divs = []
         for p in partes:
@@ -297,8 +351,13 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                 "area_liquida_m2": R(a_liq, 2), "volume_m3": R(a_liq * g["t"], 3),
                 "camadas": [{"material": c["material"], "esp_m": c["esp_m"], "area_m2": R(a_liq, 2),
                              "volume_m3": R(a_liq * c["esp_m"], 3)} for c in tipo["camadas"]]})
+            fw = MAT.acabamento("fachada", w.get("fachada") or mat_casa.get("fachada"))
             if tipo["exterior"]:
                 fachada["area_vaos_m2"] += a_vaos
+                fach_por[fw["nome"]] = fach_por.get(fw["nome"], 0.0) + fach_len.get(w["id"], 0.0) * (altura + e_cima) - a_vaos
+                for v in validos:
+                    cxn = MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["nome"]
+                    caix_por[cxn] = caix_por.get(cxn, 0.0) + v["largura_m"] * v["altura_m"]
             for v in vs:
                 cx, cy = w["a"][0] + g["u"][0] * v["pos_m"], w["a"][1] + g["u"][1] * v["pos_m"]
                 vaos_piso.append({**v, "piso": piso["id"], "centro": [R(cx), R(cy)], "z0": R(z0 + v["peitoril_m"]),
@@ -312,11 +371,17 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                     c["ids"].append(v["id"])
             paredes_out.append({"id": w["id"], "piso": piso["id"], "a": w["a"], "b": w["b"], "tipo": w["tipo"],
                                 "esp_m": R(g["t"]), "comprimento_m": R(g["L"]), "ext_a": R(g["ea"]), "ext_b": R(g["eb"]),
+                                "ext3d_a": R(g["e3a"]), "ext3d_b": R(g["e3b"]),
                                 "z0": z0, "altura_m": altura, "exterior": tipo["exterior"],
+                                "cor": fw["cor"] if tipo["exterior"] else MAT.acabamento("parede_interior", mat_casa.get("parede_interior"))["cor"],
+                                "fachada": {"id": fw["id"], "nome": fw["nome"]} if tipo["exterior"] else None,
+                                "fachada_m": R(fach_len.get(w["id"], 0.0), 3),
                                 "corpo": _anel(corpos[w["id"]]),
                                 "vaos": [{"id": v["id"], "tipo": v["tipo"], "u0": v["u0"], "u1": v["u1"], "z0": v["peitoril_m"],
                                           "z1": R(v["peitoril_m"] + v["altura_m"]), "valido": v["valido"],
-                                          "lado": v["lado"], "dobradica": v["dobradica"]} for v in vs]})
+                                          "lado": v["lado"], "dobradica": v["dobradica"],
+                                          "cor": MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["cor"]}
+                                         for v in vs]})
         for i, pl in enumerate(divs, 1):
             rt = next((r for r in rot if pl.contains(Point(r["x"], r["y"]))), None)
             nome = rt["nome"] if rt else f"Divisão {i}"
@@ -339,6 +404,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
             d = {"id": f"{piso['id']}_d{i}", "piso": piso["id"], "nome": nome, "area_m2": R(pl.area, 2),
                  "perimetro_m": R(pl.length, 2), "pts": _anel(pl), "centro": [R(rp.x), R(rp.y)],
                  "area_paredes_m2": R(max(0.0, pl.length * altura - a_vaos_div), 2), "rodape_m": R(max(0.0, pl.length - portas), 2),
+                 "faces": _faces_divisao(_anel(pl), vaos_piso, geo), "z0": z0, "z1": z1,
                  "acabamentos": {k: {"id": v["id"], "nome": v["nome"], "cor": v["cor"]} for k, v in acab.items()},
                  "proprios": [k for k in ACABAMENTOS_DIVISAO if (rt or {}).get(k)]}
             divisoes_out.append(d)
@@ -418,6 +484,12 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         e_cima = m["pisos"][k + 1]["laje_m"] if k + 1 < n else cob["laje_m"]
         fachada["area_bruta_m2"] += per * (m["pisos"][k]["pe_direito_m"] + e_cima)
     fachada["area_bruta_m2"] += a_empenas
+    if a_empenas > 0:                                  # as empenas seguem o acabamento de fachada da casa
+        fach_por[fach_casa["nome"]] = fach_por.get(fach_casa["nome"], 0.0) + a_empenas
+    if not fach_por:
+        fach_por[fach_casa["nome"]] = 0.0
+    if not caix_por:
+        caix_por[MAT.acabamento("caixilharia", mat_casa.get("caixilharia"))["nome"]] = 0.0
     fachada = {"perimetro_m": R(fachada["perimetro_m"], 2), "area_bruta_m2": R(fachada["area_bruta_m2"], 2),
                "area_vaos_m2": R(fachada["area_vaos_m2"], 2),
                "area_liquida_m2": R(fachada["area_bruta_m2"] - fachada["area_vaos_m2"], 2)}
@@ -436,13 +508,12 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     ys = [c for w in m["paredes"] for c in (w["a"][1], w["b"][1])]
     mat = m.get("materiais") or {}
     acabamentos = [
-        {"elemento": "Fachada exterior", "material": MAT.acabamento("fachada", mat.get("fachada"))["nome"], "area_m2": fachada["area_liquida_m2"]},
+        *[{"elemento": "Fachada exterior", "material": nm, "area_m2": R(a, 2)} for nm, a in fach_por.items()],
         {"elemento": "Cobertura", "material": MAT.acabamento("cobertura", mat.get("cobertura"))["nome"], "area_m2": cobertura["area_m2"]},
         *_por_material(divisoes_out, "Pavimentos", "pavimento", "area_m2", mat),
         *_por_material(divisoes_out, "Paredes interiores (faces das divisões)", "parede_interior", "area_paredes_m2", mat),
         *_por_material(divisoes_out, "Tetos", "teto", "area_m2", mat),
-        {"elemento": "Caixilharia (vãos exteriores)", "material": MAT.acabamento("caixilharia", mat.get("caixilharia"))["nome"],
-         "area_m2": fachada["area_vaos_m2"]},
+        *[{"elemento": "Caixilharia (vãos exteriores)", "material": nm, "area_m2": R(a, 2)} for nm, a in caix_por.items()],
     ]
     medicoes = {
         "convencao": ("Medições geométricas do modelo: comprimentos líquidos sem contar encontros duas vezes, áreas "

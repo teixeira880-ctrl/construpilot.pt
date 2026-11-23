@@ -152,6 +152,7 @@ def _cores(m):
 
 def _vista(m, d, lado: str, prof_min: Optional[float] = None, claro: bool = False) -> List[Tuple[float, dict]]:
     """Elementos em projeção ortogonal, do mais afastado para o mais próximo (algoritmo do pintor)."""
+    from engines.estudio_projeto import materiais as MAT
     U, F = _proj(lado)
     cf, cc = _cores(m)
     if claro:
@@ -165,7 +166,7 @@ def _vista(m, d, lado: str, prof_min: Optional[float] = None, claro: bool = Fals
         if prof_min is not None and min(fs) < prof_min - 1e-6:
             continue
         z0, z1 = w["z0"], w["z0"] + w["altura_m"]
-        cor = cf if w["exterior"] else (236, 236, 232)
+        cor = (cf if claro or not w.get("cor") else MAT.rgb(w["cor"])) if w["exterior"] else (236, 236, 232)
         el.append((prof, _poly([(min(us), z0), (max(us), z0), (max(us), z1), (min(us), z1)], cor, tr, 1.2)))
         L = w["comprimento_m"]
         ux, uy = (w["b"][0] - w["a"][0]) / L, (w["b"][1] - w["a"][1]) / L

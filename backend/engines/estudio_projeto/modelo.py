@@ -129,7 +129,10 @@ def normalizar(m: Any) -> Dict[str, Any]:
         tipo = str(w.get("tipo") or "")
         if tipo not in tipos:
             raise ErroModelo(f"A parede «{wid}» refere um tipo de parede que não existe.")
-        paredes.append({"id": wid, "piso": piso, "a": _pt(w.get("a"), "parede.a"), "b": _pt(w.get("b"), "parede.b"), "tipo": tipo})
+        par = {"id": wid, "piso": piso, "a": _pt(w.get("a"), "parede.a"), "b": _pt(w.get("b"), "parede.b"), "tipo": tipo}
+        if w.get("fachada"):                     # acabamento exterior próprio desta parede (vazio = o da casa)
+            par["fachada"] = _txt(w.get("fachada"), 40)
+        paredes.append(par)
 
     vaos_in = m.get("vaos") or []
     if not isinstance(vaos_in, list) or len(vaos_in) > LIM["vaos"]:
@@ -152,6 +155,8 @@ def normalizar(m: Any) -> Dict[str, Any]:
                      "altura_m": _f(v.get("altura_m"), "altura do vão", 0.3, 5.0, base["altura_m"]),
                      "peitoril_m": _f(v.get("peitoril_m"), "peitoril", 0.0, 4.0, base["peitoril_m"]),
                      "lado": -1 if v.get("lado") == -1 else 1, "dobradica": "b" if v.get("dobradica") == "b" else "a"})
+        if v.get("caixilharia"):                 # caixilharia própria deste vão (vazio = a da casa)
+            vaos[-1]["caixilharia"] = _txt(v.get("caixilharia"), 40)
 
     c = m.get("cobertura") if isinstance(m.get("cobertura"), dict) else {}
     cobertura = {"tipo": c.get("tipo") if c.get("tipo") in COBERTURAS else "duas_aguas",

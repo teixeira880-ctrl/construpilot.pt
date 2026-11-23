@@ -588,6 +588,12 @@ export default function EstudioProjeto({ pid }) {
               <div className="font-medium">Parede {wSel.id}</div>
               <Campo rotulo="Tipo (camadas)">{selTipo(wSel.tipo, (t) => { setAEditarCamadas(false); aplicar(G.mudarParede(comTipo(modelo, t), wSel.id, { tipo: t })); }, { "data-testid": "estudio-parede-tipo" })}</Campo>
               <Campo rotulo="Comprimento no eixo (m)"><Num valor={G.r3(G.geoParede(wSel).L)} min={0.1} onChange={(L) => aplicar(G.comprimentoParede(modelo, wSel.id, L))} /></Campo>
+              {modelo.tipos_parede[wSel.tipo].exterior && (
+                <Campo rotulo="Fachada desta parede">
+                  <SelAcabamento valor={wSel.fachada || ""} onChange={(v) => aplicar(G.mudarParede(modelo, wSel.id, { fachada: v || undefined }))} lista={cat.acabamentos.fachada}
+                    herdado={cat.acabamentos.fachada.find((x) => x.id === (modelo.materiais?.fachada || cat.padrao.fachada))} data-testid="estudio-parede-fachada" />
+                </Campo>
+              )}
               {aEditarCamadas === wSel.id && wSel.tipo.startsWith("pers_") ? (
                 <EditorCamadas tipo={modelo.tipos_parede[wSel.tipo]} catalogo={cat} usos={modelo.paredes.filter((w) => w.tipo === wSel.tipo).length}
                   onMudar={(t) => aplicar({ ...modelo, tipos_parede: { ...modelo.tipos_parede, [wSel.tipo]: t } })} />
@@ -614,6 +620,10 @@ export default function EstudioProjeto({ pid }) {
                 <Campo rotulo="Peitoril (m)"><Num valor={vSel.peitoril_m} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { peitoril_m: x }))} /></Campo>
                 <Campo rotulo="Centro desde a ponta (m)"><Num valor={vSel.pos_m} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { pos_m: x }))} /></Campo>
               </div>
+              <Campo rotulo="Caixilharia deste vão">
+                <SelAcabamento valor={vSel.caixilharia || ""} onChange={(v) => aplicar(G.mudarVao(modelo, vSel.id, { caixilharia: v || undefined }))} lista={cat.acabamentos.caixilharia}
+                  herdado={cat.acabamentos.caixilharia.find((x) => x.id === (modelo.materiais?.caixilharia || cat.padrao.caixilharia))} data-testid="estudio-vao-caixilharia" />
+              </Campo>
               {vSel.tipo === "porta" && (
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => aplicar(G.mudarVao(modelo, vSel.id, { lado: vSel.lado === -1 ? 1 : -1 }))}>Abrir para o outro lado</Button>
@@ -687,7 +697,12 @@ export default function EstudioProjeto({ pid }) {
 
       {aba === "3d" && derivado && (
         <div className="space-y-2">
-          <Estudio3D derivado={derivado} materiais={modelo.materiais} altura={grande ? 520 : 420} pisoVisivel={interior ? idxPiso : null} />
+          <Estudio3D derivado={derivado} altura={grande ? 520 : 420} pisoVisivel={interior ? idxPiso : null}
+            onSelecionar={(alvo) => {       // clique numa peça do 3D → abre o painel dessa peça
+              setFerramenta("selecionar"); setInicio(null); setPiso(alvo.piso);
+              setSel(alvo.tipo === "divisao" ? { tipo: "divisao", pt: alvo.pt } : { tipo: alvo.tipo, id: alvo.id });
+            }} />
+          <p className="text-xs text-muted-foreground">Clique numa parede, num vão ou numa divisão do 3D para editar essa peça.</p>
           <label className="text-xs flex items-center gap-2"><input type="checkbox" checked={interior} onChange={(e) => setInterior(e.target.checked)} />
             Ver o interior (esconde a cobertura e os pisos acima do piso selecionado)</label>
         </div>
