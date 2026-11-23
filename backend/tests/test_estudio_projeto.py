@@ -74,12 +74,52 @@ def test_cobertura(tipo, n_faces, n_empenas):
         assert min(p[2] for p in f["pts"]) == pytest.approx(z_topo - math.tan(math.radians(30)) * 0.5, abs=0.005)
 
 
-def test_cobertura_inclinada_em_planta_com_reentrancia_nao_e_inventada():
-    L = [{"id": f"w{i}", "piso": "p0", "a": a, "b": b, "tipo": "ext_30"} for i, (a, b) in enumerate(
+def _em_L():
+    return [{"id": f"w{i}", "piso": "p0", "a": a, "b": b, "tipo": "ext_30"} for i, (a, b) in enumerate(
         [([0, 0], [10, 0]), ([10, 0], [10, 4]), ([10, 4], [5, 4]), ([5, 4], [5, 8]), ([5, 8], [0, 8]), ([0, 8], [0, 0])])]
-    d = EP.derivar(modelo(paredes=L, vaos=[], rotulos=[]))
+
+
+@pytest.mark.parametrize("tipo", ["quatro_aguas", "duas_aguas"])
+def test_cobertura_inclinada_em_planta_em_L(tipo):
+    from shapely.geometry import Polygon as Pg
+    d = EP.derivar(modelo(paredes=_em_L(), vaos=[], rotulos=[], cobertura={"tipo": tipo, "inclinacao_graus": 30, "beiral_m": 0.5}))
+    c = d["cobertura"]
+    assert c["faces"] and not any(a["codigo"] == "COBERTURA_FORMA" for a in d["avisos"])
+    faces = [Pg([(p[0], p[1]) for p in f["pts"]]) for f in c["faces"]]
+    beirado = Pg(d["pisos"][0]["pegada"][0]).buffer(0.5, join_style=2)
+    # as águas cobrem exatamente o contorno + beiral, sem buracos nem sobreposições
+    assert sum(f.area for f in faces) == pytest.approx(beirado.area, abs=0.02)
+    assert sum(faces[i].intersection(faces[j]).area for i in range(len(faces)) for j in range(i + 1, len(faces))) < 1e-4
+    assert d["medicoes"]["cobertura"]["area_m2"] == pytest.approx(beirado.area / math.cos(math.radians(30)), abs=0.1)
+    # cumeeira: meio-lado do maior quadrado inscrito (corpo de 5,30 m + 2 × 0,50 de beiral → 3,15 m)
+    tan = math.tan(math.radians(30))
+    assert c["z_cumeeira"] == pytest.approx(2.95 - tan * 0.5 + tan * 3.15, abs=0.01)
+    # cada face é plana com a inclinação pedida e tem triângulos que a cobrem por inteiro
+    for f, pl in zip(c["faces"], faces):
+        assert sum(Pg([(q[0], q[1]) for q in t]).area for t in f["tris"]) == pytest.approx(pl.area, abs=0.01)
+        assert min(q[2] for q in f["pts"]) >= 2.95 - tan * 0.5 - 0.002
+    assert bool(c["empenas"]) == (tipo == "duas_aguas")
+
+
+def test_cobertura_ortogonal_coincide_com_a_convexa_num_retangulo():
+    from shapely.geometry import Polygon as Pg
+    from engines.estudio_projeto.cobertura import aguas_ortogonais
+    from engines.estudio_projeto.derivar import _aguas
+    ret = Pg([(0, 0), (10, 0), (10, 8), (0, 8)])
+    for tipo in ("quatro_aguas", "duas_aguas"):
+        cob = {"tipo": tipo, "inclinacao_graus": 27, "beiral_m": 0.4, "cumeeira": "auto", "lado_baixo": "frente"}
+        a, b = _aguas(ret, cob, 3.0), aguas_ortogonais(ret, cob, 3.0)
+        assert a["z_cumeeira"] == pytest.approx(b["z_cumeeira"], abs=0.002)
+        assert sum(f["area_m2"] for f in a["faces"]) == pytest.approx(sum(f["area_m2"] for f in b["faces"]), abs=0.05)
+        assert sum(e["area_m2"] for e in a["empenas"]) == pytest.approx(sum(e["area_m2"] for e in b["empenas"]), abs=0.03)
+
+
+def test_cobertura_inclinada_em_contorno_obliquo_com_reentrancia_nao_e_inventada():
+    seta = [{"id": f"w{i}", "piso": "p0", "a": a, "b": b, "tipo": "ext_30"} for i, (a, b) in enumerate(
+        [([0, 0], [10, 0]), ([10, 0], [10, 6]), ([5, 3], [10, 6]), ([5, 3], [0, 6]), ([0, 6], [0, 0])])]
+    d = EP.derivar(modelo(paredes=seta, vaos=[], rotulos=[]))
     assert not d["cobertura"]["faces"] and any(a["codigo"] == "COBERTURA_FORMA" for a in d["avisos"])
-    plana = EP.derivar(modelo(paredes=L, vaos=[], rotulos=[], cobertura={"tipo": "plana"}))
+    plana = EP.derivar(modelo(paredes=seta, vaos=[], rotulos=[], cobertura={"tipo": "plana"}))
     assert plana["medicoes"]["cobertura"]["area_m2"] == plana["pisos"][0]["area_bruta_m2"]
 
 
@@ -171,12 +211,25 @@ def test_modelo_do_processo_coincide_com_o_processo(env):
         x0, y0, x1, y1 = doc["auto"]["plantas"]["casa_rect"]
         n = len(doc["auto"]["plantas"]["pisos"])
         # mesma implantação: área bruta de cada piso = retângulo da casa no processo
-        for p in e["derivado"]["pisos"]:
-            assert p["area_bruta_m2"] == pytest.approx((x1 - x0) * (y1 - y0), abs=0.02)
+        from engines.urbanismo_pt import volumes as V
+        anexos = [q for q in V.building_polygons(doc["volume"]) if q["annexe"]]
+        a_anexos = sum((max(x for x, _ in q["pts"]) - min(x for x, _ in q["pts"])) * (max(y for _, y in q["pts"]) - min(y for _, y in q["pts"])) for q in anexos)
+        for k, p in enumerate(e["derivado"]["pisos"]):       # a garagem do processo entra no rés-do-chão, com a mesma implantação
+            assert p["area_bruta_m2"] == pytest.approx((x1 - x0) * (y1 - y0) + (a_anexos if k == 0 else 0.0), abs=0.03)
         assert len(e["derivado"]["pisos"]) == n
         # mesmos vãos de fachada, nas mesmas posições e cotas
-        vs = [v for w in e["derivado"]["paredes"] for v in w["vaos"]]
+        vs = [v for w in e["derivado"]["paredes"] for v in w["vaos"] if v["tipo"] != "portao"]
         assert len(vs) == len(doc["auto"]["vaos"]) and all(v["valido"] for v in vs)
+        portoes = [v for w in e["derivado"]["paredes"] for v in w["vaos"] if v["tipo"] == "portao"]
+        assert len(portoes) == sum(1 for q in anexos if "garag" in q["name"].lower()) and all(v["valido"] for v in portoes)
+        # escada proposta: dentro do compartimento «Escada», sem atravessar paredes, a subir a altura real entre pisos
+        if n > 1:
+            esc = e["derivado"]["escadas"]
+            assert len(esc) == n - 1 and not any(a.get("codigo", "").startswith("ESCADA") for a in e["derivado"]["avisos"]), e["derivado"]["avisos"]
+            from shapely.geometry import Polygon as Pg
+            sala_escada = next(Pg(dv["pts"]) for dv in e["derivado"]["divisoes"] if dv["nome"].lower().startswith("escada") and dv["piso"] == "p0")
+            assert Pg(esc[0]["contorno"][0]).difference(sala_escada.buffer(0.005)).area < 1e-4
+            assert esc[0]["n_espelhos"] * esc[0]["espelho_m"] == pytest.approx(V.heights(doc["volume"])["storey_h_m"], abs=0.002)
         o = doc["auto"]["vaos"][0]
         w = next(w for w in e["derivado"]["paredes"] if w["id"] == f"p{o['piso']}_{o['fachada']}")
         v = w["vaos"][0] if o["fachada"] == "frente" else None
@@ -184,7 +237,7 @@ def test_modelo_do_processo_coincide_com_o_processo(env):
             assert w["a"][0] + min(x["u0"] for x in w["vaos"]) == pytest.approx(min(q["x0"] for q in doc["auto"]["vaos"]
                                                                                if q["piso"] == o["piso"] and q["fachada"] == "frente"), abs=0.002)
         # uma divisão por compartimento do processo, com o mesmo nome
-        nomes_proc = sorted(c["nome"] for p in doc["auto"]["plantas"]["pisos"] for c in p["compartimentos"])
+        nomes_proc = sorted([c["nome"] for p in doc["auto"]["plantas"]["pisos"] for c in p["compartimentos"]] + [q["name"] for q in anexos])
         assert sorted(dv["nome"] for dv in e["derivado"]["divisoes"]) == nomes_proc
         # altura das paredes = altura de fachada do processo
         from engines.urbanismo_pt import volumes as V
@@ -205,6 +258,9 @@ def test_modelo_do_processo_coincide_com_o_processo(env):
         assert pdf.body[:4] == b"%PDF"
         csv_ = (await RE.medicoes(pid, USER)).body.decode("utf-8")
         assert "PAREDES" in csv_ and "p0_frente" in csv_ and "COBERTURA" in csv_
+        ifc = await RE.modelo_ifc(pid, USER)
+        assert ifc.body.startswith(b"ISO-10303-21") and b"IFCSTAIR" in ifc.body and b"IFCBUILDINGSTOREY" in ifc.body
+        assert "ESCADAS" in csv_
         svg = await RE.desenho_svg(RE.DesenhoIn(modelo=m, tipo="corte", eixo="y"), USER)
         assert svg.body.startswith(b"<svg")
         with pytest.raises(Exception):
@@ -331,3 +387,105 @@ def test_no_3d_os_encontros_nao_se_sobrepoem():
             assert solidos[i].intersection(solidos[j]).area < 1e-6
     # e juntos cobrem exatamente a planta das paredes (área bruta menos as divisões)
     assert sum(s.area for s in solidos) == pytest.approx(80.0 - sum(x["area_m2"] for x in d["divisoes"]), abs=0.02)
+
+
+# ------------------------------------------------------------------ escadas
+def _dois_pisos(**kw):
+    return modelo(pisos=[{"id": "p0"}, {"id": "p1", "laje_m": 0.30}], paredes=casa() + casa(piso="p1", pre="s"), vaos=[], rotulos=[], **kw)
+
+
+@pytest.mark.parametrize("tipo,n_deg,n_pat", [("reta", 16, 0), ("l", 15, 1), ("u", 15, 1)])
+def test_escadas_degraus_pela_altura_real(tipo, n_deg, n_pat):
+    from shapely.geometry import Polygon as Pg
+    m = _dois_pisos(escadas=[{"id": "e1", "piso": "p0", "tipo": tipo, "x": 6.0, "y": 1.0, "rot": 0, "largura_m": 0.9, "cobertor_m": 0.25}])
+    d = EP.derivar(m)
+    assert d["ok"], d["erros"]
+    e = d["escadas"][0]
+    # 3,00 m de piso a piso (2,70 + 0,30): 17 espelhos de 17,65 cm, um cobertor a menos (o patamar conta como cobertor)
+    assert e["altura_m"] == 3.0 and e["n_espelhos"] == 17 and e["espelho_m"] == pytest.approx(3.0 / 17, abs=1e-4)
+    assert len(e["degraus"]) == n_deg and len(e["patamares"]) == n_pat and e["n_cobertores"] == 16
+    cotas_ = sorted(x["z"] for x in e["degraus"] + e["patamares"])
+    assert cotas_[0] == pytest.approx(3.0 / 17, abs=0.002) and cotas_[-1] == pytest.approx(3.0 - 3.0 / 17, abs=0.002)
+    assert all(b - a == pytest.approx(3.0 / 17, abs=0.002) for a, b in zip(cotas_, cotas_[1:]))      # sobe sempre um espelho
+    assert all(Pg(x["pts"]).area == pytest.approx(0.9 * 0.25, abs=0.002) for x in e["degraus"])
+    assert e["blondel_m"] == pytest.approx(2 * 3.0 / 17 + 0.25, abs=0.001)
+    # vazio na laje do 1.º andar: só onde faltam 2,00 m livres (degraus acima de 0,70 m), descontado da laje
+    altos = [x for x in e["degraus"] + e["patamares"] if x["z"] > 0.70]
+    assert e["vazio_m2"] == pytest.approx(sum(Pg(x["pts"]).area for x in altos), abs=0.02) and 0 < e["vazio_m2"] < e["area_planta_m2"]
+    laje = next(x for x in d["medicoes"]["lajes"] if x["nome"] == "Laje do 1.º andar")
+    assert laje["area_m2"] == pytest.approx(80.0 - e["vazio_m2"], abs=0.02)
+    assert sum(len(f) for f in next(x for x in d["lajes"] if x["nome"] == "Laje do 1.º andar")["furos"]) == 1
+    assert d["medicoes"]["escadas"][0]["n_espelhos"] == 17
+    pecas = D.conjunto(m, d)
+    assert all(D.png(x)[:4] == b"\x89PNG" for x in pecas) and "sobe" in D.svg(pecas[0])
+
+
+def test_escada_rodada_e_erros():
+    m = _dois_pisos(escadas=[{"id": "a", "piso": "p0", "tipo": "u", "x": 6.0, "y": 6.5, "rot": 270, "sentido": "esq"},
+                             {"id": "b", "piso": "p1", "tipo": "reta", "x": 6.0, "y": 1.0}])
+    d = EP.derivar(m)
+    assert not d["ok"] and [e["codigo"] for e in d["erros"]] == ["ESCADA_SEM_PISO"]
+    a = d["escadas"][0]
+    xs = [p[0] for x in a["degraus"] for p in x["pts"]]
+    assert min(xs) == pytest.approx(6.0, abs=0.002) and max(xs) > 7.5          # rodada: sobe segundo +x
+    fora = EP.derivar(_dois_pisos(escadas=[{"id": "f", "piso": "p0", "tipo": "reta", "x": 9.0, "y": 6.0}]))
+    assert {x["codigo"] for x in fora["avisos"]} >= {"ESCADA_FORA", "ESCADA_PAREDE"}
+    with pytest.raises(EP.ErroModelo):
+        EP.normalizar({"pisos": [{"id": "p0"}], "escadas": [{"id": "e", "piso": "nao"}]})
+
+
+# ------------------------------------------------------------------ exportação IFC
+def test_ifc_reabre_valido_e_com_as_mesmas_quantidades():
+    import ifcopenshell
+    import ifcopenshell.util.element as E
+    import ifcopenshell.util.placement as PL
+    from engines.bim_core.ifc_builder import validate
+    from engines.estudio_projeto import ifc as IFC
+    paredes = casa() + casa(piso="p1", pre="s")
+    paredes[0]["fachada"] = "madeira_cedro"
+    m = modelo(pisos=[{"id": "p0"}, {"id": "p1", "laje_m": 0.30}], paredes=paredes,
+               vaos=[{"id": "v1", "parede": "f", "tipo": "porta", "pos_m": 2.0}, {"id": "v2", "parede": "f", "tipo": "janela", "pos_m": 7.0},
+                     {"id": "v3", "parede": "d", "tipo": "portao", "pos_m": 3.5}, {"id": "v4", "parede": "sf", "tipo": "portada", "pos_m": 5.0}],
+               escadas=[{"id": "e1", "piso": "p0", "tipo": "u", "x": 6.0, "y": 1.0}],
+               rotulos=[{"piso": "p0", "x": 2, "y": 4, "nome": "Sala", "pavimento": "soalho_carvalho"}])
+    d = EP.derivar(m)
+    f = IFC.construir(m, d, chave="proc1", nome_projeto="Casa de ensaio")
+    assert validate(f) == []
+    g = ifcopenshell.file.from_string(f.to_string())                  # o que conta é o ficheiro tal como é descarregado
+    assert g.schema == "IFC4"
+    assert [(s.Name, s.Elevation) for s in sorted(g.by_type("IfcBuildingStorey"), key=lambda s: s.Elevation)] == [("Rés-do-chão", 0.0), ("1.º andar", 3.0)]
+    paredes_ifc = [w for w in g.by_type("IfcWall") if not w.Name.startswith("Empena")]
+    assert len(paredes_ifc) == len(d["paredes"]) == 10 and len([w for w in g.by_type("IfcWall") if w.Name.startswith("Empena")]) == len(d["cobertura"]["empenas"])
+    assert len(g.by_type("IfcDoor")) == 2 and len(g.by_type("IfcWindow")) == 2 and len(g.by_type("IfcStair")) == 1
+    assert len(g.by_type("IfcSpace")) == len(d["divisoes"]) and len(g.by_type("IfcRoof")) == 1
+    # cada vão abre a sua parede e é preenchido pela sua porta ou janela
+    assert len(g.by_type("IfcRelVoidsElement")) == 4 + 1 and len(g.by_type("IfcRelFillsElement")) == 4      # + o vazio da escada na laje
+    w = next(x for x in paredes_ifc if x.Name == "Parede f")
+    ps = E.get_psets(w)
+    mp = next(x for x in d["medicoes"]["paredes"] if x["id"] == "f")
+    assert ps["Qto_WallBaseQuantities"]["NetSideArea"] == pytest.approx(mp["area_liquida_m2"]) and ps["Pset_WallCommon"]["IsExternal"] is True
+    assert ps["CP_Estudio"]["Fachada"] == "Ripado de cedro"
+    cj = E.get_material(w)
+    assert cj.is_a("IfcMaterialLayerSet") and [c.Material.Name for c in cj.MaterialLayers] == [c["material"] for c in m["tipos_parede"]["ext_30"]["camadas"]]
+    assert sum(c.LayerThickness for c in cj.MaterialLayers) == pytest.approx(0.30)
+    # posição no mundo: a parede «sf» (1.º andar) começa no ponto certo e à cota do piso
+    sf = next(x for x in paredes_ifc if x.Name == "Parede sf")
+    mt = PL.get_local_placement(sf.ObjectPlacement)
+    dw = next(x for x in d["paredes"] if x["id"] == "sf")
+    assert mt[0][3] == pytest.approx(dw["a"][0] - dw["ext3d_a"], abs=1e-6) and mt[2][3] == pytest.approx(3.0, abs=1e-6)
+    sala = next(x for x in g.by_type("IfcSpace") if x.Name == "Sala")
+    assert E.get_psets(sala)["CP_Acabamentos"]["Pavimento"] == "Soalho de carvalho"
+    assert E.get_psets(sala)["Qto_SpaceBaseQuantities"]["NetFloorArea"] == pytest.approx(3.64 * 7.40, abs=0.01)
+    esc = E.get_psets(g.by_type("IfcStair")[0])["Pset_StairCommon"]
+    assert esc["NumberOfRiser"] == 17 and esc["RiserHeight"] == pytest.approx(3.0 / 17, abs=1e-4)
+    # exportar outra vez dá os mesmos identificadores
+    f2 = IFC.construir(m, EP.derivar(m), chave="proc1")
+    assert {x.GlobalId for x in f.by_type("IfcWall")} == {x.GlobalId for x in f2.by_type("IfcWall")}
+    # geometria real: o volume de cada parede do IFC é o da parede menos os seus vãos
+    import ifcopenshell.geom
+    import ifcopenshell.util.shape as SH
+    cfg = ifcopenshell.geom.settings()
+    forma = ifcopenshell.geom.create_shape(cfg, next(x for x in f.by_type("IfcWall") if x.Name == "Parede f"))
+    dwf = next(x for x in d["paredes"] if x["id"] == "f")
+    esperado = ((dwf["comprimento_m"] + dwf["ext3d_a"] + dwf["ext3d_b"]) * 2.7 - 0.9 * 2.1 - 1.2 * 1.2) * 0.30
+    assert SH.get_volume(forma.geometry) == pytest.approx(esperado, abs=0.01)

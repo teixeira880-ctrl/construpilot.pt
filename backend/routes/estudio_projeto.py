@@ -7,6 +7,7 @@ POST   /estudio-projeto/derivar                     modelo → derivado (ediçã
 POST   /estudio-projeto/desenho.svg                 modelo → planta | alçado | corte em SVG (edição em direto)
 GET    /estudio-projeto/processos/{pid}/pranchas.pdf   plantas, alçados e cortes do modelo guardado (carimbo do processo)
 GET    /estudio-projeto/processos/{pid}/medicoes.csv   medições geométricas (paredes, camadas, vãos, divisões, lajes, cobertura)
+GET    /estudio-projeto/processos/{pid}/modelo.ifc     IFC4 do modelo guardado
 
 O modelo fica numa coleção própria (`urbanismo_estudios`): o processo de licenciamento não é alterado por estas rotas.
 """
@@ -176,6 +177,14 @@ def medicoes_csv(der: Dict[str, Any]) -> str:
         w.writerow([lj["nome"], n(lj["area_m2"]), n(lj["espessura_m"]), n(lj["volume_m3"])])
     for t in md["terracos"]:
         w.writerow([f"Terraço sobre {t['sobre']}", n(t["area_m2"]), "", ""])
+    if md.get("escadas"):
+        w.writerow([])
+        w.writerow(["ESCADAS", "Piso", "Tipo", "Espelhos", "Espelho (m)", "Cobertores", "Cobertor (m)", "Largura (m)", "2e + c (m)",
+                    "Altura vencida (m)", "Área em planta (m²)", "Vazio na laje (m²)"])
+        for e in md["escadas"]:
+            w.writerow([e["id"], e["piso"], e["tipo"], e["n_espelhos"], n(e["espelho_m"]), e["n_cobertores"], n(e["cobertor_m"]), n(e["largura_m"]),
+                        n(e["blondel_m"]), n(e["altura_m"]), n(e["area_planta_m2"]), n(e["vazio_m2"])])
+        w.writerow([md["regra_vazio_escada"]])
     w.writerow([])
     w.writerow(["ACABAMENTOS", "Material", "Área (m²)"])
     for ac in md["acabamentos"]:
@@ -191,6 +200,20 @@ def medicoes_csv(der: Dict[str, Any]) -> str:
     w.writerow(["TOTAIS", "Área bruta de construção (m²)", "Área útil (m²)"])
     w.writerow(["", n(t["area_bruta_construcao_m2"]), n(t["area_util_m2"])])
     return buf.getvalue()
+
+
+@router.get("/processos/{pid}/modelo.ifc")
+async def modelo_ifc(pid: str, user=Depends(current_user)):
+    """IFC4 do modelo guardado: paredes com camadas, vãos, lajes, cobertura, escadas e espaços."""
+    from engines.estudio_projeto import ifc as IFC
+    c = await _carregar(pid, user["user_id"])
+
+    def go():
+        der = EP.derivar(c["modelo"])
+        return IFC.construir(c["modelo"], der, chave=pid, nome_projeto=c["processo"].get("title") or "Projeto ConstruPilot").to_string().encode("utf-8")
+    data = await run_in_threadpool(go)
+    return Response(content=data, media_type="application/x-step", headers={
+        "Content-Disposition": content_disposition(nom_document("Estudio-modelo", c["processo"].get("title"), ext="ifc"))})
 
 
 @router.get("/processos/{pid}/medicoes.csv")

@@ -84,7 +84,9 @@ def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
                                (255, 255, 255), None, 0))
             for u in (v["u0"], v["u1"]):
                 itens.append(_line([pt(u, h), pt(u, -h)], cor, 1.4))
-            if v["tipo"] == "porta":
+            if v["tipo"] == "portao":          # portão de garagem: folha a meio da parede, a traço interrompido
+                itens.append(_line([pt(v["u0"], 0), pt(v["u1"], 0)], cor, 2.0, True))
+            elif v["tipo"] == "porta":
                 s = v["lado"]
                 larg = v["u1"] - v["u0"]
                 ub, sentido = (v["u0"], 1) if v["dobradica"] == "a" else (v["u1"], -1)
@@ -94,6 +96,24 @@ def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
             else:
                 for off in (h, h / 3, -h / 3, -h):
                     itens.append(_line([pt(v["u0"], off), pt(v["u1"], off)], cor, 1.0))
+    ids_pisos = [p["id"] for p in d["pisos"]]
+    for e in d.get("escadas") or []:
+        ke = ids_pisos.index(e["piso"])
+        if ke == k:                              # escada que parte deste piso: degraus, patamares e sentido de subida
+            for peca in e["degraus"] + e["patamares"]:
+                itens.append(_poly(peca["pts"], (255, 255, 255), INK, 1.0))
+            itens.append(_line(e["marcha"], RED, 1.4))
+            (ax, ay), (bx, by) = e["marcha"][-2], e["marcha"][-1]
+            L = math.hypot(bx - ax, by - ay) or 1.0
+            ux, uy = (bx - ax) / L, (by - ay) / L
+            itens.append(_line([(bx - ux * 0.22 - uy * 0.12, by - uy * 0.22 + ux * 0.12), (bx, by), (bx - ux * 0.22 + uy * 0.12, by - uy * 0.22 - ux * 0.12)], RED, 1.4))
+            itens.append(_text(e["marcha"][0][0], e["marcha"][0][1], f"sobe · {e['n_espelhos']} × {fmt(e['espelho_m'] * 100, 1)} cm", 12, RED, "mm", 0, 12))
+        elif ke == k - 1:                        # escada que chega a este piso: vazio na laje
+            for anel in e["vazio"]:
+                itens.append(_poly(anel, (255, 255, 255), None, 0))
+                itens.append(_line(list(anel) + [anel[0]], GREY, 1.4, True))
+                cx_, cy_ = sum(p[0] for p in anel) / len(anel), sum(p[1] for p in anel) / len(anel)
+                itens.append(_text(cx_, cy_, "vazio da escada", 12, GREY))
     for dv in d["divisoes"]:
         if dv["piso"] == piso["id"]:
             cx, cy = dv["centro"]
@@ -178,11 +198,14 @@ def _vista(m, d, lado: str, prof_min: Optional[float] = None, claro: bool = Fals
                 b = U(w["a"][0] + ux * v["u1"], w["a"][1] + uy * v["u1"])
                 a, b = min(a, b), max(a, b)
                 za, zb = w["z0"] + v["z0"], w["z0"] + v["z1"]
-                cv = (150, 110, 78) if v["tipo"] == "porta" else VIDRO
+                cv = (150, 110, 78) if v["tipo"] == "porta" else (104, 110, 114) if v["tipo"] == "portao" else VIDRO
                 if claro:
                     cv = (232, 238, 242)
                 el.append((prof - 0.02, _poly([(a, za), (b, za), (b, zb), (a, zb)], cv, tr, 1.4)))
-                if v["tipo"] != "porta":
+                if v["tipo"] == "portao":       # painéis horizontais do portão seccionado
+                    for i in range(1, 5):
+                        el.append((prof - 0.03, _line([(a, za + (zb - za) * i / 5), (b, za + (zb - za) * i / 5)], tr, 1.0)))
+                elif v["tipo"] != "porta":
                     folhas = max(1, round((b - a) / 1.2))
                     for i in range(1, folhas):
                         el.append((prof - 0.03, _line([(a + (b - a) * i / folhas, za), (a + (b - a) * i / folhas, zb)], tr, 1.0)))
@@ -250,8 +273,9 @@ def corte(m: Dict[str, Any], d: Dict[str, Any], eixo: str = "x", pos: Optional[f
     itens = [it for _, it in _vista(m, d, lado, prof_min=pos, claro=True)]
     plano = LineString([(pos, lim[1] - 50), (pos, lim[3] + 50)] if eixo == "x" else [(lim[0] - 50, pos), (lim[2] + 50, pos)])
     for lj in d["lajes"]:
-        for anel in lj["polys"]:
-            g = Polygon(anel).intersection(plano)
+        for n_anel, anel in enumerate(lj["polys"]):
+            furos = (lj.get("furos") or [[]] * len(lj["polys"]))[n_anel]
+            g = Polygon(anel, furos).intersection(plano)
             for s in ([g] if g.geom_type == "LineString" else list(getattr(g, "geoms", []))):
                 if s.geom_type != "LineString" or s.length < 0.01:
                     continue
@@ -284,9 +308,17 @@ def corte(m: Dict[str, Any], d: Dict[str, Any], eixo: str = "x", pos: Optional[f
                 t = cp / (cp - cq)
                 x, y, z = (p[j] + t * (q[j] - p[j]) for j in range(3))
                 corta.append((U(x, y), z))
-        if len(corta) >= 2:
-            corta.sort()
-            itens.append(_line([corta[0], corta[-1]], INK, 4.0))
+        corta.sort()
+        for i in range(0, len(corta) - 1, 2):       # uma face com reentrâncias pode ser cortada em vários troços
+            itens.append(_line([corta[i], corta[i + 1]], INK, 4.0))
+    for e in d.get("escadas") or []:                # degraus e patamares cortados pelo plano
+        for peca in e["degraus"] + e["patamares"]:
+            g = Polygon(peca["pts"]).intersection(plano)
+            if g.is_empty or g.geom_type != "LineString" or g.length < 0.01:
+                continue
+            us = [U(x, y) for x, y in g.coords]
+            itens.append(_poly([(min(us), peca["z"] - e["espelho_m"]), (max(us), peca["z"] - e["espelho_m"]), (max(us), peca["z"]), (min(us), peca["z"])],
+                               (150, 156, 160), INK, 1.2))
     u0, u1 = _extensao_u(d, U)
     zs = d["pisos"][0]["z0"] if d["pisos"] else 0.0
     itens.append(_line([(u0 - 1.0, zs), (u1 + 1.0, zs)], INK, 2.4))

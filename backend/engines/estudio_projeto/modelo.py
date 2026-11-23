@@ -12,12 +12,14 @@ import re
 from typing import Any, Dict, List, Optional
 
 VERSAO = 1
-LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 60, "camadas": 8, "rotulos": 300, "coord": 500.0}
+LIM = {"pisos": 6, "paredes": 600, "vaos": 900, "tipos": 60, "camadas": 8, "rotulos": 300, "escadas": 12, "coord": 500.0}
+TIPOS_ESCADA = ("reta", "l", "u")
 COBERTURAS = ("plana", "uma_agua", "duas_aguas", "quatro_aguas")
-TIPOS_VAO = ("porta", "janela", "portada")
+TIPOS_VAO = ("porta", "janela", "portada", "portao")
 VAO_BASE = {"porta": {"largura_m": 0.90, "altura_m": 2.10, "peitoril_m": 0.0},
             "janela": {"largura_m": 1.20, "altura_m": 1.20, "peitoril_m": 0.90},
-            "portada": {"largura_m": 1.80, "altura_m": 2.20, "peitoril_m": 0.0}}
+            "portada": {"largura_m": 1.80, "altura_m": 2.20, "peitoril_m": 0.0},
+            "portao": {"largura_m": 2.40, "altura_m": 2.10, "peitoril_m": 0.0}}
 LADOS = ("frente", "tardoz", "esquerda", "direita")
 ACABAMENTOS_DIVISAO = ("pavimento", "parede_interior", "teto")
 
@@ -179,9 +181,29 @@ def normalizar(m: Any) -> Dict[str, Any]:
                     rt[k] = _txt(r.get(k), 40)
             rotulos.append(rt)
 
+    esc_in = m.get("escadas") or []
+    if not isinstance(esc_in, list) or len(esc_in) > LIM["escadas"]:
+        raise ErroModelo(f"Máximo de {LIM['escadas']} escadas.")
+    escadas, eids = [], set()
+    for e in esc_in:
+        if not isinstance(e, dict):
+            raise ErroModelo("Escada inválida.")
+        eid = _id(e.get("id"), "escada")
+        if eid in eids:
+            raise ErroModelo("Escadas com o mesmo identificador.")
+        eids.add(eid)
+        if str(e.get("piso") or "") not in ids:
+            raise ErroModelo(f"A escada «{eid}» refere um piso que não existe.")
+        p = _pt([e.get("x"), e.get("y")], "escada")
+        escadas.append({"id": eid, "piso": str(e["piso"]), "tipo": e.get("tipo") if e.get("tipo") in TIPOS_ESCADA else "reta",
+                        "x": p[0], "y": p[1], "rot": round(_f(e.get("rot"), "rotação da escada", -360.0, 720.0, 0.0) % 360.0, 2),
+                        "largura_m": _f(e.get("largura_m"), "largura da escada", 0.60, 2.50, 0.90),
+                        "cobertor_m": _f(e.get("cobertor_m"), "cobertor", 0.22, 0.40, 0.25),
+                        "sentido": "esq" if e.get("sentido") == "esq" else "dir"})
+
     mat = m.get("materiais") if isinstance(m.get("materiais"), dict) else {}
     return {"versao": VERSAO, "pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos,
-            "cobertura": cobertura, "rotulos": rotulos,
+            "cobertura": cobertura, "rotulos": rotulos, "escadas": escadas,
             "laje_terrea_m": _f(m.get("laje_terrea_m"), "laje térrea", 0.08, 1.0, 0.20),
             "materiais": {k: _txt(mat.get(k), 40) for k in ("fachada", "cobertura", "caixilharia", "pavimento", "parede_interior", "teto")
                           if mat.get(k)},
@@ -221,6 +243,8 @@ def de_processo(d: Dict[str, Any]) -> Dict[str, Any]:
     laje = 0.30 if sh >= 2.6 else 0.25
     pd = round(sh - laje, 3)
     pisos, paredes, vaos, rotulos, avisos = [], [], [], [], []
+    escadas, sem_escada = [], False
+    n_pisos = len(plan["pisos"])
     for p in plan["pisos"]:
         k = int(p["piso"])
         pid = f"p{k}"
@@ -238,6 +262,16 @@ def de_processo(d: Dict[str, Any]) -> Dict[str, Any]:
                 if y0 + 0.05 < yy < y1 - 0.05:
                     horiz.append((yy, c["x0"], c["x1"]))
             rotulos.append({"piso": pid, "x": (c["x0"] + c["x1"]) / 2, "y": (c["y0"] + c["y1"]) / 2, "nome": c["nome"]})
+            if k + 1 < n_pisos and str(c["nome"]).lower().startswith("escada"):
+                # escada proposta dentro do compartimento «Escada» do processo (entre faces das paredes)
+                from engines.estudio_projeto.escadas import propor
+                faces = (max(c["x0"], x0 + te - ti / 2) + ti / 2, max(c["y0"], y0 + te - ti / 2) + ti / 2,
+                         min(c["x1"], x1 - te + ti / 2) - ti / 2, min(c["y1"], y1 - te + ti / 2) - ti / 2)
+                pr = propor(faces, sh, folga=0.02)
+                if pr:
+                    escadas.append({"id": f"e{k + 1}", "piso": pid, **pr})
+                else:
+                    sem_escada = True
         n = 0
         for xx, t0, t1 in _fundir(vert):
             n += 1
@@ -263,10 +297,37 @@ def de_processo(d: Dict[str, Any]) -> Dict[str, Any]:
     if tipo_cob != "plana" and hh["roof_h_m"] > 0.05:
         vao = (min(L, W) / 2) if tipo_cob != "uma_agua" else min(L, W)
         incl = max(3.0, min(60.0, math.degrees(math.atan2(hh["roof_h_m"], vao))))
-    avisos.append("As portas interiores e a escada não existem no processo: coloque-as no Estúdio.")
-    if any(p.get("annexe") for p in V.building_polygons(vol)):
-        avisos.append("A garagem / anexo do processo ainda não é importada para o Estúdio.")
-    modelo = normalizar({"pisos": pisos, "paredes": paredes, "vaos": vaos, "rotulos": rotulos,
+    avisos.append("As portas interiores não existem no processo: coloque-as no Estúdio.")
+    if escadas:
+        avisos.append("Escada proposta no compartimento «Escada» do processo: confirme o tipo e a posição.")
+    if sem_escada or (n_pisos > 1 and not escadas):
+        avisos.append("Não coube uma escada regulamentar no compartimento «Escada» do processo: coloque-a no Estúdio.")
+    # garagem / anexos do processo: paredes no rés-do-chão (mesma implantação); o lado encostado à casa não é duplicado
+    for n_an, pol in enumerate([p for p in V.building_polygons(vol) if p.get("annexe")], 1):
+        xs, ys = [q[0] for q in pol["pts"]], [q[1] for q in pol["pts"]]
+        if len(pol["pts"]) != 4:
+            avisos.append(f"O anexo «{pol.get('name')}» não é retangular e não foi importado.")
+            continue
+        gx0, gy0, gx1, gy1 = min(xs), min(ys), max(xs), max(ys)
+        toca = {"esq": abs(gx0 - x1) < 0.06 and gy0 < y1 and gy1 > y0, "dir": abs(gx1 - x0) < 0.06 and gy0 < y1 and gy1 > y0,
+                "frente": abs(gy0 - y1) < 0.06 and gx0 < x1 and gx1 > x0, "tardoz": abs(gy1 - y0) < 0.06 and gx0 < x1 and gx1 > x0}
+        ex0 = (x1 - h) if toca["esq"] else gx0 + h          # onde encosta, as paredes vão até ao eixo da parede da casa
+        ex1 = (x0 + h) if toca["dir"] else gx1 - h
+        ey0 = (y1 - h) if toca["frente"] else gy0 + h
+        ey1 = (y0 + h) if toca["tardoz"] else gy1 - h
+        lados = (("frente", (ex0, ey0), (ex1, ey0)), ("dir", (ex1, ey0), (ex1, ey1)), ("tardoz", (ex1, ey1), (ex0, ey1)), ("esq", (ex0, ey1), (ex0, ey0)))
+        for lado, pa, pb in lados:
+            if not toca[lado]:
+                paredes.append({"id": f"an{n_an}_{lado}", "piso": "p0", "a": list(pa), "b": list(pb), "tipo": "ext_30"})
+        nome = str(pol.get("name") or "Anexo")
+        rotulos.append({"piso": "p0", "x": (gx0 + gx1) / 2, "y": (gy0 + gy1) / 2, "nome": nome})
+        if "garag" in nome.lower() and not toca["frente"] and (ex1 - ex0) >= 3.0:
+            larg = min(gx1 - gx0 - 0.9, ex1 - ex0 - 0.6)       # como no processo: 0,45 m a cada lado do portão
+            vaos.append({"id": f"pg{n_an}", "parede": f"an{n_an}_frente", "tipo": "portao", "pos_m": (ex1 - ex0) / 2,
+                         "largura_m": larg, "altura_m": min(2.40, pd - 0.05), "peitoril_m": 0.0})
+        if pol.get("h_m") and abs(float(pol["h_m"]) - sh) > 0.10:
+            avisos.append(f"«{nome}»: no processo tem {float(pol['h_m']):.2f} m de altura; no Estúdio fica com a altura do rés-do-chão ({sh:.2f} m).")
+    modelo = normalizar({"pisos": pisos, "paredes": paredes, "vaos": vaos, "rotulos": rotulos, "escadas": escadas,
                          "cobertura": {"tipo": tipo_cob, "inclinacao_graus": round(incl, 2), "beiral_m": 0.5, "laje_m": laje},
                          "materiais": a.get("materiais") or {}, "origem": "processo"})
     _ = ti

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, DoorOpen, Download, Eraser, Layers, Loader2, Maximize2, Minimize2, MousePointer2, PenLine, RotateCcw, Save, Square, Trash2, Undo2 } from "lucide-react";
+import { AlertTriangle, Car, DoorOpen, Download, Eraser, Layers, Loader2, Maximize2, Minimize2, MousePointer2, PenLine, RotateCcw, Save, Square, Trash2, TrendingUp, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import * as G from "@/components/licenciamento/estudioGeo";
 
 const FERRAMENTAS = [
   ["selecionar", "Selecionar", MousePointer2], ["parede", "Parede", PenLine], ["porta", "Porta", DoorOpen],
-  ["janela", "Janela", Square], ["portada", "Portada", Layers], ["apagar", "Apagar", Eraser],
+  ["janela", "Janela", Square], ["portada", "Portada", Layers], ["portao", "Portão", Car], ["escada", "Escada", TrendingUp],
+  ["apagar", "Apagar", Eraser],
 ];
 const COB = { plana: "Plana", uma_agua: "Uma água", duas_aguas: "Duas águas", quatro_aguas: "Quatro águas" };
 const LADOS = { frente: "Frente", tardoz: "Tardoz", esquerda: "Esquerda", direita: "Direita" };
@@ -187,6 +188,11 @@ function Medicoes({ md }) {
           linhas={md.divisoes.map((d) => [d.nome, d.piso, n(d.area_m2), n(d.perimetro_m), n(d.area_paredes_m2), n(d.rodape_m), d.pavimento, d.parede_interior, d.teto])} /></div>
       {md.acabamentos && <div><div className="font-medium text-sm mb-1">Acabamentos escolhidos</div>
         <T cab={["Elemento", "Material", "Área (m²)"]} linhas={md.acabamentos.map((a) => [a.elemento, a.material, n(a.area_m2)])} /></div>}
+      {md.escadas?.length > 0 && <div><div className="font-medium text-sm mb-1">Escadas</div>
+        <T cab={["Escada", "Piso", "Tipo", "Espelhos", "Espelho (cm)", "Cobertor (cm)", "Largura (m)", "2e + c (m)", "Em planta (m²)", "Vazio (m²)"]}
+          linhas={md.escadas.map((e) => [e.id, e.piso, { reta: "Reta", l: "Em L", u: "Em U" }[e.tipo], e.n_espelhos, n(e.espelho_m * 100, 1), n(e.cobertor_m * 100, 1),
+            n(e.largura_m), n(e.blondel_m), n(e.area_planta_m2), n(e.vazio_m2)])} />
+        <p className="text-xs text-muted-foreground mt-1">{md.regra_vazio_escada}</p></div>}
       <div className="grid md:grid-cols-2 gap-4">
         <div><div className="font-medium text-sm mb-1">Vãos</div>
           <T cab={["Tipo", "Largura", "Altura", "Qtd.", "Área (m²)"]} linhas={md.vaos.map((v) => [v.tipo, n(v.largura_m, 3), n(v.altura_m, 3), v.quantidade, n(v.area_m2)])} /></div>
@@ -303,6 +309,9 @@ export default function EstudioProjeto({ pid }) {
       const s = dx * g.u[0] + dy * g.u[1], d = Math.abs(dx * g.n[0] + dy * g.n[1]);
       if (Math.abs(s) <= v.largura_m / 2 && d <= g.t / 2 + tol) return { tipo: "vao", id: v.id };
     }
+    // a escada antes das paredes: num compartimento estreito está sempre perto de uma parede, mas o clique foi dentro dela
+    const esc = (derivado?.escadas || []).find((e) => e.piso === piso && e.contorno.some((a) => G.dentroPoligono(p, a)));
+    if (esc) return { tipo: "escada", id: esc.id };
     const pr = G.paredeMaisProxima(paredesPiso, p, 0.25 + tol);
     return pr ? { tipo: "parede", id: pr.parede.id, s: pr.s } : null;
   };
@@ -318,7 +327,16 @@ export default function EstudioProjeto({ pid }) {
       setInicio(q);
       return;
     }
-    if (["porta", "janela", "portada"].includes(ferramenta)) {
+    if (ferramenta === "escada") {
+      if (modelo.pisos.findIndex((x) => x.id === piso) >= modelo.pisos.length - 1) {
+        toast.message("A escada sobe do piso selecionado para o de cima: adicione primeiro o piso de cima.");
+        return;
+      }
+      const r = G.adicionarEscada(modelo, piso, p);
+      aplicar(r.modelo); setSel({ tipo: "escada", id: r.id }); setFerramenta("selecionar");
+      return;
+    }
+    if (["porta", "janela", "portada", "portao"].includes(ferramenta)) {
       const pr = G.paredeMaisProxima(paredesPiso, p, 0.7);
       if (!pr) { toast.message("Clique sobre uma parede para colocar o vão."); return; }
       const r = G.adicionarVao(modelo, pr.parede, pr.s, ferramenta, info.catalogo.vaos[ferramenta]);
@@ -337,6 +355,7 @@ export default function EstudioProjeto({ pid }) {
     const alvo = acertar(p);
     if (ferramenta === "apagar") {
       if (alvo?.tipo === "vao") aplicar(G.removerVao(modelo, alvo.id));
+      else if (alvo?.tipo === "escada") aplicar(G.removerEscada(modelo, alvo.id));
       else if (alvo?.tipo === "parede") aplicar(G.removerParede(modelo, alvo.id));
       setSel(null);
       return;
@@ -344,6 +363,10 @@ export default function EstudioProjeto({ pid }) {
     if (alvo) {
       setSel({ tipo: alvo.tipo, id: alvo.id });
       if (alvo.tipo === "vao") arrasto.current = { tipo: "vao", id: alvo.id, antes: modelo };
+      if (alvo.tipo === "escada") {
+        const e = modelo.escadas.find((x) => x.id === alvo.id);
+        arrasto.current = { tipo: "escada", id: alvo.id, antes: modelo, dx: p[0] - e.x, dy: p[1] - e.y };
+      }
     } else {
       // clique dentro de uma divisão seleciona-a (guarda-se o ponto: as divisões são recalculadas a cada alteração)
       const dv = (derivado?.divisoes || []).find((d) => d.piso === piso && G.dentroPoligono(p, d.pts));
@@ -365,6 +388,12 @@ export default function EstudioProjeto({ pid }) {
       const fixo = a.ponta === "a" ? w.b : w.a;
       const q = G.encaixar(p, paredesPiso, fixo, a.id).ponto;
       if (Math.hypot(q[0] - fixo[0], q[1] - fixo[1]) >= 0.1) aplicar(G.mudarParede(modelo, a.id, { [a.ponta]: q }), false);
+      return;
+    }
+    if (a?.tipo === "escada") {
+      const x = G.r3(G.arred(p[0] - a.dx)), y = G.r3(G.arred(p[1] - a.dy));
+      const e = modelo.escadas.find((k) => k.id === a.id);
+      if (e && (e.x !== x || e.y !== y)) aplicar(G.mudarEscada(modelo, a.id, { x, y }), false);
       return;
     }
     if (a?.tipo === "vao") {
@@ -408,7 +437,7 @@ export default function EstudioProjeto({ pid }) {
     if (ev.key === "Escape") { setInicio(null); setCursor(null); setFerramenta("selecionar"); }
     if ((ev.key === "Delete" || ev.key === "Backspace") && sel && sel.tipo !== "divisao") {
       ev.preventDefault();
-      aplicar(sel.tipo === "vao" ? G.removerVao(modelo, sel.id) : G.removerParede(modelo, sel.id)); setSel(null);
+      aplicar(sel.tipo === "vao" ? G.removerVao(modelo, sel.id) : sel.tipo === "escada" ? G.removerEscada(modelo, sel.id) : G.removerParede(modelo, sel.id)); setSel(null);
     }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); anular(); }
   };
@@ -478,6 +507,11 @@ export default function EstudioProjeto({ pid }) {
   for (let y = Math.ceil(y0v / passoGrelha) * passoGrelha; y <= y1v && grelha.length < 800; y += passoGrelha) grelha.push(<line key={`gy${y}`} x1={x0v} y1={y} x2={x1v} y2={y} />);
   const divisoes = (derivado?.divisoes || []).filter((d) => d.piso === piso);
   const abaixo = idxPiso > 0 ? modelo.paredes.filter((w) => w.piso === modelo.pisos[idxPiso - 1].id) : [];
+  const eSel = sel?.tipo === "escada" ? (modelo.escadas || []).find((e) => e.id === sel.id) : null;
+  const eDer = eSel ? (derivado?.escadas || []).find((e) => e.id === eSel.id) : null;
+  const mudaEsc = (patch) => aplicar(G.mudarEscada(modelo, eSel.id, patch));
+  const escadasPiso = (derivado?.escadas || []).filter((e) => e.piso === piso);
+  const escadasAbaixo = idxPiso > 0 ? (derivado?.escadas || []).filter((e) => e.piso === modelo.pisos[idxPiso - 1].id) : [];
   const dSel = sel?.tipo === "divisao" ? divisoes.find((d) => G.dentroPoligono(sel.pt, d.pts)) : null;
   const mudaDiv = (patch) => aplicar(G.definirDivisao(modelo, piso, dSel, patch));
   const rotSel = dSel ? (modelo.rotulos || [])[G.rotuloDaDivisao(modelo, piso, dSel.pts)] : null;
@@ -552,10 +586,22 @@ export default function EstudioProjeto({ pid }) {
                         <polyline points={`${P(s0, ld * t)} ${P(s0, ld * (t + v.largura_m))}`} stroke={cor} strokeWidth={1.6 * px} fill="none" />
                         <polyline points={arco} stroke={cor} strokeWidth={px} fill="none" />
                       </>
+                    ) : v.tipo === "portao" ? (
+                      <polyline points={`${P(-h, 0)} ${P(h, 0)}`} stroke={cor} strokeWidth={2.5 * px} strokeDasharray={`${7 * px} ${5 * px}`} fill="none" />
                     ) : [t, t / 3, -t / 3, -t].map((d) => <polyline key={d} points={`${P(-h, d)} ${P(h, d)}`} stroke={v.tipo === "portada" ? "#2f6f9f" : cor} strokeWidth={px} fill="none" />)}
                   </g>
                 );
               })}
+              {escadasAbaixo.flatMap((e) => e.vazio.map((a, i) => <polygon key={`vz${e.id}${i}`} points={a.map((p) => p.join(",")).join(" ")} fill="#fff" fillOpacity="0.7"
+                stroke="#8a949b" strokeWidth={1.5 * px} strokeDasharray={`${6 * px} ${4 * px}`} />))}
+              {escadasPiso.map((e) => (
+                <g key={`esc${e.id}`} data-escada={e.id}>
+                  {[...e.degraus, ...e.patamares].map((d, i) => <polygon key={i} points={d.pts.map((p) => p.join(",")).join(" ")} fill="#fff"
+                    stroke={eSel?.id === e.id ? "#1f7a5c" : "#1f2933"} strokeWidth={(eSel?.id === e.id ? 2 : 1) * px} />)}
+                  <polyline points={e.marcha.map((p) => p.join(",")).join(" ")} fill="none" stroke="#be2828" strokeWidth={1.5 * px} />
+                  <circle cx={e.marcha[0][0]} cy={e.marcha[0][1]} r={3.5 * px} fill="#be2828" />
+                </g>
+              ))}
               {wSel && wSel.piso === piso && ["a", "b"].map((k) => <circle key={k} cx={wSel[k][0]} cy={wSel[k][1]} r={6 * px} fill="#fff" stroke="#1f7a5c" strokeWidth={2 * px} />)}
               {previa && <line x1={previa[0][0]} y1={previa[0][1]} x2={previa[1][0]} y2={previa[1][1]} stroke="#1f7a5c" strokeWidth={G.espessuraTipo(modelo.tipos_parede[tipoParede])} strokeOpacity="0.45" />}
               {ferramenta === "parede" && cursor && <circle cx={cursor.ponto[0]} cy={cursor.ponto[1]} r={(cursor.tipo === "ponta" ? 7 : 4) * px} fill="none" stroke={cursor.tipo === "grelha" ? "#8a949b" : "#d97706"} strokeWidth={2 * px} />}
@@ -613,7 +659,7 @@ export default function EstudioProjeto({ pid }) {
             <div className="space-y-2">
               <div className="font-medium">Vão {vSel.id}</div>
               <Campo rotulo="Tipo"><Sel valor={vSel.tipo} onChange={(t) => aplicar(G.mudarVao(modelo, vSel.id, { tipo: t, ...(t === "janela" ? {} : { peitoril_m: 0 }) }))}
-                opcoes={[["porta", "Porta"], ["janela", "Janela"], ["portada", "Portada / envidraçado"]]} /></Campo>
+                opcoes={[["porta", "Porta"], ["janela", "Janela"], ["portada", "Portada / envidraçado"], ["portao", "Portão de garagem"]]} /></Campo>
               <div className="grid grid-cols-2 gap-2">
                 <Campo rotulo="Largura (m)"><Num valor={vSel.largura_m} min={0.3} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { largura_m: x }))} /></Campo>
                 <Campo rotulo="Altura (m)"><Num valor={vSel.altura_m} min={0.3} onChange={(x) => aplicar(G.mudarVao(modelo, vSel.id, { altura_m: x }))} /></Campo>
@@ -646,7 +692,31 @@ export default function EstudioProjeto({ pid }) {
               <div className="text-xs text-muted-foreground">Paredes da divisão {G.fmt(dSel.area_paredes_m2)} m² · rodapé {G.fmt(dSel.rodape_m)} m · perímetro {G.fmt(dSel.perimetro_m)} m</div>
             </div>
           )}
-          {!wSel && !vSel && !dSel && (
+          {eSel && (
+            <div className="space-y-2" data-testid="estudio-escada">
+              <div className="font-medium">Escada {eSel.id}</div>
+              <Campo rotulo="Tipo"><Sel valor={eSel.tipo} onChange={(t) => mudaEsc({ tipo: t })} data-testid="estudio-escada-tipo"
+                opcoes={[["reta", "Reta (um lanço)"], ["l", "Em L (quarto de volta com patamar)"], ["u", "Em U (meia volta com patamar)"]]} /></Campo>
+              <div className="grid grid-cols-2 gap-2">
+                <Campo rotulo="Largura (m)"><Num valor={eSel.largura_m} min={0.6} onChange={(x) => mudaEsc({ largura_m: x })} /></Campo>
+                <Campo rotulo="Cobertor (m)"><Num valor={eSel.cobertor_m} min={0.22} passo={0.01} onChange={(x) => mudaEsc({ cobertor_m: x })} /></Campo>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => mudaEsc({ rot: (eSel.rot + 90) % 360 })} data-testid="estudio-escada-rodar"><RotateCcw className="h-4 w-4 mr-1" />Rodar 90°</Button>
+                {eSel.tipo !== "reta" && <Button size="sm" variant="outline" onClick={() => mudaEsc({ sentido: eSel.sentido === "esq" ? "dir" : "esq" })}>Virar para o outro lado</Button>}
+              </div>
+              {eDer ? (
+                <div className="text-xs text-muted-foreground space-y-0.5" data-testid="estudio-escada-calculo">
+                  <div className="text-foreground">{eDer.n_espelhos} espelhos de {G.fmt(eDer.espelho_m * 100, 1)} cm · {eDer.n_cobertores} cobertores</div>
+                  <div>Altura vencida {G.fmt(eDer.altura_m)} m · 2 × espelho + cobertor = {G.fmt(eDer.blondel_m)} m</div>
+                  <div>Em planta {G.fmt(eDer.area_planta_m2)} m² · vazio na laje de cima {G.fmt(eDer.vazio_m2)} m²</div>
+                </div>
+              ) : <p className="text-xs text-muted-foreground">A calcular os degraus…</p>}
+              <p className="text-[11px] text-muted-foreground">O ponto vermelho é o arranque; arraste a escada para a mover.</p>
+              <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerEscada(modelo, eSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar escada</Button>
+            </div>
+          )}
+          {!wSel && !vSel && !dSel && !eSel && (
             <div className="space-y-2">
               <div className="font-medium">{pisoObj?.nome}</div>
               <div className="grid grid-cols-2 gap-2">
@@ -691,6 +761,8 @@ export default function EstudioProjeto({ pid }) {
             <Download className="h-4 w-4 mr-1" />Pranchas (PDF)</Button>
           <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} onClick={() => descarregar(`/estudio-projeto/processos/${pid}/medicoes.csv`, "estudio-medicoes.csv")}>
             <Download className="h-4 w-4 mr-1" />Medições (CSV)</Button>
+          <Button size="sm" variant="outline" disabled={sujo} title={sujo ? "Guarde primeiro" : ""} data-testid="estudio-ifc" onClick={() => descarregar(`/estudio-projeto/processos/${pid}/modelo.ifc`, "estudio-modelo.ifc")}>
+            <Download className="h-4 w-4 mr-1" />Modelo (IFC)</Button>
         </span>
       </div>
       {sujo && <p className="text-xs text-muted-foreground">Há alterações por guardar: os ficheiros para descarregar usam o último modelo guardado.</p>}

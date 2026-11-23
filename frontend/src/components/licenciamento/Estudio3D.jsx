@@ -11,11 +11,16 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const RESERVA = { fachada: "#f1efe9", cobertura: "#ba6042", caixilharia: "#2f3235", parede_interior: "#f6f5f0", pavimento: "#b9b7b1", teto: "#f6f5f0" };
 
-function leque(pts3) {
-  // polígono convexo → triângulos em leque; pontos do modelo [x, y, z] → three (x, z, −y)
+function leque(pts3, tris = null) {
+  // triângulos dados pelo servidor (faces com reentrâncias) ou, na falta, leque de um polígono convexo;
+  // pontos do modelo [x, y, z] → three (x, z, −y)
   const pos = [];
-  for (let i = 1; i < pts3.length - 1; i += 1) {
-    for (const p of [pts3[0], pts3[i], pts3[i + 1]]) pos.push(p[0], p[2], -p[1]);
+  if (tris && tris.length) {
+    for (const t of tris) for (const p of t) pos.push(p[0], p[2], -p[1]);
+  } else {
+    for (let i = 1; i < pts3.length - 1; i += 1) {
+      for (const p of [pts3[0], pts3[i], pts3[i + 1]]) pos.push(p[0], p[2], -p[1]);
+    }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -54,6 +59,7 @@ function construir(derivado, pisoVisivel) {
   };
   const mVidro = new THREE.MeshPhysicalMaterial({ color: 0x8fb4cc, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.55 });
   const mPorta = mat("#7a4b28", { roughness: 0.6 });
+  const mPortao = mat("#686e72", { roughness: 0.5, metalness: 0.3 });
   const ate = pisoVisivel == null ? Infinity : pisoVisivel;      // corta a vista acima deste piso (ver o interior)
   const ordem = Object.fromEntries((derivado.pisos || []).map((p, i) => [p.id, i]));
   const nPisos = (derivado.pisos || []).length;
@@ -76,13 +82,13 @@ function construir(derivado, pisoVisivel) {
     for (const v of validos) {
       const larg = v.u1 - v.u0, alt = v.z1 - v.z0;
       const alvo = { tipo: "vao", id: v.id, piso: w.piso };
-      const folha = new THREE.Mesh(new THREE.BoxGeometry(larg, alt, 0.04), v.tipo === "porta" ? mPorta : mVidro);
+      const folha = new THREE.Mesh(new THREE.BoxGeometry(larg, alt, 0.04), v.tipo === "porta" ? mPorta : v.tipo === "portao" ? mPortao : mVidro);
       folha.position.set((v.u0 + v.u1) / 2, (v.z0 + v.z1) / 2, 0);
       folha.applyMatrix4(B);
       junta(folha, alvo);
       const mCaix = mat(v.cor || cores.caixilharia, { roughness: 0.4, metalness: 0.3 });
       const aros = [[larg, 0.05, 0, alt / 2], [0.05, alt, larg / 2, 0], [0.05, alt, -larg / 2, 0]];
-      if (v.tipo !== "porta") aros.push([larg, 0.05, 0, -alt / 2]);
+      if (v.tipo !== "porta" && v.tipo !== "portao") aros.push([larg, 0.05, 0, -alt / 2]);
       for (const [bw, bh, bx, by] of aros) {
         const aro = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, t + 0.02), mCaix);
         aro.position.set((v.u0 + v.u1) / 2 + bx, (v.z0 + v.z1) / 2 + by, 0);
@@ -94,16 +100,31 @@ function construir(derivado, pisoVisivel) {
 
   (derivado.lajes || []).forEach((lj, i) => {
     if (i > ate) return;   // lajes acima do piso visível ficam de fora (laje i = sob o piso i; a última é a de cobertura)
-    for (const anel of lj.polys) {
+    lj.polys.forEach((anel, n) => {
       const sh = new THREE.Shape(anel.map((p) => new THREE.Vector2(p[0], p[1])));
+      for (const furo of lj.furos?.[n] || []) sh.holes.push(new THREE.Path(furo.map((p) => new THREE.Vector2(p[0], p[1]))));   // vazios das escadas
       const geo = new THREE.ExtrudeGeometry(sh, { depth: lj.z1 - lj.z0, bevelEnabled: false });
       geo.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geo, mat("#c9c7c1", { roughness: 0.9 }));
       mesh.position.y = lj.z0;
       mesh.receiveShadow = true; mesh.castShadow = true;
       grupo.add(mesh);
-    }
+    });
   });
+
+  // escadas: um bloco por degrau e por patamar, com a espessura de um espelho
+  for (const e of derivado.escadas || []) {
+    if (ordem[e.piso] > ate) continue;
+    const mEsc = mat("#d9d4c8", { roughness: 0.8 });
+    for (const peca of [...e.degraus, ...e.patamares]) {
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(peca.pts.map((p) => new THREE.Vector2(p[0], p[1]))), { depth: e.espelho_m, bevelEnabled: false });
+      geo.rotateX(-Math.PI / 2);
+      const bloco = new THREE.Mesh(geo, mEsc);
+      bloco.position.y = peca.z - e.espelho_m;
+      bloco.castShadow = true; bloco.receiveShadow = true;
+      junta(bloco, { tipo: "escada", id: e.id, piso: e.piso });
+    }
+  }
 
   // cada divisão vestida com os seus acabamentos: pavimento, faces de parede (com os vãos recortados) e teto
   for (const d of derivado.divisoes || []) {
@@ -139,7 +160,7 @@ function construir(derivado, pisoVisivel) {
 
   if (ate >= nPisos - 1) {
     const mCob = mat(cores.cobertura, { roughness: 0.8, side: THREE.DoubleSide });
-    for (const f of derivado.cobertura?.faces || []) { const m = new THREE.Mesh(leque(f.pts), mCob); m.castShadow = true; grupo.add(m); }
+    for (const f of derivado.cobertura?.faces || []) { const m = new THREE.Mesh(leque(f.pts, f.tris), mCob); m.castShadow = true; grupo.add(m); }
     for (const e of derivado.cobertura?.empenas || []) grupo.add(new THREE.Mesh(leque(e.pts), mat(cores.fachada, { side: THREE.DoubleSide })));
   }
   return grupo;

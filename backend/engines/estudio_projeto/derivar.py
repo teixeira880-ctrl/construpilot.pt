@@ -120,9 +120,9 @@ def _aguas(pegada: Polygon, cob: Dict[str, Any], z_topo: float) -> Dict[str, Any
     lados que escoam). Devolve {"faces", "empenas", "z_cumeeira", "z_beirado"} ou {"motivo"} se a forma não permite."""
     tipo, tan, beiral = cob["tipo"], math.tan(math.radians(cob["inclinacao_graus"])), cob["beiral_m"]
     pg = orient(pegada.simplify(0.002), 1.0)
-    if pg.convex_hull.area - pg.area > 1e-4:
-        return {"motivo": "A cobertura inclinada automática só existe, para já, em plantas convexas (sem reentrâncias). "
-                          "Nesta planta escolha «plana» ou simplifique o contorno do último piso."}
+    if pg.convex_hull.area - pg.area > 1e-4:          # reentrâncias: exato em contornos ortogonais (L, T, U…)
+        from engines.estudio_projeto.cobertura import aguas_ortogonais
+        return aguas_ortogonais(pegada, cob, z_topo)
     if tipo in ("duas_aguas", "uma_agua") and not _retangulo(pg):
         return {"motivo": "As coberturas de uma e de duas águas pedem um último piso retangular; use «quatro águas» ou «plana»."}
     beirado = orient(pg.buffer(beiral, join_style=2, mitre_limit=10.0), 1.0) if beiral > 0 else pg
@@ -259,6 +259,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
 
     pisos_out, paredes_out, divisoes_out, lajes_out = [], [], [], []
     pegadas: List[Any] = []
+    unioes: List[Any] = []
     med_paredes, med_div = [], []
     fachada = {"perimetro_m": 0.0, "area_bruta_m2": 0.0, "area_vaos_m2": 0.0}
     cont_vaos: Dict[tuple, Dict[str, Any]] = {}
@@ -295,6 +296,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         partes = _polys(uniao)
         pegada = unary_union([Polygon(p.exterior) for p in partes]) if partes else None
         pegadas.append(pegada)
+        unioes.append(uniao)
         # parte de cada parede na planta (sem contar encontros duas vezes)
         ordem = sorted(vivos, key=lambda w: (not tipos[w["tipo"]]["exterior"], -geo[w["id"]]["t"], w["id"]))
         # no 3D cada encontro pertence a uma só parede: a dona do encontro avança até à face exterior, as outras
@@ -356,7 +358,8 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                 fachada["area_vaos_m2"] += a_vaos
                 fach_por[fw["nome"]] = fach_por.get(fw["nome"], 0.0) + fach_len.get(w["id"], 0.0) * (altura + e_cima) - a_vaos
                 for v in validos:
-                    cxn = MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["nome"]
+                    cxn = "Portão de garagem (material por definir)" if v["tipo"] == "portao" else \
+                        MAT.acabamento("caixilharia", v.get("caixilharia") or mat_casa.get("caixilharia"))["nome"]
                     caix_por[cxn] = caix_por.get(cxn, 0.0) + v["largura_m"] * v["altura_m"]
             for v in vs:
                 cx, cy = w["a"][0] + g["u"][0] * v["pos_m"], w["a"][1] + g["u"][1] * v["pos_m"]
@@ -423,6 +426,12 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                           "paredes_planta": [{"ext": _anel(p), "furos": [[[R(x), R(y)] for x, y in list(a.coords)[:-1]] for a in p.interiors]}
                                              for p in partes]})
 
+    # escadas: degraus pela altura real entre pisos; o vazio de cada uma é aberto na laje do piso de chegada
+    from engines.estudio_projeto.escadas import LIVRE_SOBRE_ESCADA, derivar_escadas
+    escadas_out, vazios, e_esc, a_esc = derivar_escadas(m, cz, pegadas, unioes)
+    erros += e_esc
+    avisos += a_esc
+
     # lajes: sob cada piso (cobre o piso de baixo e apoia o de cima) e laje de cobertura
     med_lajes = []
     n = len(m["pisos"])
@@ -436,11 +445,14 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         else:
             g, e, nome = pegadas[n - 1], m["cobertura"]["laje_m"], "Laje de cobertura"
             zt = cz[n - 1]["z1"] + e
+        if g is not None and vazios.get(k):
+            g = g.difference(unary_union(vazios[k]))
         ps = _polys(g)
         if not ps:
             continue
         area = sum(p.area for p in ps)
-        lajes_out.append({"nome": nome, "z0": R(zt - e), "z1": R(zt), "polys": [_anel(p) for p in ps]})
+        lajes_out.append({"nome": nome, "z0": R(zt - e), "z1": R(zt), "polys": [_anel(p) for p in ps],
+                          "furos": [[[[R(x), R(y)] for x, y in list(a.coords)[:-1]] for a in p.interiors] for p in ps]})
         med_lajes.append({"nome": nome, "area_m2": R(area, 2), "espessura_m": R(e, 3), "volume_m3": R(area * e, 3)})
 
     # terraços: parte de um piso que não tem piso por cima
@@ -521,7 +533,10 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                       "nem preços: não substituem o mapa de quantidades."),
         "paredes": med_paredes, "por_tipo": list(por_tipo.values()),
         "vaos": sorted(cont_vaos.values(), key=lambda c: (c["tipo"], c["largura_m"], c["altura_m"])),
-        "divisoes": med_div, "acabamentos": acabamentos, "lajes": med_lajes, "terracos": terracos, "fachada": fachada,
+        "divisoes": med_div, "acabamentos": acabamentos, "lajes": med_lajes,
+        "escadas": [{kk: e[kk] for kk in ("id", "piso", "tipo", "n_espelhos", "n_cobertores", "espelho_m", "cobertor_m", "largura_m",
+                                          "blondel_m", "altura_m", "desenvolvimento_m", "area_planta_m2", "vazio_m2")} for e in escadas_out],
+        "regra_vazio_escada": f"Vazio aberto na laje onde o pé-direito livre sobre a escada seria inferior a {LIVRE_SOBRE_ESCADA:.2f} m.", "terracos": terracos, "fachada": fachada,
         "cobertura": {"tipo": cob["tipo"], "inclinacao_graus": cob["inclinacao_graus"] if cob["tipo"] != "plana" else 0.0,
                       "area_m2": cobertura["area_m2"], "area_planta_m2": cobertura["area_planta_m2"],
                       "perimetro_beirado_m": cobertura["perimetro_beirado_m"], "empenas_m2": R(a_empenas, 2),
@@ -530,6 +545,6 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                    "area_util_m2": R(sum(d["area_m2"] for d in med_div), 2),
                    "n_paredes": len(med_paredes), "n_vaos": sum(c["quantidade"] for c in cont_vaos.values())},
     }
-    return {"ok": not erros, "pisos": pisos_out, "paredes": paredes_out, "divisoes": divisoes_out, "lajes": lajes_out,
+    return {"ok": not erros, "pisos": pisos_out, "paredes": paredes_out, "divisoes": divisoes_out, "lajes": lajes_out, "escadas": escadas_out,
             "cobertura": cobertura, "cores": MAT.cores(mat), "medicoes": medicoes, "erros": erros, "avisos": avisos,
             "limites": [R(min(xs)), R(min(ys)), R(max(xs)), R(max(ys))] if xs else None}

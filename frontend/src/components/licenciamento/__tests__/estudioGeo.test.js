@@ -68,3 +68,13 @@ test("acabamentos e nome por divisão ficam no rótulo que está dentro dela", (
   expect(m.rotulos[0].nome).toBe("Sala");
   expect(G.rotuloDaDivisao(m, "p1", sala.pts)).toBe(-1);               // outro piso não conta
 });
+
+test("escadas: colocar na grelha, rodar, remover; remover o último piso leva as escadas que subiam para ele", () => {
+  let m = G.adicionarPiso(base());
+  const r = G.adicionarEscada(m, "p0", [3.02, 4.98]);
+  expect(r.modelo.escadas[0]).toMatchObject({ id: "e1", piso: "p0", tipo: "u", x: 3, y: 5, rot: 0, largura_m: 0.9, cobertor_m: 0.25 });
+  m = G.mudarEscada(r.modelo, "e1", { rot: 90, tipo: "l" });
+  expect(m.escadas[0]).toMatchObject({ rot: 90, tipo: "l" });
+  expect(G.removerUltimoPiso(m).escadas).toHaveLength(0);              // sem piso acima, a escada deixa de fazer sentido
+  expect(G.removerEscada(m, "e1").escadas).toHaveLength(0);
+});

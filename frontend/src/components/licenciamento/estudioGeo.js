@@ -168,6 +168,8 @@ export function removerUltimoPiso(modelo) {
     paredes: modelo.paredes.filter((w) => w.piso !== id),
     vaos: modelo.vaos.filter((v) => !ids.has(v.parede)),
     rotulos: (modelo.rotulos || []).filter((r) => r.piso !== id),
+    // saem as escadas do piso removido e as que subiam para ele (o piso de baixo passa a ser o último)
+    escadas: (modelo.escadas || []).filter((e) => e.piso !== id && e.piso !== modelo.pisos[modelo.pisos.length - 2].id),
   };
 }
 
@@ -210,4 +212,19 @@ export function definirDivisao(modelo, piso, divisao, patch) {
   }
   rot[i] = r;
   return { ...modelo, rotulos: rot };
+}
+
+// ---------------------------------------------------------------- escadas
+export function adicionarEscada(modelo, piso, pt, tipo = "u") {
+  const lista = modelo.escadas || [];
+  const id = novoId("e", lista);
+  return { modelo: { ...modelo, escadas: [...lista, { id, piso, tipo, x: r3(arred(pt[0])), y: r3(arred(pt[1])), rot: 0, largura_m: 0.9, cobertor_m: 0.25, sentido: "dir" }] }, id };
+}
+
+export function mudarEscada(modelo, id, patch) {
+  return { ...modelo, escadas: (modelo.escadas || []).map((e) => (e.id === id ? { ...e, ...patch } : e)) };
+}
+
+export function removerEscada(modelo, id) {
+  return { ...modelo, escadas: (modelo.escadas || []).filter((e) => e.id !== id) };
 }
