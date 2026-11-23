@@ -18,7 +18,7 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
 from engines.estudio_projeto import materiais as MAT
-from engines.estudio_projeto.modelo import espessura
+from engines.estudio_projeto.modelo import ACABAMENTOS_DIVISAO, espessura
 
 JUNTA = 0.012          # dois eixos a menos desta distância encontram-se
 FOLGA_VAO = 0.05       # distância mínima de um vão ao extremo da parede
@@ -207,11 +207,23 @@ def _aguas(pegada: Polygon, cob: Dict[str, Any], z_topo: float) -> Dict[str, Any
             "beirado": [[R(x), R(y)] for x, y in E], "perimetro_beirado_m": R(beirado.length, 2)}
 
 
+def _por_material(divisoes, elemento: str, chave: str, campo: str, mat_casa: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Área de um acabamento interior somada por material, divisão a divisão (cada divisão conta uma vez)."""
+    tot: Dict[str, float] = {}
+    for d in divisoes:
+        nome = d["acabamentos"][chave]["nome"]
+        tot[nome] = tot.get(nome, 0.0) + d[campo]
+    if not tot:
+        tot[MAT.acabamento(chave, mat_casa.get(chave))["nome"]] = 0.0
+    return [{"elemento": elemento, "material": n, "area_m2": R(a, 2)} for n, a in tot.items()]
+
+
 # ---------------------------------------------------------------- derivação completa
 def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     erros: List[Dict[str, Any]] = []
     avisos: List[Dict[str, Any]] = []
     tipos = m["tipos_parede"]
+    mat_casa = m.get("materiais") or {}
     cz = cotas(m)
     por_piso_vaos: Dict[str, List[dict]] = {}
     for v in m["vaos"]:
@@ -306,7 +318,10 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
                                           "z1": R(v["peitoril_m"] + v["altura_m"]), "valido": v["valido"],
                                           "lado": v["lado"], "dobradica": v["dobradica"]} for v in vs]})
         for i, pl in enumerate(divs, 1):
-            nome = next((r["nome"] for r in rot if pl.contains(Point(r["x"], r["y"]))), f"Divisão {i}")
+            rt = next((r for r in rot if pl.contains(Point(r["x"], r["y"]))), None)
+            nome = rt["nome"] if rt else f"Divisão {i}"
+            # acabamentos da divisão: os próprios (no rótulo) ou, na falta, os escolhidos para a casa
+            acab = {k: MAT.acabamento(k, (rt or {}).get(k) or mat_casa.get(k)) for k in ACABAMENTOS_DIVISAO}
             a_vaos_div, portas = 0.0, 0.0
             for v in vaos_piso:
                 if not v["valido"]:
@@ -323,9 +338,12 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
             rp = pl.representative_point()
             d = {"id": f"{piso['id']}_d{i}", "piso": piso["id"], "nome": nome, "area_m2": R(pl.area, 2),
                  "perimetro_m": R(pl.length, 2), "pts": _anel(pl), "centro": [R(rp.x), R(rp.y)],
-                 "area_paredes_m2": R(max(0.0, pl.length * altura - a_vaos_div), 2), "rodape_m": R(max(0.0, pl.length - portas), 2)}
+                 "area_paredes_m2": R(max(0.0, pl.length * altura - a_vaos_div), 2), "rodape_m": R(max(0.0, pl.length - portas), 2),
+                 "acabamentos": {k: {"id": v["id"], "nome": v["nome"], "cor": v["cor"]} for k, v in acab.items()},
+                 "proprios": [k for k in ACABAMENTOS_DIVISAO if (rt or {}).get(k)]}
             divisoes_out.append(d)
-            med_div.append({kk: d[kk] for kk in ("id", "piso", "nome", "area_m2", "perimetro_m", "area_paredes_m2", "rodape_m")})
+            med_div.append({**{kk: d[kk] for kk in ("id", "piso", "nome", "area_m2", "perimetro_m", "area_paredes_m2", "rodape_m")},
+                            **{k: v["nome"] for k, v in acab.items()}})
         soltas = [w["id"] for w in vivos if geo[w["id"]]["ea"] == 0 and geo[w["id"]]["eb"] == 0 and len(vivos) > 1]
         if soltas:
             avisos.append({"codigo": "PAREDES_SOLTAS", "ids": soltas, "msg": f"{piso['nome']}: {len(soltas)} parede(s) sem ligação a outras."})
@@ -417,14 +435,12 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     xs = [c for w in m["paredes"] for c in (w["a"][0], w["b"][0])]
     ys = [c for w in m["paredes"] for c in (w["a"][1], w["b"][1])]
     mat = m.get("materiais") or {}
-    a_util = sum(d["area_m2"] for d in med_div)
     acabamentos = [
         {"elemento": "Fachada exterior", "material": MAT.acabamento("fachada", mat.get("fachada"))["nome"], "area_m2": fachada["area_liquida_m2"]},
         {"elemento": "Cobertura", "material": MAT.acabamento("cobertura", mat.get("cobertura"))["nome"], "area_m2": cobertura["area_m2"]},
-        {"elemento": "Pavimentos", "material": MAT.acabamento("pavimento", mat.get("pavimento"))["nome"], "area_m2": R(a_util, 2)},
-        {"elemento": "Paredes interiores (faces das divisões)", "material": MAT.acabamento("parede_interior", mat.get("parede_interior"))["nome"],
-         "area_m2": R(sum(d["area_paredes_m2"] for d in med_div), 2)},
-        {"elemento": "Tetos", "material": MAT.acabamento("teto", mat.get("teto"))["nome"], "area_m2": R(a_util, 2)},
+        *_por_material(divisoes_out, "Pavimentos", "pavimento", "area_m2", mat),
+        *_por_material(divisoes_out, "Paredes interiores (faces das divisões)", "parede_interior", "area_paredes_m2", mat),
+        *_por_material(divisoes_out, "Tetos", "teto", "area_m2", mat),
         {"elemento": "Caixilharia (vãos exteriores)", "material": MAT.acabamento("caixilharia", mat.get("caixilharia"))["nome"],
          "area_m2": fachada["area_vaos_m2"]},
     ]

@@ -35,6 +35,15 @@ function Num({ valor, onChange, passo = 0.05, min = 0, ...resto }) {
     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirmar(); } }} {...resto} />;
 }
 
+// Texto confirmado ao sair do campo ou com Enter (não grava a cada letra)
+function Texto({ valor, onChange, ...resto }) {
+  const [txt, setTxt] = useState(valor ?? "");
+  useEffect(() => { setTxt(valor ?? ""); }, [valor]);
+  const confirmar = () => { const v = txt.trim(); if (v && v !== valor) onChange(v); else setTxt(valor ?? ""); };
+  return <Input className="h-8" maxLength={40} value={txt} onChange={(e) => setTxt(e.target.value)} onBlur={confirmar}
+    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} {...resto} />;
+}
+
 function Sel({ valor, onChange, opcoes, ...resto }) {
   return (
     <select className="w-full border rounded h-8 px-2 bg-background text-sm text-foreground" value={valor} onChange={(e) => onChange(e.target.value)} {...resto}>
@@ -44,14 +53,15 @@ function Sel({ valor, onChange, opcoes, ...resto }) {
 }
 
 // Lista de acabamentos agrupada (fachadas, coberturas, caixilharias, pavimentos…), com a cor de cada opção ao lado.
-function SelAcabamento({ valor, onChange, lista, ...resto }) {
+function SelAcabamento({ valor, onChange, lista, herdado = null, ...resto }) {
+  // `herdado` (acabamento da casa) acrescenta a opção vazia «como a casa» — usada nas escolhas divisão a divisão
   const grupos = [...new Set(lista.map((x) => x.grupo))];
   const atual = lista.find((x) => x.id === valor);
   return (
     <div className="flex items-center gap-2">
-      <span className="h-6 w-6 rounded border shrink-0" style={{ background: atual?.cor || "#fff" }} />
+      <span className="h-6 w-6 rounded border shrink-0" style={{ background: atual?.cor || herdado?.cor || "#fff" }} />
       <select className="w-full border rounded h-8 px-2 bg-background text-sm text-foreground min-w-0" value={atual ? valor : ""} onChange={(e) => onChange(e.target.value)} {...resto}>
-        {!atual && <option value="">—</option>}
+        {herdado ? <option value="">Como a casa — {herdado.nome}</option> : !atual && <option value="">—</option>}
         {grupos.map((g) => <optgroup key={g} label={g}>{lista.filter((x) => x.grupo === g).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</optgroup>)}
       </select>
     </div>
@@ -173,8 +183,8 @@ function Medicoes({ md }) {
         <T cab={["Parede", "Piso", "Comp. eixo", "Comp. líquido", "Altura", "Bruta (m²)", "Vãos (m²)", "Líquida (m²)"]}
           linhas={md.paredes.map((p) => [p.id, p.piso, n(p.comprimento_eixo_m), n(p.comprimento_liquido_m), n(p.altura_m), n(p.area_bruta_m2), n(p.area_vaos_m2), n(p.area_liquida_m2)])} /></div>
       <div><div className="font-medium text-sm mb-1">Divisões</div>
-        <T cab={["Divisão", "Piso", "Área útil (m²)", "Perímetro (m)", "Paredes (m²)", "Rodapé (m)"]}
-          linhas={md.divisoes.map((d) => [d.nome, d.piso, n(d.area_m2), n(d.perimetro_m), n(d.area_paredes_m2), n(d.rodape_m)])} /></div>
+        <T cab={["Divisão", "Piso", "Área útil (m²)", "Perímetro (m)", "Paredes (m²)", "Rodapé (m)", "Pavimento", "Paredes", "Teto"]}
+          linhas={md.divisoes.map((d) => [d.nome, d.piso, n(d.area_m2), n(d.perimetro_m), n(d.area_paredes_m2), n(d.rodape_m), d.pavimento, d.parede_interior, d.teto])} /></div>
       {md.acabamentos && <div><div className="font-medium text-sm mb-1">Acabamentos escolhidos</div>
         <T cab={["Elemento", "Material", "Área (m²)"]} linhas={md.acabamentos.map((a) => [a.elemento, a.material, n(a.area_m2)])} /></div>}
       <div className="grid md:grid-cols-2 gap-4">
@@ -335,7 +345,9 @@ export default function EstudioProjeto({ pid }) {
       setSel({ tipo: alvo.tipo, id: alvo.id });
       if (alvo.tipo === "vao") arrasto.current = { tipo: "vao", id: alvo.id, antes: modelo };
     } else {
-      setSel(null);
+      // clique dentro de uma divisão seleciona-a (guarda-se o ponto: as divisões são recalculadas a cada alteração)
+      const dv = (derivado?.divisoes || []).find((d) => d.piso === piso && G.dentroPoligono(p, d.pts));
+      setSel(dv ? { tipo: "divisao", pt: p } : null);
       arrasto.current = { tipo: "pan", x: ev.clientX, y: ev.clientY, cx: vista.cx, cy: vista.cy };
     }
   };
@@ -394,7 +406,7 @@ export default function EstudioProjeto({ pid }) {
   const tecla = (ev) => {
     if (ev.target.tagName === "INPUT" || ev.target.tagName === "SELECT") return;
     if (ev.key === "Escape") { setInicio(null); setCursor(null); setFerramenta("selecionar"); }
-    if ((ev.key === "Delete" || ev.key === "Backspace") && sel) {
+    if ((ev.key === "Delete" || ev.key === "Backspace") && sel && sel.tipo !== "divisao") {
       ev.preventDefault();
       aplicar(sel.tipo === "vao" ? G.removerVao(modelo, sel.id) : G.removerParede(modelo, sel.id)); setSel(null);
     }
@@ -466,6 +478,9 @@ export default function EstudioProjeto({ pid }) {
   for (let y = Math.ceil(y0v / passoGrelha) * passoGrelha; y <= y1v && grelha.length < 800; y += passoGrelha) grelha.push(<line key={`gy${y}`} x1={x0v} y1={y} x2={x1v} y2={y} />);
   const divisoes = (derivado?.divisoes || []).filter((d) => d.piso === piso);
   const abaixo = idxPiso > 0 ? modelo.paredes.filter((w) => w.piso === modelo.pisos[idxPiso - 1].id) : [];
+  const dSel = sel?.tipo === "divisao" ? divisoes.find((d) => G.dentroPoligono(sel.pt, d.pts)) : null;
+  const mudaDiv = (patch) => aplicar(G.definirDivisao(modelo, piso, dSel, patch));
+  const rotSel = dSel ? (modelo.rotulos || [])[G.rotuloDaDivisao(modelo, piso, dSel.pts)] : null;
   const erros = derivado?.erros || [], avisos = [...(info?.avisos_origem || []).map((msg) => ({ msg })), ...(derivado?.avisos || [])];
   const previa = ferramenta === "parede" && inicio && cursor ? [inicio, cursor.ponto] : null;
 
@@ -506,7 +521,8 @@ export default function EstudioProjeto({ pid }) {
             onPointerDown={baixar} onPointerMove={mover} onPointerUp={largar} onPointerLeave={() => { setCursor(null); }} data-testid="estudio-planta">
             <g transform={`matrix(${vista.esc} 0 0 ${-vista.esc} ${tx} ${ty})`}>
               <g stroke="#e8ecee" strokeWidth={px}>{grelha}</g>
-              {divisoes.map((d) => <polygon key={d.id} points={d.pts.map((p) => p.join(",")).join(" ")} fill="#f3f7f1" />)}
+              {divisoes.map((d) => <polygon key={d.id} points={d.pts.map((p) => p.join(",")).join(" ")} fill={d.acabamentos?.pavimento?.cor || "#f3f7f1"} fillOpacity="0.3"
+                stroke={dSel?.id === d.id ? "#1f7a5c" : "none"} strokeWidth={3 * px} data-divisao={d.nome} />)}
               {abaixo.map((w) => <line key={`b${w.id}`} x1={w.a[0]} y1={w.a[1]} x2={w.b[0]} y2={w.b[1]} stroke="#9aa4ab" strokeWidth={px} strokeDasharray={`${6 * px} ${5 * px}`} />)}
               {paredesPiso.map((w) => {
                 const { u } = G.geoParede(w);
@@ -607,7 +623,20 @@ export default function EstudioProjeto({ pid }) {
               <Button size="sm" variant="outline" onClick={() => { aplicar(G.removerVao(modelo, vSel.id)); setSel(null); }}><Trash2 className="h-4 w-4 mr-1" />Apagar vão</Button>
             </div>
           )}
-          {!wSel && !vSel && (
+          {dSel && !wSel && !vSel && (
+            <div className="space-y-2" data-testid="estudio-divisao">
+              <div className="font-medium">Divisão — {G.fmt(dSel.area_m2)} m²</div>
+              <Campo rotulo="Nome"><Texto valor={rotSel?.nome ?? dSel.nome} onChange={(v) => mudaDiv({ nome: v })} data-testid="estudio-divisao-nome" /></Campo>
+              {[["pavimento", "Pavimento"], ["parede_interior", "Paredes"], ["teto", "Teto"]].map(([k, t]) => (
+                <Campo key={k} rotulo={`${t} desta divisão`}>
+                  <SelAcabamento valor={rotSel?.[k] || ""} onChange={(v) => mudaDiv({ [k]: v })} lista={cat.acabamentos[k]} data-testid={`estudio-divisao-${k}`}
+                    herdado={cat.acabamentos[k].find((x) => x.id === (modelo.materiais?.[k] || cat.padrao[k]))} />
+                </Campo>
+              ))}
+              <div className="text-xs text-muted-foreground">Paredes da divisão {G.fmt(dSel.area_paredes_m2)} m² · rodapé {G.fmt(dSel.rodape_m)} m · perímetro {G.fmt(dSel.perimetro_m)} m</div>
+            </div>
+          )}
+          {!wSel && !vSel && !dSel && (
             <div className="space-y-2">
               <div className="font-medium">{pisoObj?.nome}</div>
               <div className="grid grid-cols-2 gap-2">
@@ -624,7 +653,8 @@ export default function EstudioProjeto({ pid }) {
                   {cob.tipo === "uma_agua" && <Campo rotulo="Lado baixo"><Sel valor={cob.lado_baixo} onChange={(x) => mudaCob({ lado_baixo: x })} opcoes={Object.entries(LADOS)} /></Campo>}
                 </div>
               )}
-              <div className="font-medium pt-2 border-t">Acabamentos</div>
+              <div className="font-medium pt-2 border-t">Acabamentos da casa</div>
+              <p className="text-[11px] text-muted-foreground">Para escolher outro pavimento, paredes ou teto numa divisão, clique dentro dela na planta.</p>
               {[["fachada", "Fachada"], ["cobertura", "Cobertura"], ["caixilharia", "Caixilharia"], ["pavimento", "Pavimentos"], ["parede_interior", "Paredes interiores"], ["teto", "Tetos"]].map(([k, t]) => (
                 <Campo key={k} rotulo={`${t} (${cat.acabamentos[k].length} opções)`}>
                   <SelAcabamento valor={modelo.materiais?.[k] || cat.padrao[k]} onChange={(v) => mudaMat(k, v)} lista={cat.acabamentos[k]} data-testid={`estudio-acabamento-${k}`} />

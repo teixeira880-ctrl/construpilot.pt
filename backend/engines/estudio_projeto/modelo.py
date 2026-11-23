@@ -19,6 +19,7 @@ VAO_BASE = {"porta": {"largura_m": 0.90, "altura_m": 2.10, "peitoril_m": 0.0},
             "janela": {"largura_m": 1.20, "altura_m": 1.20, "peitoril_m": 0.90},
             "portada": {"largura_m": 1.80, "altura_m": 2.20, "peitoril_m": 0.0}}
 LADOS = ("frente", "tardoz", "esquerda", "direita")
+ACABAMENTOS_DIVISAO = ("pavimento", "parede_interior", "teto")
 
 # Tipos de parede de partida (prática corrente em habitação em Portugal). São hipóteses editáveis, não leituras.
 TIPOS_BASE: Dict[str, Dict[str, Any]] = {
@@ -167,7 +168,11 @@ def normalizar(m: Any) -> Dict[str, Any]:
     for r in rot_in:
         if isinstance(r, dict) and str(r.get("piso") or "") in ids and _txt(r.get("nome"), 40):
             p = _pt([r.get("x"), r.get("y")], "rótulo")
-            rotulos.append({"piso": str(r["piso"]), "x": p[0], "y": p[1], "nome": _txt(r.get("nome"), 40)})
+            rt = {"piso": str(r["piso"]), "x": p[0], "y": p[1], "nome": _txt(r.get("nome"), 40)}
+            for k in ACABAMENTOS_DIVISAO:           # acabamentos próprios da divisão (vazio = os da casa)
+                if r.get(k):
+                    rt[k] = _txt(r.get(k), 40)
+            rotulos.append(rt)
 
     mat = m.get("materiais") if isinstance(m.get("materiais"), dict) else {}
     return {"versao": VERSAO, "pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos,

@@ -253,3 +253,32 @@ def test_acabamentos_escolhidos_entram_nas_cores_e_nas_medicoes():
     assert ac["Tetos"]["material"] == "Teto em ripado de madeira"
     desconhecido = EP.derivar(modelo(materiais={"fachada": "nao_existe"}))
     assert desconhecido["cores"]["fachada"] == "#f1efe9"            # identificador desconhecido → acabamento de omissão
+
+
+def test_acabamentos_divisao_a_divisao():
+    rot = [{"piso": "p0", "x": 2, "y": 4, "nome": "Sala", "pavimento": "soalho_carvalho", "teto": "teto_madeira"},
+           {"piso": "p0", "x": 7, "y": 4, "nome": "Cozinha", "pavimento": "gres_antracite", "parede_interior": "azulejo_branco_int",
+            "teto": "nao_existe"}]
+    m = modelo(rotulos=rot, materiais={"pavimento": "microcimento_pav", "parede_interior": "pintura_creme", "teto": "teto_gesso_cartonado"})
+    assert m["rotulos"][0]["pavimento"] == "soalho_carvalho" and "parede_interior" not in m["rotulos"][0]
+    d = EP.derivar(m)
+    div = {x["nome"]: x for x in d["divisoes"]}
+    sala, coz = div["Sala"], div["Cozinha"]
+    assert sala["acabamentos"]["pavimento"]["nome"] == "Soalho de carvalho" and sala["proprios"] == ["pavimento", "teto"]
+    assert sala["acabamentos"]["parede_interior"]["nome"] == "Pintura creme"            # sem escolha própria → o da casa
+    assert coz["acabamentos"]["parede_interior"]["nome"] == "Azulejo branco"
+    assert coz["acabamentos"]["teto"]["id"] == "teto_estuque"                           # identificador desconhecido → omissão
+    ac = d["medicoes"]["acabamentos"]
+    pav = {a["material"]: a["area_m2"] for a in ac if a["elemento"] == "Pavimentos"}
+    assert pav == {"Soalho de carvalho": sala["area_m2"], "Grés porcelânico antracite": coz["area_m2"]}
+    assert sum(pav.values()) == pytest.approx(d["medicoes"]["totais"]["area_util_m2"], abs=0.011)   # nenhuma área contada duas vezes
+    par = {a["material"]: a["area_m2"] for a in ac if a["elemento"].startswith("Paredes interiores")}
+    assert par == {"Pintura creme": sala["area_paredes_m2"], "Azulejo branco": coz["area_paredes_m2"]}
+    linha = next(x for x in d["medicoes"]["divisoes"] if x["nome"] == "Sala")
+    assert linha["pavimento"] == "Soalho de carvalho" and linha["teto"] == "Teto em ripado de madeira"
+    from routes.estudio_projeto import medicoes_csv
+    assert "Soalho de carvalho" in medicoes_csv(d) and "Azulejo branco" in medicoes_csv(d)
+    assert D.png(D.planta(m, d, 0))[:4] == b"\x89PNG"
+    # uma divisão sem rótulo usa os acabamentos da casa
+    d2 = EP.derivar(modelo(rotulos=[], materiais={"pavimento": "microcimento_pav"}))
+    assert {x["acabamentos"]["pavimento"]["id"] for x in d2["divisoes"]} == {"microcimento_pav"}

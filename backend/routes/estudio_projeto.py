@@ -166,9 +166,10 @@ def medicoes_csv(der: Dict[str, Any]) -> str:
     for v in md["vaos"]:
         w.writerow([v["tipo"], n(v["largura_m"]), n(v["altura_m"]), v["quantidade"], n(v["area_m2"]), " ".join(v["ids"])])
     w.writerow([])
-    w.writerow(["DIVISÕES", "Piso", "Área útil (m²)", "Perímetro (m)", "Paredes da divisão (m²)", "Rodapé (m)"])
+    w.writerow(["DIVISÕES", "Piso", "Área útil (m²)", "Perímetro (m)", "Paredes da divisão (m²)", "Rodapé (m)", "Pavimento", "Paredes", "Teto"])
     for d in md["divisoes"]:
-        w.writerow([d["nome"], d["piso"], n(d["area_m2"]), n(d["perimetro_m"]), n(d["area_paredes_m2"]), n(d["rodape_m"])])
+        w.writerow([d["nome"], d["piso"], n(d["area_m2"]), n(d["perimetro_m"]), n(d["area_paredes_m2"]), n(d["rodape_m"]),
+                    d["pavimento"], d["parede_interior"], d["teto"]])
     w.writerow([])
     w.writerow(["LAJES", "Área (m²)", "Espessura (m)", "Volume (m³)"])
     for lj in md["lajes"]:

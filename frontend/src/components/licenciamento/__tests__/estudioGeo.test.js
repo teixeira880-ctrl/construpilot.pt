@@ -51,3 +51,20 @@ test("novo piso copia as paredes e as janelas do piso de baixo; remover o piso l
   expect(v.paredes).toHaveLength(2);
   expect(v.vaos).toHaveLength(1);
 });
+
+test("acabamentos e nome por divisão ficam no rótulo que está dentro dela", () => {
+  const sala = { nome: "Divisão 1", centro: [2, 2], pts: [[0, 0], [4, 0], [4, 4], [0, 4]] };
+  const outra = { nome: "Divisão 2", centro: [6, 2], pts: [[4, 0], [8, 0], [8, 4], [4, 4]] };
+  expect(G.dentroPoligono([2, 2], sala.pts)).toBe(true);
+  expect(G.dentroPoligono([5, 2], sala.pts)).toBe(false);
+  let m = G.definirDivisao(base(), "p0", sala, { pavimento: "soalho_carvalho" });
+  expect(m.rotulos).toEqual([{ piso: "p0", x: 2, y: 2, nome: "Divisão 1", pavimento: "soalho_carvalho" }]);
+  m = G.definirDivisao(m, "p0", sala, { nome: "Sala", teto: "teto_madeira" });
+  m = G.definirDivisao(m, "p0", outra, { pavimento: "gres_cinza" });
+  expect(m.rotulos).toHaveLength(2);                                   // um rótulo por divisão, nunca duplicado
+  expect(m.rotulos[0]).toMatchObject({ nome: "Sala", pavimento: "soalho_carvalho", teto: "teto_madeira" });
+  m = G.definirDivisao(m, "p0", sala, { pavimento: "", nome: "  " });  // vazio = voltar ao da casa; nome vazio é ignorado
+  expect(m.rotulos[0].pavimento).toBeUndefined();
+  expect(m.rotulos[0].nome).toBe("Sala");
+  expect(G.rotuloDaDivisao(m, "p1", sala.pts)).toBe(-1);               // outro piso não conta
+});

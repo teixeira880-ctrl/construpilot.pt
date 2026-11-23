@@ -62,9 +62,11 @@ def _cadeia(itens, pontos: List[float], fixo: float, horizontal: bool, cor=GREY,
 def planta(m: Dict[str, Any], d: Dict[str, Any], k: int) -> Dict[str, Any]:
     piso = d["pisos"][k]
     itens: List[dict] = []
+    from engines.estudio_projeto import materiais as MAT
     for dv in d["divisoes"]:
-        if dv["piso"] == piso["id"]:
-            itens.append(_poly(dv["pts"], (248, 249, 246), None, 0))
+        if dv["piso"] == piso["id"]:      # fundo da divisão: tom claro do pavimento escolhido para ela
+            r_, g_, b_ = MAT.rgb(dv["acabamentos"]["pavimento"]["cor"])
+            itens.append(_poly(dv["pts"], tuple(round(255 - (255 - c) * 0.28) for c in (r_, g_, b_)), None, 0))
     for pp in piso["paredes_planta"]:
         itens.append(_poly(pp["ext"], POCHE, INK, 1.0, pp["furos"]))
     paredes = [w for w in d["paredes"] if w["piso"] == piso["id"]]

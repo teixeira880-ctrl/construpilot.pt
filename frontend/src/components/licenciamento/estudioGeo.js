@@ -178,3 +178,36 @@ export function limitesModelo(modelo, piso) {
   const xs = todas.flatMap((w) => [w.a[0], w.b[0]]), ys = todas.flatMap((w) => [w.a[1], w.b[1]]);
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 }
+
+// ---------------------------------------------------------------- divisões (nome e acabamentos próprios)
+export function dentroPoligono(p, pts) {
+  let dentro = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i += 1) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) dentro = !dentro;
+  }
+  return dentro;
+}
+
+// Índice do rótulo que está dentro da divisão (o rótulo guarda o nome e os acabamentos próprios dela), ou −1.
+export function rotuloDaDivisao(modelo, piso, pts) {
+  return (modelo.rotulos || []).findIndex((r) => r.piso === piso && dentroPoligono([r.x, r.y], pts));
+}
+
+// Altera o nome ou um acabamento de uma divisão. Valor vazio num acabamento = voltar ao acabamento da casa.
+export function definirDivisao(modelo, piso, divisao, patch) {
+  const rot = [...(modelo.rotulos || [])];
+  let i = rotuloDaDivisao(modelo, piso, divisao.pts);
+  if (i < 0) {
+    rot.push({ piso, x: divisao.centro[0], y: divisao.centro[1], nome: divisao.nome });
+    i = rot.length - 1;
+  }
+  const r = { ...rot[i] };
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === "nome") { if (String(v || "").trim()) r.nome = String(v).slice(0, 40); }
+    else if (v === "" || v == null) delete r[k];
+    else r[k] = v;
+  }
+  rot[i] = r;
+  return { ...modelo, rotulos: rot };
+}

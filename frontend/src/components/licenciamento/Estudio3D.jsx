@@ -89,6 +89,17 @@ function construir(derivado, materiais, pisoVisivel) {
       grupo.add(mesh);
     }
   });
+  // pavimento de cada divisão com a cor do acabamento escolhido para ela (vê-se com «Ver o interior»)
+  const z0Piso = Object.fromEntries((derivado.pisos || []).map((p) => [p.id, p.z0]));
+  for (const d of derivado.divisoes || []) {
+    if (ordem[d.piso] > ate || !d.acabamentos?.pavimento) continue;
+    const geo = new THREE.ShapeGeometry(new THREE.Shape(d.pts.map((p) => new THREE.Vector2(p[0], p[1]))));
+    geo.rotateX(-Math.PI / 2);
+    const chao = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.acabamentos.pavimento.cor, roughness: 0.75 }));
+    chao.position.y = (z0Piso[d.piso] || 0) + 0.012;
+    chao.receiveShadow = true;
+    grupo.add(chao);
+  }
   if (ate >= nPisos - 1) {
     for (const f of derivado.cobertura?.faces || []) { const m = new THREE.Mesh(leque(f.pts), mCob); m.castShadow = true; grupo.add(m); }
     for (const e of derivado.cobertura?.empenas || []) grupo.add(new THREE.Mesh(leque(e.pts), mEmp));
