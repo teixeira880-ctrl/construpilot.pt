@@ -31,7 +31,8 @@ def read_formwork_pdf(pdf_bytes: bytes) -> dict:
                 "identity": identify_document(page.get_text(), page.get_text("words"))}
 
 
-def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result: dict | None, levels_override: dict | None = None, beams_pairing: dict | None = None) -> dict:
+def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result: dict | None, levels_override: dict | None = None, beams_pairing: dict | None = None,
+                    base_level: dict | None = None) -> dict:
     """Deterministic assembly. coupes_result = stored output of coupes_vision.analyze_coupes_pdf (already rechecked)."""
     import pymupdf
     import ezdxf
@@ -77,6 +78,19 @@ def compute_volumes(dxf_bytes: bytes, formwork_pdf: bytes | None, coupes_result:
             for as_ngf, cm in others:
                 levels["exceptions"].append({"as_plancher_haut_m": as_ngf, "epaisseur_dalle_cm": cm,
                                              "note": "outra etiqueta de laje impressa (outro edifício / zona de nível diferente): altura das paredes dessa zona a calcular com a sua própria AS/AI"})
+    lp_all = takeoff.get("levels_printed") or {}
+    if levels.get("as_plancher_haut_m") is None and levels.get("ai_plancher_haut_m") is None and lp_all.get("ai_texts"):
+        # Regra AI/AS: sem etiqueta de laje, a AI do pavimento superior vem dos textos «Ai: … NGF» impressos na própria planta.
+        ai_counts = Counter(round(a["ngf"], 2) for a in lp_all["ai_texts"])
+        ai_val, n_ai = ai_counts.most_common(1)[0]
+        levels["ai_plancher_haut_m"] = ai_val
+        levels["source"] = ((levels.get("source") or "") + f" ; AI pavimento superior = texto «Ai:» impresso mais frequente ({n_ai}× {ai_val:.2f} NGF)").strip(" ;")
+        for v2, n2 in ai_counts.most_common()[1:12]:
+            levels.setdefault("exceptions", []).append({"ai_ngf": v2, "count": n2,
+                                                        "note": "outro texto «Ai:» impresso (viga, zona rebaixada ou outro edifício): altura dessa zona a verificar"})
+    if base_level and base_level.get("m") is not None and levels.get("niveau_base_murs_m") is None:
+        levels["niveau_base_murs_m"] = base_level["m"]
+        levels["source"] = ((levels.get("source") or "") + f" ; base das paredes = {base_level['source']}").strip(" ;")
     for k, v in (levels_override or {}).items():
         if v is not None and k in ("as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"):
             levels[k] = v

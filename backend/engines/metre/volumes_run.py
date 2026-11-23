@@ -27,6 +27,25 @@ def _expected_top(pdf: bytes | None) -> float | None:
         return (parse_level_symbols(words_from_pdf_page(doc[0]))["dominant"] or {}).get("as_plancher_m")
 
 
+def _base_from_lower_floor(dxf: bytes) -> dict | None:
+    """Base das paredes = AS dominante da laje do piso inferior, lida nas etiquetas impressas da planta desse piso."""
+    import io
+    import ezdxf
+    from ezdxf import recover
+    from engines.metre import cross_layer_faces as XF
+    try:
+        doc = ezdxf.read(io.StringIO(dxf.decode("utf-8", "ignore")))
+    except Exception:  # noqa: BLE001
+        doc, _ = recover.read(io.BytesIO(dxf))
+    u = {1: 0.0254, 2: 0.3048, 4: 0.001, 5: 0.01, 6: 1.0}.get(doc.header.get("$INSUNITS", 0), 0.01)
+    lv = XF.level_labels(doc.modelspace(), u)
+    dom = lv.get("dominant")
+    if not dom:
+        return None
+    n = sum(1 for t in lv["slab_tags"] if t["as_ngf"] == dom["as_plancher_haut_m"])
+    return {"m": dom["as_plancher_haut_m"], "source": f"AS {dom['as_plancher_haut_m']:.2f} NGF da laje do piso inferior ({n} etiquetas impressas na sua planta)"}
+
+
 async def coupes_for_plan(db, *, user_id: str, plan_id: str, allow_vision: bool, expected_top_m: float | None, log_usage=None) -> tuple[dict | None, dict]:
     """Stored transcription first (plans_takeoff.coupes_analysis) ; vision only when allowed. Returns (result, status)."""
     plan = await db.plans_takeoff.find_one({"plan_id": plan_id, "user_id": user_id}, {"_id": 0, "coupes_analysis": 1, "filename": 1})
@@ -47,7 +66,7 @@ async def coupes_for_plan(db, *, user_id: str, plan_id: str, allow_vision: bool,
 
 
 async def run_compute_concrete_volumes(db, *, user_id: str, conversation_id: str, dxf_plan_id: str, formwork_plan_id: str | None, coupes_plan_id: str | None,
-                                       allow_vision: bool, levels: dict | None, now: str, log_usage=None) -> dict:
+                                       allow_vision: bool, levels: dict | None, now: str, log_usage=None, base_plan_id: str | None = None) -> dict:
     dxf = await load_cad_source(db, dxf_plan_id, user_id, "converted_dxf") or await load_cad_source(db, dxf_plan_id, user_id, "original")
     if not dxf:
         return {"ok": False, "error": "Nenhum ficheiro DXF/DWG convertido para esta planta: as quantidades em planta (paredes, pilares, laje) vêm do DXF."}
@@ -61,7 +80,14 @@ async def run_compute_concrete_volumes(db, *, user_id: str, conversation_id: str
         coupes, status["coupes"] = await coupes_for_plan(db, user_id=user_id, plan_id=coupes_plan_id, allow_vision=allow_vision, expected_top_m=_expected_top(formwork), log_usage=log_usage)
         if status["coupes"].get("requires_vision"):
             return {"ok": False, **status["coupes"], "plan_id": coupes_plan_id}
-    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels)
+    base_level = None
+    if base_plan_id:
+        bsrc = await load_cad_source(db, base_plan_id, user_id, "converted_dxf") or await load_cad_source(db, base_plan_id, user_id, "original")
+        braw = (bsrc if isinstance(bsrc, (bytes, bytearray)) else base64.b64decode(bsrc["data_b64"])) if bsrc else None
+        if braw and braw[:4] != b"AC10":
+            base_level = await asyncio.to_thread(_base_from_lower_floor, braw)
+        status["base_plan"] = base_level or {"error": "AS da laje do piso inferior não encontrada nessa planta (etiquetas B / espessura / NGF ausentes)"}
+    res = await asyncio.to_thread(compute_volumes, raw, formwork, coupes, levels, None, base_level)
     compact = json.loads(json.dumps(compact_for_llm(res)))  # string keys only (Mongo)
     rec = {"calc_ref": f"mc_{uuid.uuid4().hex[:10]}", "user_id": user_id, "conversation_id": conversation_id, "tool": "compute_concrete_volumes",
            "args": {"dxf_plan_id": dxf_plan_id, "formwork_plan_id": formwork_plan_id, "coupes_plan_id": coupes_plan_id, "levels": levels},

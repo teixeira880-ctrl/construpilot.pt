@@ -235,11 +235,12 @@ TOOLS = [
          "dxf_plan_id": {"type": "string", "description": "planta importada de DWG/DXF (vista em planta do nível)"},
          "formwork_plan_id": {"type": ["string", "null"], "description": "planta de cofragem PDF do mesmo nível (cotas altimétricas, marcas de corte, eixos)"},
          "coupes_plan_id": {"type": ["string", "null"], "description": "caderno de cortes PDF (níveis B/F impressos)"},
+         "base_plan_id": {"type": ["string", "null"], "description": "planta DWG/DXF do piso INFERIOR (ex.: PH-1 para o RDC): a AS da sua laje, lida nas etiquetas impressas, é a base das paredes deste piso"},
          "allow_vision": {"type": "boolean", "description": "autoriza a leitura visual IA do caderno de cortes se ainda não tiver sido lido (faturada)"},
          "levels": {"anyOf": [{"type": "object", "properties": {"as_plancher_haut_m": {"type": ["number", "null"]}, "epaisseur_dalle_m": {"type": ["number", "null"]},
                                                                 "niveau_base_murs_m": {"type": ["number", "null"]}},
                                "required": ["as_plancher_haut_m", "epaisseur_dalle_m", "niveau_base_murs_m"], "additionalProperties": False}, {"type": "null"}]}},
-                    "required": ["dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "allow_vision", "levels"], "additionalProperties": False}},
+                    "required": ["dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "base_plan_id", "allow_vision", "levels"], "additionalProperties": False}},
     {"type": "function", "name": "generate_conversation_report", "strict": True,
      "description": "Gera o relatório PDF profissional desta conversa a partir dos MESMOS cálculos, constatações, soluções comparadas e fontes já produzidos pelas ferramentas (nenhum valor reescrito). Identifica os documentos analisados (revisão lida na legenda). Fornecer o objeto do controlo numa frase.",
      "parameters": {"type": "object", "properties": {"scope": {"type": "string", "description": "Objeto / âmbito exato do controlo, uma frase"}},
@@ -401,7 +402,7 @@ async def _doc_authorized(d: dict, user_id: str) -> bool:
     return bool(d) and d.get("user_id") == user_id
 
 
-PLAN_ARG_KEYS = ("plan_id", "plan_id_a", "plan_id_b", "dxf_plan_id", "formwork_plan_id", "coupes_plan_id")
+PLAN_ARG_KEYS = ("plan_id", "plan_id_a", "plan_id_b", "dxf_plan_id", "formwork_plan_id", "coupes_plan_id", "base_plan_id")
 CAD_FORMATS = ("dwg", "dxf")
 _PROMOTE_LOCKS: dict = {}
 
@@ -1215,7 +1216,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 await _allowed_plan(pid, uid)
         return await run_compute_concrete_volumes(db, user_id=uid, conversation_id=conv["conversation_id"], dxf_plan_id=args["dxf_plan_id"],
                                                   formwork_plan_id=args.get("formwork_plan_id"), coupes_plan_id=args.get("coupes_plan_id"),
-                                                  allow_vision=bool(args.get("allow_vision")), levels=args.get("levels"), now=_now(), log_usage=_log_usage)
+                                                  allow_vision=bool(args.get("allow_vision")), levels=args.get("levels"), now=_now(), log_usage=_log_usage,
+                                                  base_plan_id=args.get("base_plan_id"))
     if name in AUTODESK_TOOL_NAMES:
         from engines.autodesk_client import AutodeskError
         from engines.plan_sources import load_cad_source
