@@ -145,8 +145,10 @@ def _em_baixo(nome: str) -> bool:
 
 def _marcar(nome: str, exc: Exception) -> None:
     """Chave sem crédito, recusada ou com limite : o degrau fica de lado 30 min (sem inundar o registo com o mesmo erro)."""
-    from engines.assistant_fallback import should_failover
-    if should_failover(exc) or "credit balance" in str(exc).lower():
+    msg = str(exc).lower()
+    if getattr(exc, "status_code", None) in (401, 402, 403, 429) or any(m in msg for m in (
+            "credit balance", "credits", "quota", "billing", "payment", "invalid_api_key", "incorrect api key", "authentication",
+            "budget", "exceeded", "rate limit", "too many requests", "overloaded")):
         _DEGRADADO[nome] = time.monotonic() + _PAUSA_S
         logging.getLogger(__name__).warning("i18n: %s indisponível (%s) — cascata para o degrau seguinte durante 30 min", nome, type(exc).__name__)
 
@@ -194,8 +196,8 @@ async def _llm(system: str, prompt: str, max_tokens: int) -> str:
                 erros.append(exc)
         return None
 
-    from engines.assistant_fallback import primary_provider
-    ordem = (_openai, _anthropic, _emergent) if primary_provider() == "openai" else (_anthropic, _emergent, _openai)
+    ordem = ((_openai, _anthropic, _emergent) if (os.environ.get("ASSISTANT_PROVIDER") or "").strip().lower() == "openai"
+             else (_anthropic, _emergent, _openai))
     for degrau in ordem:                     # o fornecedor principal do Assistente vai à frente
         r = await degrau()
         if r is not None:
