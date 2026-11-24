@@ -135,21 +135,59 @@ def _key(lang: str, src: str) -> str:
 
 
 # ── Modelo ───────────────────────────────────────────────────────────────────
+_DEGRADADO: dict[str, float] = {}      # fornecedor → monotonic até quando não se tenta (chave sem crédito / recusada)
+_PAUSA_S = 30 * 60
+
+
+def _em_baixo(nome: str) -> bool:
+    return _DEGRADADO.get(nome, 0) > time.monotonic()
+
+
+def _marcar(nome: str, exc: Exception) -> None:
+    """Chave sem crédito, recusada ou com limite : o degrau fica de lado 30 min (sem inundar o registo com o mesmo erro)."""
+    from engines.assistant_fallback import should_failover
+    if should_failover(exc) or "credit balance" in str(exc).lower():
+        _DEGRADADO[nome] = time.monotonic() + _PAUSA_S
+        logging.getLogger(__name__).warning("i18n: %s indisponível (%s) — cascata para o degrau seguinte durante 30 min", nome, type(exc).__name__)
+
+
 async def _llm(system: str, prompt: str, max_tokens: int) -> str:
-    """Claude direto (ANTHROPIC_API_KEY) e, na falta, a chave universal Emergent."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        from anthropic import AsyncAnthropic
-        client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-        msg = await client.messages.create(model=MODEL, max_tokens=max_tokens, system=system,
-                                           messages=[{"role": "user", "content": prompt}])
-        return "".join(getattr(b, "text", "") for b in msg.content or [] if getattr(b, "type", "") == "text")
-    if os.environ.get("EMERGENT_LLM_KEY"):
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"i18n-{time.time_ns()}",
-                       system_message=system).with_model("anthropic", os.environ.get("I18N_MODEL_EMERGENT", "claude-sonnet-4-6"))
-        out = await chat.send_message(UserMessage(text=prompt))
-        return out if isinstance(out, str) else str(out)
-    raise RuntimeError("Nenhuma chave de IA configurada (ANTHROPIC_API_KEY / EMERGENT_LLM_KEY)")
+    """Cascata (Martinho) : Claude direto (ANTHROPIC_API_KEY) → chave universal Emergent (Claude) → OpenAI direto.
+    Um degrau sem crédito ou recusado passa ao seguinte, e fica de lado 30 min."""
+    erros = []
+    if os.environ.get("ANTHROPIC_API_KEY") and not _em_baixo("anthropic"):
+        try:
+            from anthropic import AsyncAnthropic
+            client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+            msg = await client.messages.create(model=MODEL, max_tokens=max_tokens, system=system,
+                                               messages=[{"role": "user", "content": prompt}])
+            return "".join(getattr(b, "text", "") for b in msg.content or [] if getattr(b, "type", "") == "text")
+        except Exception as exc:  # noqa: BLE001 — cascata
+            _marcar("anthropic", exc)
+            erros.append(exc)
+    if os.environ.get("EMERGENT_LLM_KEY") and not _em_baixo("emergent"):
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+            chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"i18n-{time.time_ns()}",
+                           system_message=system).with_model("anthropic", os.environ.get("I18N_MODEL_EMERGENT", "claude-sonnet-4-6"))
+            out = await chat.send_message(UserMessage(text=prompt))
+            return out if isinstance(out, str) else str(out)
+        except Exception as exc:  # noqa: BLE001 — cascata
+            _marcar("emergent", exc)
+            erros.append(exc)
+    if os.environ.get("OPENAI_API_KEY") and not _em_baixo("openai"):
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            r = await client.chat.completions.create(model=os.environ.get("I18N_MODEL_OPENAI", "gpt-4.1-mini"), max_tokens=min(max_tokens, 16000),
+                                                     messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}])
+            return r.choices[0].message.content or ""
+        except Exception as exc:  # noqa: BLE001 — cascata
+            _marcar("openai", exc)
+            erros.append(exc)
+    if erros:
+        raise erros[-1]
+    raise RuntimeError("Nenhuma chave de IA disponível (ANTHROPIC_API_KEY / EMERGENT_LLM_KEY / OPENAI_API_KEY)")
 
 
 def _parse_json(text: str) -> dict:
