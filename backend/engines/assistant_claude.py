@@ -94,7 +94,8 @@ async def run_chat_claude(body, user, conv, plans, instructions, inputs, availab
     max_tokens = int(os.environ.get("ASSISTANT_CLAUDE_MAX_TOKENS", "32000"))
     if think:
         max_tokens = max(max_tokens, think["thinking"]["budget_tokens"] + 8000)   # o pensamento conta no limite de saída
-    model = os.environ["ASSISTANT_CLAUDE_MODEL_THOROUGH"] if body.response_mode == "thorough" else os.environ["ASSISTANT_CLAUDE_MODEL_FAST"]
+    model = (os.environ.get("ASSISTANT_CLAUDE_MODEL_THOROUGH") or "claude-sonnet-4-6") if body.response_mode == "thorough" else \
+        (os.environ.get("ASSISTANT_CLAUDE_MODEL_FAST") or "claude-sonnet-4-6")
     web_allowed = settings["web_enabled"] and body.web_enabled is not False
     conv["_web_allowed"] = web_allowed
     if not web_allowed:

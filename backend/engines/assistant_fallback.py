@@ -81,8 +81,7 @@ def fallback_available() -> bool:
 
 def gemini_fallback_available() -> bool:
     """Dernier recours du chat : Gemini (clé Google directe ou clé universelle) quand Claude a échoué lui aussi."""
-    return _on("gemini") and bool((os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
-                and os.environ.get("ASSISTANT_GEMINI_MODEL_FAST"))
+    return _on("gemini") and bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY"))
 
 
 async def openai_degraded() -> dict | None:
@@ -111,7 +110,7 @@ async def use_fallback_now() -> tuple[bool, str | None]:
     """(fallback?, reason) for a new turn."""
     if primary_provider() == "anthropic":
         return True, "fornecedor principal: Claude"
-    if not fallback_available():
+    if not (fallback_available() or gemini_fallback_available() or os.environ.get("ANTHROPIC_API_KEY")):
         return False, None
     rec = await openai_degraded()
-    return (True, f"chave OpenAI indisponível ({rec['reason']}) — recurso à chave universal") if rec else (False, None)
+    return (True, f"chave OpenAI indisponível ({rec['reason']}) — cascata de recurso") if rec else (False, None)

@@ -2488,7 +2488,8 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
         # Repli automatique sur TOUTE erreur OpenAI sans réponse produite (pas seulement crédits / débit) :
         # Claude, puis Gemini en dernier recours — l'utilisateur ne voit jamais « momentaneamente indisponível ».
         refused = type(exc).__name__ == "QuotaError" or (isinstance(exc, HTTPException) and exc.status_code in (402, 429))
-        if fallback_available() and not reply.strip() and not refused:   # limite / orçamento do plano: nunca contornar
+        from engines.assistant_fallback import gemini_fallback_available as _gem_ok
+        if (fallback_available() or _gem_ok() or os.environ.get("ANTHROPIC_API_KEY")) and not reply.strip() and not refused:   # limite / orçamento do plano: nunca contornar
             logger.warning("OpenAI turn failed (%s: %s) — fallback Claude", type(exc).__name__, str(exc)[:300])
             if should_failover(exc):
                 rec = await mark_openai_degraded(exc)

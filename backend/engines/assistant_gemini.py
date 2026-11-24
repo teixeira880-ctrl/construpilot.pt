@@ -92,7 +92,9 @@ async def run_chat_gemini(body, user, conv, plans, instructions, inputs, availab
         return
     billing = "gemini_direct" if direct_key else "emergent"
     max_tokens = int(os.environ.get("ASSISTANT_GEMINI_MAX_TOKENS", "32000"))
-    model = os.environ["ASSISTANT_GEMINI_MODEL_THOROUGH"] if body.response_mode == "thorough" else os.environ["ASSISTANT_GEMINI_MODEL_FAST"]
+    # Último degrau da cascata : nunca pode falhar por falta de uma variável de modelo (24/11).
+    model = (os.environ.get("ASSISTANT_GEMINI_MODEL_THOROUGH") or "gemini-2.5-pro") if body.response_mode == "thorough" else \
+        (os.environ.get("ASSISTANT_GEMINI_MODEL_FAST") or "gemini-2.5-flash")
     web_allowed = settings["web_enabled"] and body.web_enabled is not False
     conv["_web_allowed"] = web_allowed
     if not web_allowed:
