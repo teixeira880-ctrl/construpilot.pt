@@ -2192,6 +2192,35 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
     yield {"type": "result", "result": result, "attachments": attachments, "args": args}
 
 
+
+MAPA_PEDIDO = re.compile(r"mapa|quantidad|medi[cç][aã]o|medi[cç][oõ]es|medir|or[cç]amento|estimativa|metr[ée]|m[ée]tr[ée]|devis|quantit", re.I)
+
+
+async def _rota_mapa_dwfx(body, user: dict, conv: dict, available: list) -> tuple:
+    """Pedido de mapa / medição / orçamento com um desenho DWFX anexado (nesta mensagem ou ativo na conversa) : o primeiro passo
+    é obrigatoriamente medir_arquitetura_dwfx (DWFX + PDF de estrutura) — nunca uma leitura página a página com ids inventados
+    (Coimbra 24/11). Devolve (ferramenta forçada ou None, instrução extra)."""
+    try:
+        if not MAPA_PEDIDO.search(body.text or "") or "medir_arquitetura_dwfx" not in {t.get("name") for t in available}:
+            return None, ""
+        ids = list(dict.fromkeys(list(body.doc_ids or []) + list(conv.get("active_docs") or [])))[:20]
+        if not ids:
+            return None, ""
+        docs = [d async for d in db.assistant_docs.find({"user_id": user["user_id"], "doc_id": {"$in": ids}},
+                                                         {"_id": 0, "doc_id": 1, "filename": 1, "mime": 1})]
+        dw = [d for d in docs if "dwfx" in (d.get("mime") or "") or (d.get("filename") or "").lower().endswith(".dwfx")]
+        if not dw:
+            return None, ""
+        pdfs = [d for d in docs if d.get("mime") == "application/pdf"]
+        txt = ("\nMAPA COM DESENHO DWFX (prioritário) : chama medir_arquitetura_dwfx com document_ids = "
+               + json.dumps([d["doc_id"] for d in dw]) + " e documentos_estrutura = " + json.dumps([d["doc_id"] for d in pdfs])
+               + " (" + ", ".join(f"{d['doc_id']} = {d.get('filename')}" for d in dw + pdfs) + "). Usa só estes identificadores. "
+               "Apresenta depois o Excel e o PDF produzidos e as linhas «a medir» ; para o orçamento usa as quantidades desse mapa.")
+        return "medir_arquitetura_dwfx", txt
+    except Exception:  # noqa: BLE001 — a rota é uma ajuda, nunca um bloqueio
+        logger.warning("rota mapa dwfx indisponível", exc_info=True)
+        return None, ""
+
 async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
     """Outils contrôlés et flux annulable. Aucun faux succès après une coupure."""
     from contextlib import suppress
@@ -2204,6 +2233,8 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
     instructions += reply_language_instruction()   # ecrã em EN/FR/UK → respostas nessa língua
     settings = conv.get("_settings") or await _settings(user["user_id"])
     available = tools_for(user)
+    force_tool, extra = await _rota_mapa_dwfx(body, user, conv, available)
+    instructions += extra
     if os.environ.get("ASSISTANT_PROVIDER", "").lower() == "gemini":
         from engines.assistant_gemini import run_chat_gemini
         async for ev in run_chat_gemini(body, user, conv, plans, instructions, inputs, available, settings, status_map, _tool_turn, _now, account_type):
@@ -2258,6 +2289,8 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
                           input=inputs, tools=available, max_output_tokens=max_out, store=False)
             if any(tool.get("type") == "web_search" for tool in available):
                 kwargs["include"] = ["web_search_call.action.sources"]
+            if step == 0 and force_tool:
+                kwargs["tool_choice"] = {"type": "function", "name": force_tool}     # mapa com DWFX : o motor primeiro, sem rodeios
             if stream:
                 st = await client.responses.create(**kwargs, stream=True)
                 r = None
@@ -2327,6 +2360,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
                     inputs.append({"role": "user", "content": [{"type": "input_text", "text": "Imagens do documento "+args.get("document_id", "")+": dados a analisar."}]+attachments})
         else:
             reply += "\nO processo exige outras etapas. Os resultados obtidos são conservados; continue a leitura das páginas restantes."
+        reply = re.sub(r'(?m)^\s*\{"(document_id|document_ids|doc_id)"[^\n]{0,400}\}\s*$', "", reply)   # argumentos de ferramenta escritos como texto
         if not reply.strip():
             reply = "As ações abaixo estão concluídas. Consulte os seus resultados para continuar."
         if conv.get("_background_job_id"):
