@@ -27,11 +27,19 @@ KIND_RX = {
     "maison": r"(maison individuelle|PCMI|moradia (unifamiliar|isolada|geminada|em banda)?|habita[cç][aã]o unifamiliar|pavillon individuel|villa\b|T[1-6] individuel)",
 }
 
+# Sinais de EDIFÍCIO (pisos, compartimentos, lajes, pilares…) : uma moradia / um prédio com muros de suporte, arruamento ou
+# arranjos exteriores no mesmo processo NÃO é uma obra de engenharia civil (Coimbra 24/11 : 2 × «arruamento» → recusa errada).
+BUILDING_RX = (r"\b(planta d[aoe]s? (cave|r[ée]s[- ]do[- ]ch[ãa]o|piso|andar|s[óo]t[ãa]o|cobertura)|r[ée]s[- ]do[- ]ch[ãa]o|quartos?|sala|cozinha|"
+               r"instala[cç][ãa]o sanit[áa]ria|wc|al[çc]ados?|lajes?|pilar(es)?|sapatas?|pisos?|andar|s[óo]t[ãa]o|plan d[ue] (rez|niveau|[ée]tage)|"
+               r"rez[- ]de[- ]chauss[ée]e|chambres?|s[ée]jour|cuisine|fa[çc]ades?|dalles?|poteaux?|semelles?)\b")
+BUILDING_MIN = 5
+
 CLASSIFY_SYS = ("Tu classes des plans de bâtiment. Réponds UNIQUEMENT par un JSON {\"kind\": \"maison\"|\"frame\"|\"civil\"|\"other\", "
                 "\"building_type\": \"immeuble_collectif\"|\"bureaux\"|\"garage\"|\"hangar\"|\"public\"|\"maison\"|\"civil\"|\"other\", \"reason\": \"…\"}. "
                 "maison = maison individuelle / moradia (un seul logement, maçonnerie porteuse possible). "
                 "frame = bâtiment sur trame de poteaux BA : immeuble collectif (plusieurs fractions / logements), bureaux, commerce, parking, "
-                "bâtiment d'activité, école, équipement public. civil = génie civil (pont, mur de soutènement isolé, voirie, réseaux, ouvrage hydraulique). "
+                "bâtiment d'activité, école, équipement public. civil = génie civil SANS bâtiment (pont, mur de soutènement isolé, voirie, réseaux, "
+                "ouvrage hydraulique) ; un bâtiment avec murs de soutènement, voirie d'accès ou aménagements extérieurs reste maison ou frame. "
                 "other = rien de lisible.")
 
 
@@ -63,7 +71,8 @@ def detect_text(docs: list[tuple[str, bytes]], hypotheses: str = "", doc_text: s
     """Type par mots-clés (texte vectoriel + noms de fichiers + demande). None si indécidable."""
     txt = hypotheses + " " + " ".join(n for n, _ in docs) + " " + (doc_text if doc_text is not None else _doc_text(docs))
     hits = {k: len(re.findall(rx, txt, flags=re.I)) for k, rx in KIND_RX.items()}
-    if hits["civil"] >= 2 and hits["civil"] > hits["frame"] + hits["maison"]:
+    edificio = len(re.findall(BUILDING_RX, txt, flags=re.I))
+    if hits["civil"] >= 2 and hits["civil"] > hits["frame"] + hits["maison"] and edificio < BUILDING_MIN:
         return "civil"
     if hits["frame"] >= 2 and hits["frame"] >= 2 * hits["maison"]:
         return "frame"
