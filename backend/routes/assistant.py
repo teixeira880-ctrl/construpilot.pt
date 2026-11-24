@@ -937,6 +937,10 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                 if not src:
                     return {"ok": False, "error": "Ficheiro CAD do processo não convertível em planta legível: reimporte-o pelo módulo Plantas.", "document_id": ident}
                 doc, ident = {"mime": "application/pdf", **src, "filename": doc.get("filename")}, pid
+        if "dwfx" in (doc.get("mime") or ""):
+            return {"ok": True, "document_id": ident, "pages": [{"page": 1, "text": (doc.get("text") or "Desenho DWFX")[:18000]}], "total_pages": 1,
+                    "note": "Desenho DWFX (AutoCAD, vetorial) : não se lê página a página. Para medições, áreas, paredes, vãos e mapa de "
+                            "quantidades chamar medir_arquitetura_dwfx com este id (PDF de estrutura em documentos_estrutura)."}
         if name == "read_document":
             if doc.get("mime") in OFFICE_MIME_SET:
                 result = office_pages(doc.get("text") or "", args["first_page"], args["page_count"])

@@ -444,3 +444,12 @@ def test_escavacao_com_terreno_do_levantamento():
         pytest.skip("estrutura mínima da planta incompleta para este teste")
     esc = [l for l in ls if l["designacao"].startswith("Escavação geral")]
     assert esc and abs(esc[0]["qtd"] - 395.29 * (105.74 - 100.40)) < 1e-6
+
+
+def test_anexo_dwfx_nao_bloqueia_o_tratamento():
+    """Regressão 24/11 : um .dwfx anexado fazia rebentar a preparação da mensagem («Tratamento não concluído»)."""
+    from engines.assistant_media import image_content
+    parts = image_content(b"PK\x03\x04 nao e imagem", "model/vnd.dwfx+xps", "ARQ08.dwfx", "doc_x")
+    assert parts and parts[0]["type"] == "input_text" and "medir_arquitetura_dwfx" in parts[0]["text"]
+    parts = image_content(b"lixo", "application/octet-stream", "x.bin", "doc_y")
+    assert parts and parts[0]["type"] == "input_text"
