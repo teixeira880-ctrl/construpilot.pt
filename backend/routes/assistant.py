@@ -777,7 +777,8 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
                               "referencia": {**(med.get("referencia") or {}), **((est or {}).get("referencia") or {}),
                                              "precos": "fixos deste desenho reutilizados" + (f"; {novos_precos} preço(s) novo(s) fixado(s)" if novos_precos else "")},
                               "verificacao_cruzada": verif},
-            "instrucao": "Apresenta: total sem IVA, IVA e total com IVA; o resumo por capítulo; a origem dos preços (biblioteca da empresa, "
+            "instrucao": "PRIMEIRO as quantidades : apresenta os totais medidos por artigo e unidade (terras m³, betão m³, aço kg, cofragem m², "
+                         "muros e paredes m², pavimentos, vãos…) com a origem ; SÓ DEPOIS o orçamento. Orçamento : total sem IVA, IVA e total com IVA; o resumo por capítulo; a origem dos preços (biblioteca da empresa, "
                          "referência CYPE PT = custo direto convertido em venda com os encargos e a margem da empresa, mercado online); "
                          "as linhas HIPÓTESE (bases de pavimento) e as hipóteses da estrutura (pé-direito, vento/sismo não verificados); "
                          "as linhas sem preço, se houver, como pontos a completar; a verificação cruzada (ok/avisos, com o detalhe dos avisos); e que o "
@@ -819,6 +820,36 @@ def _artigo_preco(designacao: str, un: str) -> str | None:
         if u == un and re.search(rx, d):
             return art
     return None
+
+
+def _totais_quantidades(linhas: list) -> list:
+    """Quadro de TOTAIS do mapa (antes do orçamento) : por material / artigo e unidade, com a decomposição por elemento."""
+    un = {"m²": "m2", "m³": "m3", "m": "ml", "un": "u", "ud": "u"}
+    tot: dict = {}
+    for l in linhas:
+        if not l.get("qtd"):
+            continue
+        u = un.get(str(l.get("un") or "u"), str(l.get("un") or "u"))
+        cap = str(l.get("capitulo") or "Geral")
+        art = _artigo_preco(l.get("designacao"), u) if cap in CAP_ESTRUTURA else None
+        if art:
+            nome = re.sub(r"\s*\(classe do projeto\)|, bombeado e vibrado|, cortado, dobrado e colocado( em obra)?|, com escoramento|, colocad[ao]", "", art)
+            fam = (re.sub(r" em .*$", "", nome) if u in ("m3", "m2") and re.match(r"(Betão|Cofragem)", nome) else nome)
+        else:
+            base = re.split(r"\s+[—(]|\s+e\s*=|\s+\d", str(l.get("designacao") or ""), maxsplit=1)[0].strip(" /—")
+            fam = f"{cap} — {base}"
+        k = (fam, u)
+        t = tot.setdefault(k, {"total": 0.0, "por": {}})
+        t["total"] += float(l["qtd"])
+        el = art and re.sub(r"\s*\(classe do projeto\)", "", art.split(" em ", 1)[-1]).split(",")[0] if art and " em " in art else cap
+        t["por"][el] = t["por"].get(el, 0.0) + float(l["qtd"])
+    ordem = ("Escavação", "Tout-venant", "Betão", "Aço", "Cofragem", "Malha", "Vigota", "Abobadilhas", "Bloco")
+    def chave(kv):
+        f = kv[0][0]
+        return (next((i for i, o in enumerate(ordem) if f.startswith(o)), len(ordem)), f)
+    return [{"quantidade": f, "unidade": u, "total": round(v["total"], 2),
+             "por_elemento": {k2: round(x, 2) for k2, x in sorted(v["por"].items())} if len(v["por"]) > 1 else None}
+            for (f, u), v in sorted(tot.items(), key=chave)]
 
 
 CAP_ESTRUTURA = ("Movimento de terras", "Fundações", "Estrutura")
@@ -868,12 +899,14 @@ async def _orcamento_mapa_dwfx(args: dict, user: dict, conv: dict) -> dict:
         origem[k] = origem.get(k, 0) + 1
     d = res.get("draft") or {}
     res = {**res, "artifacts": list(res.get("artifacts") or []) + list(med.get("artifacts") or [])}
-    return {**res, "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
+    return {**res, "quantidades_totais": _totais_quantidades(linhas), "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
                               "origem_dos_precos": origem, "sem_preco": [r["designation"] for r in rows if r.get("price_missing")],
                               "a_medir_sem_quantidade": [f"{l.get('capitulo')} — {l.get('designacao')}" for l in a_medir][:40]
                                                          + [f"{x.get('capitulo')} — {x.get('designacao')} (não medido)" for x in med.get("_nao") or []][:20],
                               "capitulos": so or "todos", "documentos": nomes},
-            "instrucao": "Apresenta: total sem IVA, IVA e total com IVA; o resumo por capítulo e por piso; a origem dos preços (biblioteca da "
+            "instrucao": "PRIMEIRO as quantidades : apresenta o quadro quantidades_totais (escavação m³, betão m³ total e por elemento, aço kg, "
+                         "cofragem m², muros/paredes m², alvenarias, pavimentos, vãos…) com a origem (mapa medido) ; SÓ DEPOIS o orçamento. "
+                         "Orçamento : total sem IVA, IVA e total com IVA; o resumo por capítulo e por piso; a origem dos preços (biblioteca da "
                          "empresa, referência CYPE PT, mercado online — estes últimos a verificar); as linhas sem preço e as linhas «a medir» sem "
                          "quantidade como pontos a completar (nunca as estimes); e anuncia TODOS os ficheiros (orçamento PDF/Excel e o mapa de "
                          "quantidades Excel/PDF com as plantas numeradas). As quantidades são as do mapa, linha a linha."}
@@ -2095,7 +2128,7 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         user_message["turn_seq"] = turn_seq
     await db.assistant_msgs.update_one({"user_id": user["user_id"], "conversation_id": conv["conversation_id"], "role": "user", "request_id": conv["_quote_request_id"]}, {"$setOnInsert": user_message}, upsert=True)
     tpl = SYSTEM_INDIVIDUAL if account_type(user) == "individual" else SYSTEM
-    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + TERRENOS_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + MAPA_ESTR_INSTRUCTIONS + MAPA_ARQ_INSTRUCTIONS + GEOMETRIA_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
+    instructions = tpl.format(lang="pt-PT" if lang == "pt" else "pt", context="Ver os dados anexados à mensagem do utilizador.", prefs="Ver as preferências anexadas.") + WORK_INSTRUCTIONS + PLATFORM_INSTRUCTIONS + COLLABORATION_INSTRUCTIONS + FILE_INSTRUCTIONS + COHERENCE_INSTRUCTIONS + (BET_CORE_INSTRUCTIONS + CHOICES_AND_STUDY_PT + CRM_INSTRUCTIONS if account_type(user) == "professional" else CHOICES_INDIVIDUAL_PT) + CALC_INSTRUCTIONS + WINDOW_INSTRUCTIONS + DOSSIER_INSTRUCTIONS + AUTORIZACAO_INSTRUCTIONS + TERRENOS_INSTRUCTIONS + ED3D_INSTRUCTIONS + PROTOCOL + ERROR_HONESTY + "\n" + METRE_INSTRUCTIONS + MAPA_ESTR_INSTRUCTIONS + MAPA_ARQ_INSTRUCTIONS + GEOMETRIA_INSTRUCTIONS + "\n" + SOURCE_INSTRUCTIONS + QUANTIDADES_PRIMEIRO + "\nPara uma orçamentação completa de projetos/plantas, utiliza start_construction_study e depois read_construction_study. Retoma os totais calculados e o PDF, com as hipóteses, páginas ausentes e provisões; não reconstruas um orçamento paralelo a partir de montantes inventados. Não confundas trabalho lançado com estudo concluído."
     if account_type(user) != "individual":
         from engines.assistant_quote_exports import EXPORT_INSTRUCTIONS
         instructions += QUOTE_INSTRUCTIONS + EXPORT_INSTRUCTIONS
@@ -2289,6 +2322,17 @@ async def _tool_turn(name: str, raw_args: str, call_id: str, user: dict, conv: d
     yield {"type": "action", "action": action}
     yield {"type": "result", "result": result, "attachments": attachments, "args": args}
 
+
+
+# Regra do Martinho (24/11) — em TODOS os estudos : primeiro as quantidades, só depois o orçamento.
+QUANTIDADES_PRIMEIRO = (
+    "\nREGRA ABSOLUTA — QUANTIDADES PRIMEIRO, ORÇAMENTO DEPOIS (todos os estudos, sobretudo construção nova) : antes de qualquer preço, "
+    "calcula e apresenta as QUANTIDADES TOTAIS medidas pelos motores (mapa de quantidades) : escavação m³ ; betão m³ total e por elemento "
+    "(sapatas/fundações, muros, pilares, vigas, lajes) ; aço kg total ; cofragem m² ; muros e paredes m² ; alvenarias m² ; lajes m² ; "
+    "pavimentos, revestimentos e cobertura m² ; vãos (portas e janelas) un e m² ; exteriores m² / m. Mostra primeiro esse quadro de totais "
+    "(com a origem de cada quantidade) e só depois passa ao orçamento, com as MESMAS quantidades. Nunca apresentes um orçamento cujas "
+    "quantidades não tenham sido calculadas e mostradas antes ; nunca estimes quantidades por rácios (€/m², kg/m³) em vez de as medir — "
+    "o que não foi medido fica «a medir», listado.\n")
 
 
 MAPA_PEDIDO = re.compile(r"mapa|quantidad|medi[cç][aã]o|medi[cç][oõ]es|medir|or[cç]amento|estimativa|metr[ée]|m[ée]tr[ée]|devis|quantit", re.I)

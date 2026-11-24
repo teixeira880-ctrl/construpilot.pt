@@ -60,3 +60,16 @@ def test_artigos_de_preco_estruturais():
     assert A._artigo_preco("Cofragem de laje (fundo)", "m2").startswith("Cofragem de lajes")
     assert A._artigo_preco("Escavação geral até à cota 100,40", "m3").startswith("Escavação geral")
     assert A._artigo_preco("Parede exterior (fachada)", "m2") is None
+
+
+def test_quantidades_totais_antes_do_orcamento(monkeypatch):
+    g = []
+    _patch(monkeypatch, g)
+    r = asyncio.run(A._orcamento_mapa_dwfx({"document_ids": ["doc_dw"]}, {"user_id": "u"}, {}))
+    tot = {t["quantidade"]: t for t in r["quantidades_totais"]}
+    assert tot["Betão"]["total"] == 40.5 and tot["Betão"]["unidade"] == "m3"
+    assert "Escavação geral em terreno com meios mecânicos, incluindo carga" in tot
+    assert tot["Alvenarias — Parede exterior"]["total"] == 120.0
+    assert list(tot)[0].startswith("Escavação")                      # ordem : terras, betão, aço, cofragem…
+    assert r["instrucao"].startswith("PRIMEIRO as quantidades")
+    assert "QUANTIDADES PRIMEIRO" in A.QUANTIDADES_PRIMEIRO
