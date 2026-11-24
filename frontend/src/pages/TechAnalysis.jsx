@@ -9,6 +9,7 @@ import WaterproofingTab from "@/components/tech/WaterproofingTab";
 import RoofingTab from "@/components/tech/RoofingTab";
 import VrdTab from "@/components/tech/VrdTab";
 import OrdersTab from "@/components/tech/OrdersTab";
+import PicTab from "@/components/tech/PicTab";
 
 const dedupePlans = (items) => {
   const seen = new Set();
@@ -38,14 +39,14 @@ export default function TechAnalysis() {
   const loadSuppliers = () => api.get("/pro/suppliers").then(({ data }) => setSuppliers(data.items || [])).catch(() => {});
 
   const tabs = [["acier", "Ferragem / Aço"], ["etancheite", "Impermeabilização"],
-  ["toiture", "Cobertura"], ["vrd", "VRD / Redes"], ["commandes", "Encomendas"], ["fournisseurs", "Os meus fornecedores"]];
+  ["toiture", "Cobertura"], ["vrd", "VRD / Redes"], ["pic", "Plano de estaleiro"], ["commandes", "Encomendas"], ["fournisseurs", "Os meus fornecedores"]];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6" data-testid="tech-analysis-page">
       <div className="flex items-center gap-3 flex-wrap">
         <HardHat className="h-6 w-6 text-primary" />
         <h1 className="font-display text-2xl font-bold">Análise técnica &amp; Aprovisionamento IA</h1>
-        <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Aço · Impermeabilização · Cobertura · Infraestruturas</span>
+        <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Aço · Impermeabilização · Cobertura · Infraestruturas · Estaleiro</span>
       </div>
 
       <div className="flex gap-2 border-b border-border overflow-x-auto">
@@ -59,6 +60,7 @@ export default function TechAnalysis() {
       {tab === "etancheite" && <WaterproofingTab plans={plans} suppliers={suppliers} />}
       {tab === "toiture" && <RoofingTab plans={plans} suppliers={suppliers} />}
       {tab === "vrd" && <VrdTab plans={plans} suppliers={suppliers} />}
+      {tab === "pic" && <PicTab plans={plans} />}
       {tab === "commandes" && <OrdersTab suppliers={suppliers} />}
       {tab === "fournisseurs" && <SupplierManager suppliers={suppliers} reload={loadSuppliers} />}
     </div>

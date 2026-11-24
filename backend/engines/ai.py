@@ -682,6 +682,39 @@ async def analyze_vrd(images: list[str]) -> dict:
                  {"networks": [], "scale_confidence": 0, "notes": ""})
 
 
+async def analyze_site_plan(images: list[str]) -> dict:
+    """Leitura IA de uma planta de implantação para o plano de estaleiro: limite do terreno, edifício(s),
+    acessos, cota de referência. Nenhum cálculo aqui (ver engines/pic.py)."""
+    fallback = {"parcel": [], "buildings": [], "accesses": [], "obstacles": [], "reference": None,
+                "scale_detected": None, "scale_confidence": 0, "notes": ""}
+    if not images:
+        return {**fallback, "notes": "nenhuma imagem"}
+    system = (BRAND + " És diretor de obra e topógrafo: lês uma planta de implantação para preparar um "
+              "plano de estaleiro. Identificas apenas o que está desenhado ou escrito na planta; não "
+              "calculas nada e não inventas nada.")
+    prompt = (
+        "Analisa esta planta de implantação. Todas as coordenadas são normalizadas entre 0 e 1 em "
+        "relação à imagem (x para a direita, y para baixo).\n"
+        "Devolve APENAS este JSON:\n"
+        '{ "scale_detected": string|null (ex. "1/200"), "scale_confidence": number(0-1),\n'
+        '  "reference": { "p1": [x,y], "p2": [x,y], "length_m": number, "label": string } | null,\n'
+        '  "parcel": [[x,y], ...] (contorno do limite do prédio / limite do estaleiro),\n'
+        '  "buildings": [ { "label": string, "polygon": [[x,y], ...], "levels": integer|null,\n'
+        '                   "height_m": number|null } ] (apenas edifícios A CONSTRUIR),\n'
+        '  "accesses": [ { "point": [x,y], "label": string } ] (acessos de veículos a partir da via),\n'
+        '  "obstacles": [ { "type": "ligne_electrique"|"arbre"|"batiment_existant"|"voisin"|"autre",\n'
+        '                   "label": string, "bbox": [x1,y1,x2,y2] } ],\n'
+        '  "streets": [string], "notes": string }\n'
+        "Tipos de obstáculo: ligne_electrique = linha elétrica aérea, arbre = árvore, batiment_existant = "
+        "edifício existente, voisin = construção vizinha, autre = outro. «reference» = uma cota legível "
+        "na planta (comprimento escrito entre dois pontos), a mais longa possível; null se nenhuma cota "
+        "for legível. «levels» e «height_m» apenas se estiverem escritos (R/C+2, cotas altimétricas, "
+        "altura); caso contrário null. Se um contorno for incerto, dá a tua melhor leitura e assinala-o "
+        "em «notes». Textos em português europeu."
+    )
+    return _json(await _complete_vision(system, prompt, images[:2], *GEMINI_PRO, feature="pic"), fallback)
+
+
 def _json(raw: str, fallback):
     raw = (raw or "").strip()
     if raw.startswith("```"):
