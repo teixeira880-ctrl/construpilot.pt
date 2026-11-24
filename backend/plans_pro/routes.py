@@ -41,12 +41,28 @@ _ACCEPT_MIME: dict[str, tuple[str, bool]] = {
     ".ifc": ("application/x-step", True),
     ".nwc": ("application/octet-stream", True),
     ".nwd": ("application/octet-stream", True),
-    ".pdf": ("application/pdf", True),
+    ".pdf": ("application/pdf", False),   # rasterizado no servidor (PyMuPDF): não precisa do Autodesk
     ".png": ("image/png", False),
     ".jpg": ("image/jpeg", False),
     ".jpeg": ("image/jpeg", False),
     ".webp": ("image/webp", False),
 }
+
+
+PDF_MAX_PX = 2400        # lado maior da imagem enviada à leitura IA (legível, abaixo do limite dos fornecedores)
+
+
+def pdf_primeira_pagina_png(data: bytes) -> tuple[bytes, int]:
+    """Rasteriza a 1.ª página de um PDF em PNG (lado maior ≤ PDF_MAX_PX, no máximo 300 dpi). Devolve (png, n.º de páginas)."""
+    import pymupdf
+    with pymupdf.open(stream=data, filetype="pdf") as doc:
+        if doc.page_count == 0:
+            raise ValueError("PDF sem páginas")
+        page = doc[0]
+        lado = max(page.rect.width, page.rect.height) or 1
+        zoom = min(PDF_MAX_PX / lado, 300 / 72)
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+        return pix.tobytes("png"), doc.page_count
 
 
 FINAL_STATUSES = {"done", "partial", "needs_review", "failed", "cancelled"}
@@ -125,6 +141,15 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
             except Exception as e:
                 logger.exception("Autodesk extract failed for %s", job_id)
                 autodesk_error = str(e)[:300]
+        elif ext == ".pdf":
+            try:
+                vision_input, pages = await asyncio.to_thread(pdf_primeira_pagina_png, file_bytes)
+            except Exception as e:  # noqa: BLE001
+                await _upd(status="failed", progress="0%", error="PDF ilegível: verifique se não está protegido ou danificado.",
+                           technical_error=str(e)[:300], checks=["Leitura do PDF: falhou"], finished_at=datetime.now(timezone.utc))
+                return
+            vision_mime, vision_source = "image/png", "pdf_page_1"
+            await _upd(pdf_pages=pages, preview="data:image/png;base64," + base64.b64encode(vision_input).decode("ascii"))
         else:
             vision_input = file_bytes
             vision_mime = _ACCEPT_MIME.get(ext, ("image/png", False))[0]
@@ -133,9 +158,15 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
             await _upd(status="running_vision", progress="80%")
             vision = await vision_cascade.analyze_plan_image(image_bytes=vision_input, image_mime=vision_mime)
             vision["source"] = vision_source
+            if vision_source == "pdf_page_1":
+                pages = (await db.plans_pro_jobs.find_one({"job_id": job_id}, {"pdf_pages": 1}) or {}).get("pdf_pages") or 1
+                if pages > 1:
+                    vision.setdefault("warnings", []).append(f"PDF de {pages} páginas: só a 1.ª página foi lida. Importe as outras páginas em separado.")
             await _upd(vision=vision)
 
         status, checks = _finalize(needs_autodesk=needs_autodesk, autodesk_ok=autodesk_ok, vision=vision)
+        if ext == ".pdf":
+            checks.insert(0, "Leitura do PDF: 1.ª página convertida em imagem no servidor")
         error = None
         if status == "failed":
             error = autodesk_error and f'O Autodesk não conseguiu processar este ficheiro: {autodesk_error}' or (vision or {}).get("error") or "Nenhum resultado utilizável."
@@ -226,7 +257,7 @@ async def retry_job(job_id: str, request: Request, response: Response, backgroun
 async def job_status(job_id: str, user=Depends(current_user)):
     doc = await db.plans_pro_jobs.find_one(
         {"job_id": job_id, "user_id": user["user_id"]},
-        {"_id": 0, "user_id": 0},
+        {"_id": 0, "user_id": 0, "preview": 0},
     )
     if not doc:
         raise HTTPException(404, "Tarefa não encontrada")
@@ -335,6 +366,7 @@ async def job_result(job_id: str, user=Depends(current_user)):
                 (v.get("objects") or 0) for v in (doc.get("autodesk_views") or [])
             ) or None,
         } if doc.get("autodesk_urn") else None,
+        "pdf": {"pages": doc.get("pdf_pages"), "preview": doc.get("preview")} if doc.get("pdf_pages") else None,
         "vision": doc.get("vision"),
         "status": doc.get("status"),
         "checks": doc.get("checks") or [],
@@ -369,6 +401,6 @@ async def history(limit: int = 20, user=Depends(current_user)):
     limit = max(1, min(int(limit or 20), 100))
     items = await db.plans_pro_jobs.find(
         {"user_id": user["user_id"]},
-        {"_id": 0, "user_id": 0, "vision.text_detected": 0, "autodesk_thumbnail": 0},
+        {"_id": 0, "user_id": 0, "vision.text_detected": 0, "autodesk_thumbnail": 0, "preview": 0},
     ).sort("created_at", -1).to_list(limit)
     return {"items": items}

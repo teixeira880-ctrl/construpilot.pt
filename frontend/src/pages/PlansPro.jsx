@@ -130,7 +130,7 @@ export default function PlansPro() {
       <header>
         <h1 className="text-2xl md:text-3xl font-semibold">Análise de planta Pro</h1>
         <p className="text-sm text-slate-500">
-          Autodesk (DWG / RVT / IFC / PDF) + cascata Visão IA Assistente Construção + verificação de normas Perplexity.
+          PDF e imagens lidos no servidor, DWG / RVT / IFC via Autodesk, depois dupla leitura IA e verificação das normas.
         </p>
       </header>
 
@@ -187,6 +187,10 @@ export default function PlansPro() {
             <p className="text-xs text-emerald-700" data-testid="plans-pro-result-checks">{result.checks.join(" · ")}</p>
           )}
           <div className="grid md:grid-cols-3 gap-4">
+            {!result.autodesk?.thumbnail && result.pdf?.preview && (
+              <img src={result.pdf.preview} alt="Página 1 do PDF" data-testid="plans-pro-pdf-preview"
+                   className="rounded-lg border border-slate-200 dark:border-slate-800 object-contain w-full aspect-square bg-white" />
+            )}
             {result.autodesk?.thumbnail && (
               <img src={result.autodesk.thumbnail} alt="Pré-visualização Autodesk" data-testid="plans-pro-thumbnail"
                    className="rounded-lg border border-slate-200 dark:border-slate-800 object-contain w-full aspect-square bg-white" />
