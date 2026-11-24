@@ -7,6 +7,8 @@ import types
 def test_i18n_cascata_claude_sem_credito_passa_a_emergent(monkeypatch):
     from routes import i18n_auto as M
     M._DEGRADADO.clear()
+    monkeypatch.delenv("ASSISTANT_PROVIDER", raising=False)      # o .env do servidor não pode mudar a ordem testada
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)          # nenhuma chamada real a um fornecedor
     monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
     monkeypatch.setenv("EMERGENT_LLM_KEY", "y")
 
@@ -43,6 +45,7 @@ def test_i18n_openai_a_frente_quando_e_o_principal(monkeypatch):
     monkeypatch.setenv("ASSISTANT_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", "z")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    monkeypatch.delenv("EMERGENT_LLM_KEY", raising=False)
     chamadas = []
 
     class Comp:
