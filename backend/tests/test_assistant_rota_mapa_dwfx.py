@@ -45,3 +45,10 @@ def test_sem_dwfx_ou_sem_pedido_de_mapa_nao_forca(monkeypatch):
     assert asyncio.run(A._rota_mapa_dwfx(b1, {"user_id": "u"}, {}, TOOLS)) == (None, "")
     b2 = types.SimpleNamespace(text="faz o mapa de quantidades", doc_ids=["doc_e"])
     assert asyncio.run(A._rota_mapa_dwfx(b2, {"user_id": "u"}, {}, TOOLS)) == (None, "")
+
+
+def test_pedido_de_orcamento_vai_ao_orcamento_do_mapa(monkeypatch):
+    monkeypatch.setattr(A, "db", _DB())
+    body = types.SimpleNamespace(text="faz um mapa de quantidades e um orçamento completo da estrutura", doc_ids=["doc_dw", "doc_e"])
+    tool, txt = asyncio.run(A._rota_mapa_dwfx(body, {"user_id": "u"}, {}, TOOLS + [{"name": "orcamento_mapa_dwfx"}]))
+    assert tool == "orcamento_mapa_dwfx" and "so_estrutura" in txt

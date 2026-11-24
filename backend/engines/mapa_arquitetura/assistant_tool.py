@@ -141,6 +141,12 @@ def medir(docs: list, pe_direito=None, mapa_camadas=None, out_dir=None, estrutur
                                                           "C compartimentos, V vãos) : os números são os do mapa.")
             modelo["files"] = {"xlsx": xlsx, "controlo": premium.gerar_pdf(modelo, str(out / "Mapa_quantidades.pdf"), titulo,
                                                                            extras=extras, nao_medido=nao)}
+            try:                                             # as mesmas linhas do mapa, para o orçamento (orcamento_mapa_dwfx)
+                modelo["_linhas"] = [dict(l) for l in premium.linhas(modelo, extras)]
+            except Exception:  # noqa: BLE001
+                log.warning("linhas do mapa indisponíveis para o orçamento", exc_info=True)
+                modelo["_linhas"] = []
+            modelo["_nao"] = [dict(x) for x in (nao or [])]
         return modelo
     return {"ok": False, "avisos": avisos or ["Nenhum DWFX nos documentos."]}
 
@@ -219,4 +225,4 @@ async def execute(name: str, args: dict, user: dict, conv: dict, db, doc_loader=
     except Exception as exc:  # noqa: BLE001
         log.exception("medir_arquitetura_dwfx failed")
         return {"ok": False, "error": f"Medição impossível — {type(exc).__name__}: {str(exc)[:200]}"}
-    return {**_publico(modelo), "artifacts": arts}
+    return {**_publico(modelo), "artifacts": arts, "_linhas": modelo.get("_linhas") or [], "_nao": modelo.get("_nao") or []}

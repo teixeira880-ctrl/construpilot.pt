@@ -182,6 +182,7 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"}, "sistema": {"type": "string", "enum": ["metalica", "betao_armado"]},
                                                      "pe_direito_m": {"type": ["number", "null"], "description": "Só se o utilizador o disser; senão null (mantém o valor anterior deste desenho ou a hipótese)."}, "pisos": {"type": ["integer", "null"], "description": "Só se o utilizador o disser; senão null."}, "recalcular": {"type": "boolean", "description": "false por defeito. true SÓ se o utilizador pedir explicitamente para recalcular do zero: o mesmo desenho dá sempre o resultado de referência guardado."}},
                     "required": ["plan_id", "sistema", "pe_direito_m", "pisos", "recalcular"], "additionalProperties": False}, "strict": True},
+    {"type": "function", "name": "orcamento_mapa_dwfx", "description": "ORÇAMENTO a partir do MAPA DE QUANTIDADES de um desenho DWFX (+ PDF do projeto de estrutura): mede tudo com o motor do mapa (fundações, escavação, muros, pilares, lajes, vigas, aço com emendas, alvenarias, vãos, pavimentos, exteriores) e grava o orçamento com as MESMAS quantidades, linha a linha, por capítulo e piso; preços da biblioteca da empresa, depois da referência CYPE Portugal, depois do mercado online, com a origem de cada preço. Usar SEMPRE que pedem orçamento/estimativa de custo com um .dwfx anexado. so_estrutura=true para só movimento de terras, fundações e estrutura.", "parameters": {"type": "object", "properties": {"document_ids": {"type": "array", "items": {"type": "string"}, "description": "doc_… dos .dwfx"}, "documentos_estrutura": {"type": "array", "items": {"type": "string"}, "description": "doc_… dos PDF de estrutura"}, "so_estrutura": {"type": "boolean"}, "capitulos": {"type": "array", "items": {"type": "string"}}, "titulo": {"type": "string"}, "cliente": {"type": "string"}, "pe_direito_m": {"type": "number"}}, "required": ["document_ids"], "additionalProperties": False}},
     {"type": "function", "name": "orcamento_cad_completo", "description": "ORÇAMENTO COMPLETO de um desenho CAD (DWG/DXF) num só passo: mede o desenho camada a camada, calcula a estrutura (se o sistema for indicado), junta as bases de pavimento (hipótese marcada) e o transporte das terras, grava o orçamento com os preços da biblioteca da empresa, depois da referência CYPE Portugal (custo direto + encargos e margem da empresa), depois do mercado online — com a origem de cada preço — e devolve totais, PDF/Excel do orçamento e da medição e o dossier económico. Usar SEMPRE que pedem um orçamento/mapa de quantidades com preços de um DWG/DXF.",
      "parameters": {"type": "object", "properties": {"plan_id": {"type": "string"},
                                                      "sistema": {"type": "string", "enum": ["metalica", "betao_armado", "nenhum"], "description": "Sistema estrutural do edifício ('é em aço' → metalica). 'nenhum' só se não houver edifício."},
@@ -299,7 +300,7 @@ def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
         return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS
     from core.permissions import permissions_for
-    quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamento_cad_completo"}
+    quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamento_cad_completo", "orcamento_mapa_dwfx"}
     out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL, PLANS_COHERENCE_TOOL, PAC_LAYOUT_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + TERRENOS_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + MAPA_ESTR_TOOLS + MAPA_ARQ_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + ED3D_TOOLS + CRM_TOOLS
     if assistant_clt.allowed(user) and permissions_for(user)["devis"]:
         out += assistant_clt.TOOLS
@@ -784,6 +785,100 @@ async def _orcamento_cad_completo(args: dict, user: dict, conv: dict) -> dict:
                          "e a folha de seguimento: planta com os artigos numerados e tabela com os mesmos números)."}
 
 
+# Artigo de preço de cada linha estrutural do mapa : a quantidade e o elemento ficam iguais (o elemento vai para a descrição),
+# o preço procura-se por artigo (betão de pilares, aço A500, cofragem de lajes…) — poucos artigos distintos, preço coerente
+# entre elementos iguais e sem esgotar a pesquisa de mercado com centenas de designações.
+ARTIGOS_PRECO = [
+    (r"escavacao geral", "m3", "Escavação geral em terreno com meios mecânicos, incluindo carga"),
+    (r"tout-venant", "m3", "Tout-venant compactado sob pavimento térreo"),
+    (r"betao de limpeza", "m3", "Betão de limpeza em fundações (classe do projeto)"),
+    (r"impermeabiliza", "m2", "Impermeabilização e drenagem de muros enterrados (face exterior)"),
+    (r"tela de polietileno", "m2", "Tela de polietileno sob pavimento térreo"),
+    (r"malha (eletrossoldada|da lamina)|malhasol|\bcq\d|\baq\d", "m2", "Malha eletrossoldada (malhasol) colocada"),
+    (r"blocos de aligeiramento", "u", "Bloco de aligeiramento para laje fungiforme aligeirada, colocado"),
+    (r"vigotas pre-esforcadas", "ml", "Vigota pré-esforçada colocada"),
+    (r"laje de vigotas .*area", "m2", "Abobadilhas e escoramento de laje de vigotas (vigotas e betão em linhas próprias)"),
+    (r"(aco|estribos|armaduras desenhadas|emendas)", "kg", "Aço em varão nervurado (classe do projeto), cortado, dobrado e colocado"),
+    (r"\bpilar.*cofragem", "m2", "Cofragem de pilares"),
+    (r"\bpilar.*betao", "m3", "Betão (classe do projeto) em pilares, bombeado e vibrado"),
+    (r"vigas de equilibrio.*cofragem|sapata.*cofragem", "m2", "Cofragem lateral de elementos de fundação"),
+    (r"vigas de equilibrio.*betao|sapata.*betao", "m3", "Betão (classe do projeto) em elementos de fundação, sem armadura"),
+    (r"muros?.*cofragem", "m2", "Cofragem de muros (2 faces)"),
+    (r"(muros? de suporte|paredes do nucleo).*betao", "m3", "Betão (classe do projeto) em muros e paredes, bombeado e vibrado"),
+    (r"vigas.*cofragem", "m2", "Cofragem de vigas"),
+    (r"vigas.*betao", "m3", "Betão (classe do projeto) em vigas, bombeado e vibrado"),
+    (r"cofragem de laje", "m2", "Cofragem de lajes (fundo), com escoramento"),
+    (r"laje terrea.*betao", "m3", "Betão (classe do projeto) em pavimento térreo, sem armadura"),
+    (r"laje.*betao", "m3", "Betão (classe do projeto) em lajes, bombeado e vibrado"),
+]
+
+
+def _artigo_preco(designacao: str, un: str) -> str | None:
+    d = _norm_txt(designacao)
+    for rx, u, art in ARTIGOS_PRECO:
+        if u == un and re.search(rx, d):
+            return art
+    return None
+
+
+CAP_ESTRUTURA = ("Movimento de terras", "Fundações", "Estrutura")
+
+
+async def _orcamento_mapa_dwfx(args: dict, user: dict, conv: dict) -> dict:
+    """ORÇAMENTO a partir do MAPA DE QUANTIDADES medido no DWFX (+ PDF de estrutura) : as mesmas linhas, as mesmas quantidades,
+    com o capítulo e o piso de cada uma ; preços pela cascata de sempre (biblioteca da empresa → referência CYPE PT → mercado
+    online), com a origem escrita em cada linha. As linhas «a medir» (sem quantidade) ficam listadas, nunca inventadas."""
+    from engines.assistant_quote_exports import with_exports
+    from engines.assistant_quote_service import append_quote_lines, save_quote
+    med = await execute_mapa_arq_tool("medir_arquitetura_dwfx", {k: args.get(k) for k in ("document_ids", "documentos_estrutura", "pe_direito_m",
+                                                                                          "mapa_camadas") if args.get(k)}, user, conv, db)
+    if not med.get("ok"):
+        return med
+    linhas = med.get("_linhas") or []
+    so = args.get("capitulos") or (list(CAP_ESTRUTURA) if args.get("so_estrutura") else None)
+    if so:
+        alvo = {_norm_txt(c) for c in so}
+        linhas = [l for l in linhas if _norm_txt(l.get("capitulo")) in alvo]
+    a_medir = [l for l in linhas if not l.get("qtd")]
+    medidas = [l for l in linhas if l.get("qtd")]
+    un = {"m²": "m2", "m³": "m3", "m": "ml", "un": "u", "ud": "u"}
+    qlines = []
+    for l in medidas:
+        u = un.get(str(l.get("un") or "u"), str(l.get("un") or "u"))[:12]
+        art = _artigo_preco(l.get("designacao"), u) if l.get("capitulo") in CAP_ESTRUTURA else None
+        qlines.append({"line_id": None, "designation": (art or str(l.get("designacao") or "Artigo"))[:500],
+                       "description": ((f"{l.get('designacao')} — " if art else "") + (f"{l.get('piso')} — " if l.get("piso") else "")
+                                       + str(l.get("descricao") or ""))[:2000],
+                       "quantity": round(float(l["qtd"]), 3), "unit": u, "unit_price": None, "price_origin": "library", "vat_rate": None,
+                       "lot": (str(l.get("capitulo") or "Geral") + (f" — {l['piso']}" if l.get("piso") else ""))[:80]})
+    if not qlines:
+        return {"ok": False, "error": "O mapa não deu quantidades para orçamentar " + (f"nos capítulos {', '.join(so)}." if so else "."),
+                "resumo_mapa": med.get("resumo")}
+    nomes = ", ".join(str(x) for x in args.get("document_ids") or [])
+    title = (args.get("titulo") or ("Orçamento da estrutura — mapa de quantidades" if so else "Orçamento — mapa de quantidades"))[:160]
+    res = await save_quote({"title": title, "client_name": (args.get("cliente") or "")[:200], "vat_rate": None, "lines": qlines[:150]}, user, conv)
+    conv["_quote_create_slot"] = conv.get("_quote_create_slot", 0) + 1
+    for i in range(150, len(qlines), 60):
+        res = await append_quote_lines({"vat_rate": None, "lines": qlines[i:i + 60]}, user, conv, doc_id=res["doc_id"])
+    res = await with_exports(res, user, conv)
+    rows = (res.get("draft") or {}).get("lines") or []
+    origem = {}
+    for r in rows:
+        k = r.get("price_source") or "unpriced"
+        origem[k] = origem.get(k, 0) + 1
+    d = res.get("draft") or {}
+    res = {**res, "artifacts": list(res.get("artifacts") or []) + list(med.get("artifacts") or [])}
+    return {**res, "resumo": {"artigos": len(rows), "total_sem_iva": d.get("total_ht"), "iva": d.get("total_tva"), "total_com_iva": d.get("total_ttc"),
+                              "origem_dos_precos": origem, "sem_preco": [r["designation"] for r in rows if r.get("price_missing")],
+                              "a_medir_sem_quantidade": [f"{l.get('capitulo')} — {l.get('designacao')}" for l in a_medir][:40]
+                                                         + [f"{x.get('capitulo')} — {x.get('designacao')} (não medido)" for x in med.get("_nao") or []][:20],
+                              "capitulos": so or "todos", "documentos": nomes},
+            "instrucao": "Apresenta: total sem IVA, IVA e total com IVA; o resumo por capítulo e por piso; a origem dos preços (biblioteca da "
+                         "empresa, referência CYPE PT, mercado online — estes últimos a verificar); as linhas sem preço e as linhas «a medir» sem "
+                         "quantidade como pontos a completar (nunca as estimes); e anuncia TODOS os ficheiros (orçamento PDF/Excel e o mapa de "
+                         "quantidades Excel/PDF com as plantas numeradas). As quantidades são as do mapa, linha a linha."}
+
+
 def _norm_txt(s) -> str:
     import unicodedata as _u
     return _u.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
@@ -871,7 +966,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
     if name in MAPA_ESTR_TOOL_NAMES:
         return await execute_mapa_estr_tool(name, args, user, conv, db)
     if name in MAPA_ARQ_TOOL_NAMES:
-        return await execute_mapa_arq_tool(name, args, user, conv, db)
+        r = await execute_mapa_arq_tool(name, args, user, conv, db)
+        return {k: v for k, v in r.items() if k not in ("_linhas", "_nao")}       # as linhas brutas só servem o orçamento
     if name in CALC_TOOL_NAMES:
         return await execute_calc_tool(name, args, user, conv, db)
     if name in MISSION_TOOL_NAMES:
@@ -1141,6 +1237,8 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
                               await _seguimento_cad(args["plan_id"], user, conv, p, res))
     if name == "orcamento_cad_completo":
         return await _orcamento_cad_completo(args, user, conv)
+    if name == "orcamento_mapa_dwfx":
+        return await _orcamento_mapa_dwfx(args, user, conv)
     if name == "get_plan_results":
         p = await _allowed_plan(args["plan_id"], uid)
         rep = (p.get("cotes_checks") or {}).get(str(args["page_index"])) or {}
@@ -2212,11 +2310,15 @@ async def _rota_mapa_dwfx(body, user: dict, conv: dict, available: list) -> tupl
         if not dw:
             return None, ""
         pdfs = [d for d in docs if d.get("mime") == "application/pdf"]
-        txt = ("\nMAPA COM DESENHO DWFX (prioritário) : chama medir_arquitetura_dwfx com document_ids = "
+        orc = bool(re.search(r"or[cç]amento|estimativa|custo|pre[cç]o|devis", body.text or "", re.I)) and \
+            "orcamento_mapa_dwfx" in {t.get("name") for t in available}
+        alvo = "orcamento_mapa_dwfx" if orc else "medir_arquitetura_dwfx"
+        txt = (f"\nMAPA COM DESENHO DWFX (prioritário) : chama {alvo} com document_ids = "
                + json.dumps([d["doc_id"] for d in dw]) + " e documentos_estrutura = " + json.dumps([d["doc_id"] for d in pdfs])
                + " (" + ", ".join(f"{d['doc_id']} = {d.get('filename')}" for d in dw + pdfs) + "). Usa só estes identificadores. "
-               "Apresenta depois o Excel e o PDF produzidos e as linhas «a medir» ; para o orçamento usa as quantidades desse mapa.")
-        return "medir_arquitetura_dwfx", txt
+               "Apresenta depois os ficheiros produzidos e as linhas «a medir». Orçamento : só com orcamento_mapa_dwfx (as quantidades do "
+               "mapa, so_estrutura=true se pedirem só a estrutura) — nunca um orçamento paralelo com quantidades estimadas.")
+        return alvo, txt
     except Exception:  # noqa: BLE001 — a rota é uma ajuda, nunca um bloqueio
         logger.warning("rota mapa dwfx indisponível", exc_info=True)
         return None, ""
@@ -2425,7 +2527,7 @@ async def _run_chat(body: MsgIn, user: dict, stream: bool, prepared=None):
             with suppress(Exception): await client.close()
 
 
-TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…",
+TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Leitura do ficheiro anterior…", "define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Início da análise aprofundada…", "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "orcamento_mapa_dwfx": "Orçamento a partir do mapa de quantidades (DWFX + estrutura): medição, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…",
                   "generate_branded_pdf": "Preparação do relatório PDF…", "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "A consultar o orçamento atual…", "update_quote_draft": "A atualizar o rascunho de orçamento…", "add_quote_lines": "A adicionar as linhas ao orçamento…", "find_quote_drafts": "A procurar os seus orçamentos existentes…",
                   "save_user_preference": "Memorização da preferência…", "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…",
                   "estimate_budget_range": "Cálculo do intervalo orçamental…", "compare_documents": "Comparação dos documentos em curso (30 a 120 s)…",
@@ -2441,7 +2543,7 @@ TOOL_STATUS_PT = {"generate_heat_pump_layout": "Implantação da bomba de calor 
                   "cross_check": "Cruzamento multi-IA (ChatGPT · Gemini Pro · Claude)…"}
 TOOL_STATUS = {"generate_heat_pump_layout": "Implantação da bomba de calor reversível nas plantas (piso radiante, ventiloconvectores)…", "check_plans_coherence": "Controlo arquitetura ↔ estruturas: leitura das cotas e sobreposição…", "read_building_geometry": "Leitura das plantas e do estudo geotécnico (1-2 min)…", "create_downloadable_file": "Criação do ficheiro…", "read_generated_file": "Releitura do ficheiro anterior…", "inspect_document_region": "Leitura do pormenor ampliado…", "read_work_draft": "Releitura do rascunho atual…", "update_work_draft": "Revisão do rascunho…",
                "read_document": "Leitura das páginas e do desenho…", "calculate": "Verificação do cálculo…", "create_work_draft": "Redação do documento…", "search_own_history": "Pesquisa nas suas conversas…","define_analysis_scope": "Definição do âmbito…", "analyze_plan": "Lançamento da análise aprofundada…",
-               "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…", "generate_branded_pdf": "Preparação do relatório PDF…",
+               "get_plan_results": "Leitura dos resultados da planta…", "medir_camadas_cad": "Medição do desenho CAD camada a camada (pavimentos, lancis, verdes)…", "orcamento_cad_completo": "Orçamento completo do desenho CAD: medição, estrutura, preços com a origem e totais…", "orcamento_mapa_dwfx": "Orçamento a partir do mapa de quantidades (DWFX + estrutura): medição, preços com a origem e totais…", "calcular_estrutura_cad": "Cálculo da estrutura (pórticos, pilares, fundações) sobre o contorno do edifício…", "generate_branded_pdf": "Preparação do relatório PDF…",
                "run_construpilot_agent": "Agente em curso — agrupamento, medição e orçamentação…",
                "create_quote_draft": "A guardar o rascunho no Acompanhamento de orçamentos…", "read_quote_draft": "Leitura do orçamento atual…", "update_quote_draft": "Atualização do rascunho de orçamento…", "add_quote_lines": "Adição das linhas ao orçamento…", "find_quote_drafts": "Pesquisa dos seus orçamentos existentes…", "save_user_preference": "Memorização da preferência…",
                "create_project_task": "Criação da tarefa…", "find_clients": "A procurar os clientes…", "create_client": "A criar a ficha de cliente…", "find_projects": "A procurar os processos de obra…", "create_project": "A criar o processo de obra…", "link_to_client": "A associar o documento ao cliente…", "attach_to_project": "A juntar ao processo de obra…", "estimate_budget_range": "Cálculo do intervalo orçamental…",
