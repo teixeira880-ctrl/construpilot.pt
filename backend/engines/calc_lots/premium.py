@@ -44,6 +44,26 @@ def marca(slug: str | None, nome=None, cor=None, logo_png: bytes | None = None) 
     return b
 
 
+def marca_conta(p: dict) -> dict | None:
+    """Marca dos dossiers: a empresa indicada no pedido (`empresa`) ou, por defeito, a marca da conta que pede o estudo
+    (`_branding`, injetada pela ponte do Assistente) — nunca a marca de outra empresa."""
+    if p.get("empresa"):
+        return marca(p["empresa"])
+    b = p.get("_branding") or {}
+    logo = None
+    if b.get("logo_b64"):
+        import base64
+        try:
+            raw = b["logo_b64"].split(",", 1)[-1]
+            logo = base64.b64decode(raw)
+        except Exception:  # noqa: BLE001
+            logo = None
+    if not (logo or b.get("company_name")):
+        return None
+    return marca(None, b.get("company_name") or "", b.get("accent_color"), logo) if logo else \
+        dict(nome=b.get("company_name"), cor=_hex(b["accent_color"]) if b.get("accent_color") else VERDE, site="", linha=b.get("contact_line") or "")
+
+
 def _logo_rect(pix_w, pix_h, x, y, w_max, h_max, alinhar="esq"):
     k = min(w_max / pix_w, h_max / pix_h)
     w, h = pix_w * k, pix_h * k

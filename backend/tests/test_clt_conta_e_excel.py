@@ -1,4 +1,4 @@
-"""Conta CLT Rezult → sempre modelo premium Ucrânia; Excel de orçamento com os totais já calculados."""
+"""Sem regime próprio para a conta CLT Rezult; Excel de orçamento com os totais já calculados."""
 import os
 import tempfile
 
@@ -7,15 +7,10 @@ os.environ.setdefault("DB_NAME", "test_clt")
 os.environ.setdefault("JWT_SECRET", "test")
 
 
-def test_conta_clt_vai_sempre_para_ucrania():
-    from engines.assistant_bet_core_tool import conta_clt_ua
-    u = {"email": "clt-rezult.demo@construpilot.pt"}
-    a = conta_clt_ua(u, "generate_full_bet_study", {"country": "FR", "hypotheses": "maison R+1", "document_ids": ["x"]})
-    assert a["country"] == "UA" and "preços da Ucrânia" in a["hypotheses"] and "maison R+1" in a["hypotheses"]
-    assert conta_clt_ua(u, "generate_full_bet_study", a)["hypotheses"] == a["hypotheses"]          # sem duplicar
-    outro = {"email": "cliente@exemplo.pt"}
-    assert conta_clt_ua(outro, "generate_full_bet_study", {"country": "PT"})["country"] == "PT"
-    assert conta_clt_ua(u, "read_full_bet_study", {"job_id": "j"}) == {"job_id": "j"}
+def test_sem_regime_proprio_para_a_conta_clt():
+    """A conta CLT Rezult trabalha como todas as outras: nenhum desvio automático para o modelo Ucrânia."""
+    import engines.assistant_bet_core_tool as T
+    assert not hasattr(T, "conta_clt_ua")
 
 
 def test_excel_do_orcamento_tem_os_totais_calculados():

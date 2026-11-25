@@ -840,10 +840,10 @@ def run(name: str, args: dict) -> dict:
     if name == "calcul_ucrania":
         caso = a.get("caso")
         p = pacote_ua.parametros(caso) if caso else ((ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {})
-        from . import rastreio_ua as RTU                           # acompanhamento ao vivo (conta CLT Rezult; no-op nas outras)
+        from . import rastreio_ua as RTU                           # acompanhamento ao vivo (contas profissionais; no-op sem tracer)
         RTU.inicio(p, caso)
         if caso:                                                   # o caso guardado manda na geometria; título/empresa do utilizador mantêm-se
-            a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt")}
+            a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt", "_branding")}
             # ordem: 1) estudo estrutural (geometria lida nos planos) 2) renders 3D Full HD desse modelo 3) dossiers com os renders
             mod_calc = gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"]
             RTU.renders()

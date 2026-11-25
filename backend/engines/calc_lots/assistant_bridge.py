@@ -67,15 +67,17 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
     uid, cid = user["user_id"], conv["conversation_id"]
     rid = conv.get("_quote_request_id") or cid
     digest = hashlib.sha256((rid + str(conv.get("_file_call_id", "")) + name + repr(sorted((args or {}).items(), key=lambda x: x[0]))).encode()).hexdigest()[:27]
-    from engines import calc_live
-    # conta seguida ao vivo (CLT Rezult): recalcula sempre, para a página de acompanhamento mostrar o cálculo real
-    old = None if calc_live.ativo() else await db.assistant_artifacts.find_one({"artifact_id": "file_" + digest + "n", "user_id": uid}, {"_id": 0, "data_b64": 0})
+    # o mesmo pedido devolve o mesmo estudo (mesmos números) — igual para todas as contas
+    old = await db.assistant_artifacts.find_one({"artifact_id": "file_" + digest + "n", "user_id": uid}, {"_id": 0, "data_b64": 0})
     if old:
         return {"ok": True, "artifact": {k: old.get(k) for k in ("artifact_id", "title", "filename", "format", "mime", "size", "download")},
                 "resume": old.get("body", "")}
     try:
         from . import ucrania as _ua
         _ua.LOOP = asyncio.get_running_loop()               # renders realistas: as chamadas IA correm no loop do servidor
+        if name == "calcul_ucrania":                        # Ucrânia: marca da conta que pede o estudo (logótipo, cor)
+            args = await _lsf_contexto({k: v for k, v in dict(args or {}).items() if k != "plan_id"}, uid, db)
+            args.pop("_biblioteca", None)
         if name in ("calcul_lsf", "calcul_clt"):            # LSF / CLT: planta lida, marca e biblioteca de preços da empresa
             args = await _lsf_contexto(dict(args or {}), uid, db)
             if (args or {}).get("render", True) is not False:   # render calculado + foto fotorrealista (todas as contas)

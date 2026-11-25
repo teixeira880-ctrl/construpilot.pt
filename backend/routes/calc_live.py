@@ -1,4 +1,4 @@
-"""Rotas do acompanhamento de cálculo ao vivo (/api/calc-live) — só a conta CLT Rezult.
+"""Rotas do acompanhamento de cálculo ao vivo (/api/calc-live) — todas as contas profissionais.
 
 GET  /calc-live/acesso              → {"acesso": bool} (o menu e a página escondem-se sem acesso)
 GET  /calc-live/runs                → últimas execuções (resumo)
@@ -17,14 +17,14 @@ router = APIRouter(prefix="/calc-live", tags=["calc-live"])
 
 
 def _so_clt(user=Depends(current_user)):
-    if not CL.is_clt(user):
-        raise HTTPException(403, "Página reservada à conta CLT Rezult.")
+    if not CL.acesso(user):
+        raise HTTPException(403, "Página reservada às contas profissionais.")
     return user
 
 
 @router.get("/acesso")
 async def acesso(user=Depends(current_user)) -> dict:
-    return {"acesso": CL.is_clt(user)}
+    return {"acesso": CL.acesso(user)}
 
 
 @router.get("/runs")
