@@ -2,7 +2,7 @@
 """Integração da Carta de obra de baixo carbono (commit 9dca665) nos 3 ficheiros que divergiram no Emergent.
 
 Uso (no /app do Emergent, durante o cherry-pick em conflito) :
-    git checkout --ours backend/engines/bet_core/assistant_tool.py backend/tests/bet_core/test_samples.py frontend/src/pages/ChantierDetail.jsx
+    git checkout --ours backend/engines/bet_core/assistant_tool.py backend/tests/bet_core/test_samples.py frontend/src/pages/ChantierDetail.jsx backend/server.py
     python3 scripts_tmp/aplicar_baixo_carbono_conflitos.py /app
 Mantém TUDO o que já existe no HEAD (ZIP > 30 páginas, imagens 3D, quote_doc_id, separador « colab »…) e só ACRESCENTA
 a carta de baixo carbono. Idempotente. Se uma âncora não for encontrada : sai com código 2 sem escrever nada.
@@ -129,8 +129,26 @@ def chantier(s):
     return s
 
 
+# --------------------------------------------------------------------------------------------- server.py (v3)
+def server(s):
+    if "bas_carbone_routes" not in s:
+        m = re.search(r'^api_router\.include_router\(chantiers_routes\.router\)\n', s, re.M)
+        need(m is not None, "server.py: api_router.include_router(chantiers_routes.router) não encontrado")
+        if m:
+            s = s[:m.end()] + ('from routes import bas_carbone as bas_carbone_routes  # noqa: E402\n'
+                               'api_router.include_router(bas_carbone_routes.router)\n') + s[m.end():]
+    if '"bas_carbone_chantier"' not in s:
+        m = re.search(r'^( *)await db\.chantiers\.create_index\("chantier_id", unique=True\)\n', s, re.M)
+        need(m is not None, 'server.py: create_index("chantier_id", unique=True) não encontrado')
+        if m:
+            i = m.group(1)
+            s = s[:m.end()] + (f'{i}await db.bas_carbone.create_index([("chantier_id", 1), ("user_id", 1)], unique=True, name="bas_carbone_chantier")\n'
+                               f'{i}await db.bas_carbone_etudes.create_index([("user_id", 1), ("job_id", 1)], unique=True, name="bas_carbone_etude_job")\n') + s[m.end():]
+    return s
+
+
 ALVOS = [("backend/engines/bet_core/assistant_tool.py", assistant), ("backend/tests/bet_core/test_samples.py", samples),
-         ("frontend/src/pages/ChantierDetail.jsx", chantier)]
+         ("frontend/src/pages/ChantierDetail.jsx", chantier), ("backend/server.py", server)]
 resultados = [edit(rel, fn) for rel, fn in ALVOS]
 for rel, _ in ALVOS:
     txt = (ROOT / rel).read_text(encoding="utf-8")
