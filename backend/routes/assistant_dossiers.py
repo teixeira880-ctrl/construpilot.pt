@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -162,6 +163,10 @@ async def add_file(dossier_id: str, file: UploadFile = File(...), user=Depends(c
     await db.assistant_dossiers.update_one({"dossier_id": dossier_id, "user_id": uid},
                                            {"$inc": {"files_count": len(added)}, "$push": {"skipped": {"$each": skipped[-50:]}},
                                             "$set": {"updated_at": _now()}})
+    if any(a.get("format") == "pdf" for a in added) and not os.environ.get("PYTEST_CURRENT_TEST"):
+        # leitura vetorial de todas as folhas/layers em segundo plano: medir_processo fica imediato e completo
+        from engines.dossier_tool import warm_dossier
+        asyncio.get_running_loop().create_task(warm_dossier(db, uid, dossier_id))
     return {"dossier_id": dossier_id, "added": added, "skipped": skipped}
 
 
