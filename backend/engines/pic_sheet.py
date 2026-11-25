@@ -104,8 +104,10 @@ def _page2(doc, d: dict, snapshot: bytes | None, snapshot_aerial: bytes | None, 
         for i, (b, t) in enumerate(imgs):
             x = inner.x0 + i * (cw + gap)
             pg.insert_text((x, y_img + 5 * MM), _txt(t), fontname="hebo", fontsize=12, color=(0.06, 0.32, 0.34))
-            r = pymupdf.Rect(x, y_img + 8 * MM, x + cw, inner.y1)
             try:
+                pm = pymupdf.Pixmap(b)
+                ih = min(cw * pm.height / max(pm.width, 1), inner.y1 - y_img - 8 * MM)   # encostada ao título
+                r = pymupdf.Rect(x, y_img + 8 * MM, x + cw, y_img + 8 * MM + ih)
                 pg.insert_image(r, stream=b, keep_proportion=True)
             except Exception:  # noqa: BLE001 — imagem ilegível: a folha sai sem ela
                 pass
