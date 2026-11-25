@@ -170,6 +170,8 @@ api_router.include_router(admin_revenue.router)
 api_router.include_router(admin_expenses.router)
 api_router.include_router(admin_apify.router)
 api_router.include_router(admin_learning.router)
+from routes import learning as learning_routes  # noqa: E402
+api_router.include_router(learning_routes.router)
 api_router.include_router(admin_avatar_bridge.router)
 api_router.include_router(admin_avatar.router)
 api_router.include_router(bridge_routes.admin_router)
@@ -754,6 +756,12 @@ async def _seed_impl():
     await db.resend_webhook_events.create_index("svix_id", unique=True)
     await db.quote_sends.create_index("email_id")
     await db.library_items.create_index("user_id")
+    # Aprendizagem automática com o uso
+    await db.price_observations.create_index([("org_id", 1), ("deal_id", 1), ("source", 1), ("line_key", 1)])
+    await db.price_observations.create_index([("org_id", 1), ("key", 1), ("updated_at", -1)])
+    await db.client_requests.create_index([("org_id", 1), ("created_at", -1)])
+    await db.library_global_auto.create_index("gkey")
+    await db.ai_feedback.create_index([("org_id", 1), ("engine", 1)])
     # bet_core: cache de releitura por empreinte (documentos + hipóteses + país)
     await db.bet_study_jobs.create_index("job_id", unique=True)
     await db.bet_models.create_index(

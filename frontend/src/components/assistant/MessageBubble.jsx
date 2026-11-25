@@ -1,6 +1,8 @@
 import { AssistantMark } from "./AssistantMark";
 import { useStudioCopy } from "./studioCopy";
-import { FileText, Loader2, Copy, CornerUpLeft, Download } from "lucide-react";
+import { FileText, Loader2, Copy, CornerUpLeft, Download, ThumbsUp, ThumbsDown } from "lucide-react";
+import { useState } from "react";
+import { api } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ActionCard } from "./ActionCard";
@@ -21,12 +23,28 @@ function onlyLatestQuoteFiles(actions) {
   });
 }
 
-export function MessageBubble({ m, live, onCorrect, testId, queued }) {
+export function MessageBubble({ m, live, onCorrect, testId, queued, question }) {
   const ui = useWorkspaceCopy();
   const studio = useStudioCopy();
   const view = useDocumentViewer();
   const id = testId || `assistant-msg-${m.role}`;
   const mine = m.role === "user";
+  const [rated, setRated] = useState(null);
+  const [comment, setComment] = useState("");
+  const [commentSent, setCommentSent] = useState(false);
+  // Aprendizagem por feedback : 👍 → caso de referência ; 👎 + comentário → correção memorizada para este cliente.
+  const sendFeedback = async (rating, note) => {
+    setRated(rating);
+    try {
+      await api.post("/learning/feedback", {
+        engine: "assistant", conversation_id: m.conversation_id || null, message_id: m.message_id || null,
+        rating, answer: m.content, question: question || m.prompt || null, comment: note || null,
+        cites_norm: /\b(NP\s?EN|EN\s?199\d|Eurocódigo|Eurocode|RGEU|RTIEBT|REH|RECS|LNEC)\b/i.test(m.content || ""),
+      });
+      toast.success(note ? "Obrigado — a correção fica memorizada" : "Obrigado pelo seu feedback");
+      if (note) setCommentSent(true);
+    } catch { if (!note) setRated(null); }
+  };
   return (
     <div className={`assistant-message rounded-sm border text-sm ${mine ? "ml-auto bg-primary/10" : "bg-card"}${queued ? " assistant-message-queued" : ""}`} data-testid={id} data-message-role={m.role} data-queued={queued ? "true" : undefined}>
       <div className="assistant-message-author">{!mine && <AssistantMark size={24} />}<span>{mine ? studio("you") : ui("assistant")}</span></div>
@@ -63,7 +81,15 @@ export function MessageBubble({ m, live, onCorrect, testId, queued }) {
         {!mine && m.content && !live && <ListenButton label={studio("listen")} text={m.content} testId={`${id}-listen`} className="ms-1" />}
         {m.message_id && <button className="underline" data-testid={`${id}-export-pdf`} onClick={() => view(`/assistant/messages/${m.message_id}/pdf`, "ConstruPilot-solution-technique.pdf", "Solução técnica (PDF)")}><Download size={13} />PDF</button>}
         {m.model && <span data-testid={`${id}-model`}>{ui(m.response_mode === "thorough" ? "thorough" : "fast")}</span>}
+        {m.message_id && <span className="inline-flex items-center gap-2 ms-auto" data-testid={`${id}-feedback`}>
+          <button className={`transition-colors ${rated === "up" ? "text-emerald-600" : "hover:text-emerald-600"}`} disabled={!!rated} aria-label="Resposta útil" data-testid={`${id}-thumbs-up`} onClick={() => sendFeedback("up")}><ThumbsUp size={13} /></button>
+          <button className={`transition-colors ${rated === "down" ? "text-red-600" : "hover:text-red-600"}`} disabled={!!rated} aria-label="Resposta a melhorar" data-testid={`${id}-thumbs-down`} onClick={() => sendFeedback("down")}><ThumbsDown size={13} /></button>
+        </span>}
       </div>}
+      {!mine && !live && rated === "down" && !commentSent && <form className="mt-2 flex gap-2 items-center" data-testid={`${id}-feedback-comment`} onSubmit={(e) => { e.preventDefault(); if (comment.trim()) sendFeedback("down", comment.trim()); }}>
+        <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} placeholder="O que estava errado? (ex.: preço do m² de pintura é 9 €)" className="flex-1 min-w-0 rounded-sm border bg-background px-2 py-1 text-xs" aria-label="O que estava errado?" data-testid={`${id}-feedback-input`} />
+        <button type="submit" className="underline text-xs" disabled={!comment.trim()} data-testid={`${id}-feedback-send`}>Enviar</button>
+      </form>}
     </div>
   );
 }
