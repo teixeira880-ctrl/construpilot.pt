@@ -49,11 +49,11 @@ export const APP_FAMILIES = [
     id: "documentos", to: "/documentos-orcamentos", icon: FileSearch, group: "billing", pin: true,
     label: { pt: "Análise de documentos & mapas", en: "Documents & bills of quantities", fr: "Analyse de documents & DPGF" },
     desc: {
-      pt: "Mapa de quantidades do arquiteto → orçamento, leitura e verificação de documentos e scanner de orçamentos.",
+      pt: "Mapa de quantidades do arquiteto → orçamento, caderno de encargos e peças do concurso, leitura e verificação de documentos e scanner de orçamentos.",
       en: "Architect's bill of quantities → quote, document reading and checks, and quote scanner.",
       fr: "DPGF de l'architecte → devis, lecture et vérification de documents, scanner de devis.",
     },
-    members: ["/dpgf", "/analyse-documents", "/scanner-devis"],
+    members: ["/dpgf", "/caderno-encargos", "/analyse-documents", "/scanner-devis"],
   },
   {
     id: "diagnostico", to: "/diagnostico", icon: Wrench, group: "discover", pin: true,

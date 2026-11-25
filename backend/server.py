@@ -45,6 +45,7 @@ from routes import (auth as auth_routes, estimation_routes, tools, prices, proje
                     babylovegrowth as blg_routes,
                     newsletter as newsletter_routes,
                     dpgf as dpgf_routes,
+                    cctp as cctp_routes,
                     company_library as company_library_routes,
                     suppliers as suppliers_routes,
                     steel as steel_routes,
@@ -235,6 +236,7 @@ api_router.include_router(blg_routes.router)
 api_router.include_router(newsletter_routes.router)
 api_router.include_router(dpgf_routes.router)
 api_router.include_router(dpgf_routes.public_router)
+api_router.include_router(cctp_routes.router)
 api_router.include_router(company_library_routes.router)
 api_router.include_router(suppliers_routes.router)
 api_router.include_router(steel_routes.router)
