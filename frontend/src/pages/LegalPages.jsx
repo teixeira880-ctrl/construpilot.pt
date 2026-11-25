@@ -55,7 +55,7 @@ export const MentionsLegales = () => (
 );
 
 export const Confidentialite = () => (
-  <LegalLayout title="Política de privacidade" updated="Juin 2026" testid="page-confidentialite">
+  <LegalLayout title="Política de privacidade" updated="Novembro 2026" testid="page-confidentialite">
     <p>
       {EDITOR} atribui grande importância à proteção dos seus dados pessoais, em conformidade com o Regulamento Geral de Proteção de Dados (RGPD) e a lei «Informática e Liberdades».
     </p>
@@ -70,7 +70,7 @@ export const Confidentialite = () => (
 
     <h2>3. Finalidades</h2>
     <p>
-      Prestação do serviço (estimativa, orçamentos, faturas, obras), gestão da conta e da subscrição, faturação, suporte, melhoria do serviço e segurança. Os pagamentos são tratados pela Stripe; os e-mails pelo nosso prestador de envio.
+      Prestação do serviço (estimativa, orçamentos, faturas, obras), gestão da conta e da subscrição, faturação, suporte, melhoria do serviço e segurança. A melhoria do serviço inclui a aprendizagem automática a partir da utilização (obras, materiais, preços e pedidos ao assistente), utilizada para a própria conta, e a utilização anónima e agregada dos preços praticados (no mínimo três empresas por preço, sem qualquer dado identificativo) para a biblioteca de preços geral; os e-mails, telefones e NIF são retirados antes de qualquer gravação. Os pagamentos são tratados pela Stripe; os e-mails pelo nosso prestador de envio.
     </p>
 
     <h2>4. Base legal e duração</h2>
@@ -80,7 +80,7 @@ export const Confidentialite = () => (
 
     <h2>5. Partilha</h2>
     <p>
-      Os seus dados nunca são vendidos. Podem ser transmitidos aos nossos subcontratantes técnicos (alojamento, pagamento Stripe, envio de e-mails) estritamente para o funcionamento do serviço.
+      Os seus dados nunca são vendidos. Os preços utilizados na biblioteca geral são anónimos e agregados e não permitem identificar a sua empresa nem os seus clientes. Os dados podem ser transmitidos aos nossos subcontratantes técnicos (alojamento, pagamento Stripe, envio de e-mails) estritamente para o funcionamento do serviço.
     </p>
 
     <h2>6. Os seus direitos</h2>
@@ -97,8 +97,8 @@ export const Confidentialite = () => (
 );
 
 export const CGV = () => (
-  <LegalLayout title="Condições gerais de utilização e venda" updated="Juin 2026" testid="page-cgv">
-    <h2>1. Objet</h2>
+  <LegalLayout title="Condições gerais de utilização e venda" updated="Novembro 2026" testid="page-cgv">
+    <h2>1. Objeto</h2>
     <p>
       As presentes condições regem o acesso e utilização da aplicação {EDITOR}, bem como as subscrições pagas propostas.
     </p>
@@ -124,13 +124,22 @@ export const CGV = () => (
       {EDITOR} faz todos os esforços para assegurar a disponibilidade do serviço sem poder garanti-la de forma ininterrupta. As estimativas e orçamentos são fornecidos a título indicativo.
     </p>
 
-    <h2>6. Dados pessoais</h2>
+    <h2>6. Melhoria do serviço e aprendizagem automática</h2>
+    <p>
+      Para tornar as estimativas e os orçamentos mais fiáveis, {EDITOR} aprende automaticamente com a utilização do serviço: as obras, os materiais, as quantidades e os preços dos orçamentos, faturas e encomendas, bem como os pedidos feitos ao assistente e as avaliações das respostas. Esta aprendizagem é utilizada, em primeiro lugar, apenas em benefício da própria conta (memória privada da empresa, nunca mostrada a outros utilizadores).
+    </p>
+    <p>
+      O utilizador autoriza ainda {EDITOR} a utilizar os preços praticados de forma anónima e agregada para enriquecer a biblioteca de preços geral da plataforma. Nenhum nome, cliente, morada, documento ou dado de contacto é partilhado, e um preço só é integrado quando resulta de, pelo menos, três empresas distintas, não sendo possível identificar a empresa de origem. Os orçamentos em rascunho, recusados ou estimados pela IA não são utilizados. O utilizador pode opor-se a esta utilização agregada a qualquer momento através de{" "}
+      <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+    </p>
+
+    <h2>7. Dados pessoais</h2>
     <p>
       O tratamento dos dados está descrito na nossa{" "}
       <Link to="/confidentialite">Política de privacidade</Link>.
     </p>
 
-    <h2>7. Direito aplicável</h2>
+    <h2>8. Direito aplicável</h2>
     <p>
       As presentes condições estão sujeitas ao direito francês. Em caso de litígio, será procurada uma solução amigável antes de qualquer ação judicial.
     </p>

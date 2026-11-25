@@ -97,7 +97,7 @@ const FrenchPolicy = () => (
 
     <Section title="5. Inteligência artificial">
       <p>
-        Algumas funções (Assistente Construção, estimativa, transcrição de voz, análise de fotografias) enviam o conteúdo estritamente necessário aos nossos prestadores de IA (OpenAI, Anthropic, Google). Estes conteúdos não são utilizados para treinar os seus modelos. Os resultados produzidos pela IA são indicativos e não constituem um compromisso contratual.
+        Algumas funções (Assistente Construção, estimativa, transcrição de voz, análise de fotografias) enviam o conteúdo estritamente necessário aos nossos prestadores de IA (OpenAI, Anthropic, Google). Estes conteúdos não são utilizados para treinar os seus modelos. Os resultados produzidos pela IA são indicativos e não constituem um compromisso contratual. A ConstruPilot aprende automaticamente com a utilização (obras, materiais, preços e pedidos ao assistente) em benefício da própria conta; os preços praticados podem ainda ser utilizados de forma anónima e agregada (no mínimo três empresas por preço, sem qualquer dado identificativo) para a biblioteca de preços geral. Pode opor-se a esta utilização agregada por e-mail.
       </p>
     </Section>
 
