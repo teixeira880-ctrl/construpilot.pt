@@ -1360,8 +1360,17 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
             conv["_chantier"] = {"chantier_id": chantier_ctx["chantier_id"], "client_id": (chantier_ctx.get("client") or {}).get("client_id"), "name": chantier_ctx["nom"]}
         except HTTPException:
             chantier_ctx = {"erreur": "processo de obra eliminado ou inacessível"}
+    specialty_ctx = None
+    if conv.get("chantier_id") and conv.get("dossier_context") and chantier_ctx and "erreur" not in chantier_ctx:
+        # Dossier de obra: contexto da especialidade/fase/local (só registos do próprio utilizador).
+        try:
+            from routes.dossier_obra import assistant_context
+            specialty_ctx = await assistant_context(conv["chantier_id"], user["user_id"], conv["dossier_context"])
+        except Exception:  # noqa: BLE001 — nunca bloqueia a conversa
+            specialty_ctx = None
     context = json.dumps({"project_id": conv.get("project_id"), "plans": plans, "documents": docs,
-                          "dossiers": list(getattr(body, "dossier_ids", None) or [])[:5], "dossier_chantier": chantier_ctx}, ensure_ascii=False)
+                          "dossiers": list(getattr(body, "dossier_ids", None) or [])[:5], "dossier_chantier": chantier_ctx,
+                          **({"dossier_especialidade": specialty_ctx} if specialty_ctx else {})}, ensure_ascii=False)
     history_query = {"conversation_id": conv["conversation_id"], "cancelled": {"$ne": True}, "request_id": {"$ne": conv["_quote_request_id"]}}
     if turn_seq is not None:
         history_query["$or"] = [{"turn_seq": {"$exists": False}}, {"turn_seq": {"$lt": turn_seq}}]
@@ -1398,6 +1407,9 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
                        "peças para os reenviar. Se o pedido estiver vazio, propõe o que podes fazer com estes ficheiros."})
     if chantier_ctx and "erreur" not in chantier_ctx:
         inputs.append({"role": "user", "content": "CONTEXTO DE OBRA: esta conversa está associada ao processo de obra acima (chave `dossier_chantier`). Responde com estes dados conhecidos (cliente, morada, orçamentos/faturas e respetivos estados/montantes, plantas, análises, diagnósticos, reservas) sem os voltar a pedir. Qualquer orçamento criado aqui fica automaticamente associado a este processo e ao seu cliente CRM: utiliza exatamente o nome do cliente indicado. Se faltar um dado no processo, di-lo em vez de o inventar."})
+    if specialty_ctx and "erreur" not in specialty_ctx:
+        from routes.dossier_obra import ASSISTANT_RULES
+        inputs.append({"role": "user", "content": ASSISTANT_RULES})
     settings = await _settings(user["user_id"])
     conv["_settings"] = settings
     conv["_learned"] = await _learn_style(body.text, user, conv["conversation_id"], settings)

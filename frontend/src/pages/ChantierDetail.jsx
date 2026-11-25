@@ -149,6 +149,7 @@ function ChantierDetailContent() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 max-w-full">
+          <Button asChild className="gap-2" data-testid="chantier-open-dossier"><Link to={`/chantiers/${chantierId}/dossier`}><Layers className="h-4 w-4" /> Dossier de obra</Link></Button>
           <Button variant="outline" className="gap-2" onClick={() => setAttach(true)} data-testid="chantier-attach-btn"><Link2 className="h-4 w-4" /> Associar</Button>
           <Button variant="outline" className="gap-2" onClick={() => setEdit(true)} data-testid="chantier-edit-btn"><Pencil className="h-4 w-4" /> Editar</Button>
           <Button variant="ghost" size="icon" onClick={remove} title="Eliminar" data-testid="chantier-delete-btn"><Trash2 className="h-4 w-4" /></Button>

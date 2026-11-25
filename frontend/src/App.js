@@ -98,6 +98,7 @@ import DemoPage from "@/pages/DemoPage";
 const AssistantLazy = lazy(() => import("@/pages/Assistant"));
 const PlanTakeoffLazy = lazy(() => import("@/pages/PlanTakeoff"));
 const Missions = lazy(() => import("@/pages/Missions"));
+const DossierObra = lazy(() => import("@/pages/DossierObra"));
 const StructuroHouseLazy = lazy(() => import("@/pages/StructuroHouse"));
 const PlansExecutionLazy = lazy(() => import("@/pages/PlansExecution"));
 const EstudioImagensLazy = lazy(() => import("@/pages/EstudioImagens"));
@@ -366,6 +367,7 @@ function AppRouter() {
       <Route path="/clients/:clientId" element={<ProRoute><Shell><ClientDetail /></Shell></ProRoute>} />
       <Route path="/chantiers" element={<ProRoute><Shell><Chantiers /></Shell></ProRoute>} />
       <Route path="/chantiers/:chantierId" element={<ProRoute><Shell><ChantierDetail /></Shell></ProRoute>} />
+      <Route path="/chantiers/:chantierId/dossier/*" element={<ProRoute><Shell><Suspense fallback={<div className="p-6 text-sm text-muted-foreground">A carregar…</div>}><DossierObra /></Suspense></Shell></ProRoute>} />
       <Route path="/bibliotheque" element={<ProRoute><Shell><Library /></Shell></ProRoute>} />
       <Route path="/devis-editeur" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />
       <Route path="/devis-editeur/:docId" element={<ProRoute><Shell><QuoteEditor /></Shell></ProRoute>} />

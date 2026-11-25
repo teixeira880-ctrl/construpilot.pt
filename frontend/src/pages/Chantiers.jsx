@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { HardHat, Plus, Search, FileText, Ruler, Layers, Wrench, Camera, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { ChantierFormDialog, CHANTIER_STATUS } from "@/components/chantiers/ChantierFormDialog";
 
+// Dados fictícios só fora de produção (o servidor recusa também em produção).
+const DEMO_ALLOWED = typeof window !== "undefined" && !/(^|\.)construpilot\.(pt|fr)$/.test(window.location.hostname);
 const STATUS_CLASS = { prospect: "bg-amber-500/10 text-amber-700 border-amber-500/30", en_cours: "bg-primary/10 text-primary border-primary/30", termine: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" };
 
 export default function Chantiers() {
@@ -25,6 +28,10 @@ export default function Chantiers() {
   }, [q, status]);
   useEffect(() => { const t = setTimeout(load, q ? 250 : 0); return () => clearTimeout(t); }, [load, q]);
 
+  const createDemo = async () => {
+    try { const { data } = await api.post("/dossier-obra/demo"); nav(`/chantiers/${data.chantier_id}/dossier`); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Exemplo indisponível neste ambiente."); }
+  };
   const Count = ({ icon: Icon, n, title, label }) => <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={title}><Icon className="h-3.5 w-3.5" />{n}<span className="workspace-count-label">{label}</span></span>;
 
   return (
@@ -34,7 +41,10 @@ export default function Chantiers() {
           <h1 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2"><HardHat className="h-6 w-6 text-primary" /> Dossiers de obra</h1>
           <p className="text-sm text-muted-foreground mt-1">Um processo por obra: cliente, plantas, medições, orçamentos, faturas e fotografias reunidos — sem reintrodução.</p>
         </div>
-        <Button className="gap-2" onClick={() => setOpen(true)} data-testid="chantiers-new-btn"><Plus className="h-4 w-4" /> Nova obra</Button>
+        <div className="flex flex-wrap gap-2">
+          {DEMO_ALLOWED && <Button variant="outline" className="gap-2" onClick={createDemo} data-testid="chantiers-demo-btn">Exemplo demonstrativo</Button>}
+          <Button className="gap-2" onClick={() => setOpen(true)} data-testid="chantiers-new-btn"><Plus className="h-4 w-4" /> Nova obra</Button>
+        </div>
       </header>
 
       <div className="workspace-collection-toolbar">

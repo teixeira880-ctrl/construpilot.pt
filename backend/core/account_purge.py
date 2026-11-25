@@ -19,6 +19,8 @@ PURGE_COLLECTIONS = [
     "chantier_participants", "chantier_milestones", "assistant_convs",
     "assistant_msgs", "assistant_docs", "assistant_doc_chunks", "assistant_prefs",
     "support_tickets", "journey_events",
+    "dossier_obra_configs", "dossier_obra_items", "dossier_obra_specialties", "dossier_obra_dependencies",
+    "dossier_obra_emissions",
 ]
 
 OWNER_KEYS = ("user_id", "owner_user_id", "created_by", "pro_user_id",
