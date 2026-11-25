@@ -301,7 +301,21 @@ def gerar_pdf(modelo: dict, caminho: str, titulo: str, extras: list | None = Non
     caps = defaultdict(list)
     for r in L + [{**n, "piso": n.get("piso") or "—", "qtd": None, "estado": "a medir", "refs": n.get("refs") or ""} for n in nm]:
         caps[r["capitulo"]].append(r)
-    story = [Paragraph("Resumo por capítulo — da fundação à cobertura", h2),
+    # 1.º : QUANTIDADES TOTAIS (regra do Martinho) — betão m³, aço kg, alvenarias m²… antes de tudo
+    from .totais import totais as _totais
+    TT = _totais(L)
+    qt = [["Quantidade", "Total", "Un", "Por elemento"]]
+    for t in TT:
+        por = " ; ".join(f"{k} {v:,.2f}".replace(",", " ") for k, v in (t["por_elemento"] or {}).items())
+        qt.append([Paragraph(f"<b>{escape(t['quantidade'])}</b>", small), f"{t['total']:,.2f}".replace(",", " "), t["unidade"],
+                   Paragraph(escape(por), small)])
+    tq = LongTable(qt, colWidths=[95 * mm, 28 * mm, 12 * mm, 135 * mm], repeatRows=1)
+    tq.setStyle(TableStyle(head + [("ALIGN", (1, 1), (1, -1), "RIGHT"), ("FONTSIZE", (1, 1), (1, -1), 8.5)]))
+    story = [Paragraph("Quantidades totais da obra", h2),
+             Paragraph(escape("Soma exata das linhas medidas deste mapa (detalhe por capítulo, piso e elemento nas páginas seguintes) ; "
+                              "o que não foi medido fica «a medir» e não entra nestes totais."), small), Spacer(1, 3 * mm), tq,
+             PageBreak(),
+             Paragraph("Resumo por capítulo — da fundação à cobertura", h2),
              Paragraph(escape(f"{titulo} · {datetime.now(timezone.utc).date().isoformat()} · medição sobre os desenhos do projeto ; cada linha "
                               "remete para os números marcados nas plantas e alçados deste documento"), small), Spacer(1, 3 * mm)]
     res = [["Capítulo", "Linhas", "Pisos / vistas", "Estado"]]
@@ -378,7 +392,7 @@ def gerar_pdf(modelo: dict, caminho: str, titulo: str, extras: list | None = Non
             "local": "", "data": datetime.now(timezone.utc).date().isoformat(),
             "kpis": [("Artigos", str(len(L)), ""), ("Capítulos", str(len(set(r["capitulo"] for r in L) | set(n["capitulo"] for n in nm))), ""),
                      ("Pisos", str(n_pisos), ""), ("A medir", str(len(nm)), "")],
-            "indice": ["Resumo por capítulo — da fundação à cobertura", "Medição — por capítulo e por piso",
+            "indice": ["Quantidades totais da obra", "Resumo por capítulo — da fundação à cobertura", "Medição — por capítulo e por piso",
                        "Pressupostos, alturas e origem das medidas", "Anexo — elementos numerados"],
             "imagem": _capa(pags)}
     out = PP.acabar(raw, capa, PP.com_cor(branding) if branding is not None else {}, "pt", paginas="completo")
@@ -438,8 +452,27 @@ def gerar_xlsx(modelo: dict, caminho: str, titulo: str, extras: list | None = No
     for v in modelo["alcados"]:
         for d in v["vaos"]:
             _linha(wp, r, [d["id"], v["vista"], "vão exterior", None, d["L"], d["H"], f"=E{r}*F{r}", "m²"], {5: N2, 6: N2, 7: N2}, (5, 6)); r += 1
+    # 1.ª folha : QUANTIDADES TOTAIS — fórmulas que somam as linhas da folha «Mapa» (rastreáveis)
+    from .totais import familia, totais as _totais, UN as _UN, UN_TXT as _UT
+    if "Quantidades totais" in wb.sheetnames:
+        del wb["Quantidades totais"]
+    wt = _folha(wb, "Quantidades totais", ["Quantidade", "Total", "Un", "Por elemento", "Linhas do mapa"], [52, 14, 6, 70, 12],
+                f"{titulo} — quantidades totais da obra : soma das linhas medidas da folha «Mapa» (o que está «a medir» não entra).")
+    linhas_por = defaultdict(list)
+    for i, x in enumerate(L):
+        if x.get("qtd"):
+            f, _ = familia(x)
+            linhas_por[(f, _UT.get(_UN.get(str(x["un"]), str(x["un"])), x["un"]))].append(5 + i)
+    rr = 5
+    for t in _totais(L):
+        rows = linhas_por.get((t["quantidade"], t["unidade"])) or []
+        por = " ; ".join(f"{k} {v:.2f}" for k, v in (t["por_elemento"] or {}).items())
+        lin = f"{len(rows)} linhas (Mapa, linhas {rows[0]}–{rows[-1]})" if rows else t["linhas"]
+        _linha(wt, rr, [t["quantidade"], t["total"], t["unidade"], por, lin], {2: N2}, negrito=False)
+        rr += 1
     wb.move_sheet("Mapa", offset=-wb.sheetnames.index("Mapa"))
-    wb.move_sheet("Elementos numerados", offset=1 - wb.sheetnames.index("Elementos numerados"))
+    wb.move_sheet("Quantidades totais", offset=-wb.sheetnames.index("Quantidades totais"))
+    wb.move_sheet("Elementos numerados", offset=2 - wb.sheetnames.index("Elementos numerados"))
     wb.save(caminho)
     try:                                   # resultado das fórmulas gravado na célula : pré-visualizações (telemóvel, Drive) mostram tudo
         from engines.xlsx_cache import preencher

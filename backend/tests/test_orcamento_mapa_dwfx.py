@@ -67,8 +67,8 @@ def test_quantidades_totais_antes_do_orcamento(monkeypatch):
     _patch(monkeypatch, g)
     r = asyncio.run(A._orcamento_mapa_dwfx({"document_ids": ["doc_dw"]}, {"user_id": "u"}, {}))
     tot = {t["quantidade"]: t for t in r["quantidades_totais"]}
-    assert tot["Betão"]["total"] == 40.5 and tot["Betão"]["unidade"] == "m3"
-    assert "Escavação geral em terreno com meios mecânicos, incluindo carga" in tot
+    assert tot["Betão"]["total"] == 40.5 and tot["Betão"]["unidade"] == "m³"
+    assert tot["Escavação"]["total"] == 2112.6 and tot["Escavação"]["unidade"] == "m³"
     assert tot["Alvenarias — Parede exterior"]["total"] == 120.0
     assert list(tot)[0].startswith("Escavação")                      # ordem : terras, betão, aço, cofragem…
     assert r["instrucao"].startswith("PRIMEIRO as quantidades")

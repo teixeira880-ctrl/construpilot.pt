@@ -270,7 +270,7 @@ def test_mapa_premium_pdf_e_excel(tmp_path):
     assert open(pdf, "rb").read(4) == b"%PDF"
     x = premium.gerar_xlsx(m, str(tmp_path / "m.xlsx"), "Teste", nao_medido=premium.NAO_MEDIDO_PADRAO)
     wb = load_workbook(x)
-    assert wb.sheetnames[:2] == ["Mapa", "Elementos numerados"]
+    assert wb.sheetnames[:3] == ["Quantidades totais", "Mapa", "Elementos numerados"]      # 1.º as quantidades totais (25/11)
     assert any(c.value == "a medir" for row in wb["Mapa"].iter_rows() for c in row)
 
 
@@ -453,3 +453,17 @@ def test_anexo_dwfx_nao_bloqueia_o_tratamento():
     assert parts and parts[0]["type"] == "input_text" and "medir_arquitetura_dwfx" in parts[0]["text"]
     parts = image_content(b"lixo", "application/octet-stream", "x.bin", "doc_y")
     assert parts and parts[0]["type"] == "input_text"
+
+
+def test_quantidades_totais_primeiro():
+    from engines.mapa_arquitetura.totais import totais
+    L = [{"capitulo": "Estrutura", "piso": "Laje 103,86", "designacao": "Laje maciça — betão", "qtd": 40.0, "un": "m³"},
+         {"capitulo": "Estrutura", "piso": "Pilares", "designacao": "Pilar P1 — betão", "qtd": 2.5, "un": "m³"},
+         {"capitulo": "Estrutura", "piso": "Laje 103,86", "designacao": "Aço base da laje maciça", "qtd": 800.0, "un": "kg"},
+         {"capitulo": "Alvenarias", "piso": "R/C", "designacao": "Parede exterior e = 0.30 m", "qtd": 100.0, "un": "m²"},
+         {"capitulo": "Alvenarias", "piso": "1.º", "designacao": "Parede exterior e = 0.30 m", "qtd": 200.0, "un": "m²"},
+         {"capitulo": "Estrutura", "piso": "x", "designacao": "Reforços a medir", "qtd": None, "un": "kg"}]
+    t = {x["quantidade"]: x for x in totais(L)}
+    assert t["Betão"]["total"] == 42.5 and t["Betão"]["unidade"] == "m³" and t["Betão"]["por_elemento"] == {"lajes": 40.0, "pilares": 2.5}
+    assert t["Aço"]["total"] == 800.0 and t["Alvenarias — Parede exterior"]["total"] == 300.0
+    assert list(t)[0] == "Betão"

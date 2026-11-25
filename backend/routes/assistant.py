@@ -823,34 +823,9 @@ def _artigo_preco(designacao: str, un: str) -> str | None:
 
 
 def _totais_quantidades(linhas: list) -> list:
-    """Quadro de TOTAIS do mapa (antes do orçamento) : por material / artigo e unidade, com a decomposição por elemento."""
-    un = {"m²": "m2", "m³": "m3", "m": "ml", "un": "u", "ud": "u"}
-    tot: dict = {}
-    for l in linhas:
-        if not l.get("qtd"):
-            continue
-        u = un.get(str(l.get("un") or "u"), str(l.get("un") or "u"))
-        cap = str(l.get("capitulo") or "Geral")
-        art = _artigo_preco(l.get("designacao"), u) if cap in CAP_ESTRUTURA else None
-        if art:
-            nome = re.sub(r"\s*\(classe do projeto\)|, bombeado e vibrado|, cortado, dobrado e colocado( em obra)?|, com escoramento|, colocad[ao]", "", art)
-            fam = (re.sub(r" em .*$", "", nome) if u in ("m3", "m2") and re.match(r"(Betão|Cofragem)", nome) else nome)
-        else:
-            base = re.split(r"\s+[—(]|\s+e\s*=|\s+\d", str(l.get("designacao") or ""), maxsplit=1)[0].strip(" /—")
-            fam = f"{cap} — {base}"
-        k = (fam, u)
-        t = tot.setdefault(k, {"total": 0.0, "por": {}})
-        t["total"] += float(l["qtd"])
-        el = art and re.sub(r"\s*\(classe do projeto\)", "", art.split(" em ", 1)[-1]).split(",")[0] if art and " em " in art else cap
-        t["por"][el] = t["por"].get(el, 0.0) + float(l["qtd"])
-    ordem = ("Escavação", "Tout-venant", "Betão", "Aço", "Cofragem", "Malha", "Vigota", "Abobadilhas", "Bloco")
-    def chave(kv):
-        f = kv[0][0]
-        return (next((i for i, o in enumerate(ordem) if f.startswith(o)), len(ordem)), f)
-    return [{"quantidade": f, "unidade": u, "total": round(v["total"], 2),
-             "por_elemento": {k2: round(x, 2) for k2, x in sorted(v["por"].items())} if len(v["por"]) > 1 else None}
-            for (f, u), v in sorted(tot.items(), key=chave)]
-
+    """Quadro de TOTAIS do mapa (o mesmo da 1.ª página do mapa PDF / 1.ª folha do Excel)."""
+    from engines.mapa_arquitetura.totais import totais
+    return totais(linhas)
 
 CAP_ESTRUTURA = ("Movimento de terras", "Fundações", "Estrutura")
 
