@@ -284,7 +284,9 @@ def _camada(r: Raster, rgba: np.ndarray) -> Dict[str, Any]:
 # ------------------------------------------------------------------ cálculo (síncrono, corre numa thread)
 def calcular(r: Raster, meta: Dict[str, Any], pts: List[Tuple[float, float]], terr: Dict[str, Any], via: Dict[str, Any],
              edif: Dict[str, Any], pdm_params: Optional[Dict[str, Any]], edificio: Optional[Dict[str, Any]],
-             modelo: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+             modelo: Optional[Dict[str, Any]] = None, extras: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """extras (opcionais): r_alargado (MDT ±1,4 km → horizonte longínquo), pvgis, ventos (ERA5)."""
+    extras = extras or {}
     t0 = time.time()
     r = _grelha(r)
     xy = _tm(pts)
@@ -296,13 +298,28 @@ def calcular(r: Raster, meta: Dict[str, Any], pts: List[Tuple[float, float]], te
     if not rel.get("ok"):
         raise ViabilidadeErro("sem cotas do terreno dentro do prédio")
     obst = SO.superficie(r, ((edif or {}).get("data") or {}).get("edificios")) if (edif or {}).get("ok") else None
-    sol = SO.analisar(r, mascara, rel["_decl"], rel["_expo"], clat, clon, obst)
+    h_dist = None
+    r_al = extras.get("r_alargado")
+    if r_al is not None:
+        try:
+            z_c = float(AN.amostrar(r, np.array([cx]), np.array([cy]))[0])
+            if np.isnan(z_c):
+                z_c = float(rel.get("cota_media") or np.nanmean(r.z))
+            h_dist = SO.horizonte_distante(r_al, cx, cy, z_c, d_min=min(MARGEM_M, 100.0))
+        except Exception as e:  # noqa: BLE001
+            log.info("viabilidade: horizonte distante: %s", e)
+    sol = SO.analisar(r, mascara, rel["_decl"], rel["_expo"], clat, clon, obst, h_distante=h_dist)
+    pv = extras.get("pvgis") or {}
+    sol["pvgis"] = pv if pv.get("ok") else None
     srup = (terr or {}).get("servidoes")
     pdm = (terr or {}).get("pdm")
     solo = OR.solo_dominante(pdm)["solo"]
     cel = r.px * r.py
     rk = RK.avaliar(rel, mascara, srup, solo, cel, r.px)
-    cf = CF.avaliar(clat, clon, sol, rel)
+    concelho = ((((terr or {}).get("caop") or {}).get("data") or {}).get("principal") or {}).get("concelho")
+    from . import externos as EX
+    clima = EX.clima_reh(concelho, rel.get("cota_media"))
+    cf = CF.avaliar(clat, clon, sol, rel, extras.get("ventos"), clima)
     ac = _acessibilidade(r, via, mascara, (cx, cy))
     xy_via = ac.get("xy_via")
     # exclusões: talvegues, declives ≥ 45 %, REN/RAN (contornos publicados) e domínio hídrico
@@ -381,18 +398,31 @@ async def avaliar(anel: Any, pdm: Optional[Dict[str, Any]] = None, edificio: Opt
     if lado > 1500:
         raise ViabilidadeErro("terreno com mais de 1,5 km de lado: divida-o em prédios")
     cla, clo = TM.ponto_ll(float(xy[:, 0].mean()), float(xy[:, 1].mean()))
+    from . import externos as EX
     mdt_t = asyncio.ensure_future(GR.obter(pts, None, margem_m=MARGEM_M))
-    terr, via, edif = await asyncio.gather(
+    cx, cy = float(xy[:, 0].mean()), float(xy[:, 1].mean())
+    cantos = [TM.ponto_ll(cx + dx, cy + dy) for dx in (-1400.0, 1400.0) for dy in (-1400.0, 1400.0)]
+    terr, via, edif, alarg, pv, vt = await asyncio.gather(
         _seguro("ordenamento (DGT)", _territorio(pts, prazo_s - 5), prazo_s),
         _seguro("via de acesso (OSM)", _via(cla, clo), 25),
         _seguro("edifícios vizinhos (OSM)", _edificios(cla, clo), 25),
+        _seguro("relevo envolvente (MDT ±1,4 km)", _mdt_alargado(cantos), 120),
+        _seguro("PVGIS", EX.pvgis(cla, clo), 25),
+        _seguro("vento ERA5", EX.ventos(cla, clo), 35),
     )
     try:
         r, meta = await mdt_t
     except GR.MdtErro as e:
         raise ViabilidadeErro(str(e)) from e
+    extras = {"r_alargado": alarg.get("r") if isinstance(alarg, dict) else None, "pvgis": pv, "ventos": vt}
     return await asyncio.to_thread(calcular, r, meta, pts, terr if (terr or {}).get("geometria") else None, via, edif,
-                                   pdm, edificio, modelo)
+                                   pdm, edificio, modelo, extras)
+
+
+async def _mdt_alargado(cantos) -> Dict[str, Any]:
+    """MDT da envolvente (±1,4 km, grelha de 8 m) para o horizonte longínquo."""
+    r, meta = await GR.obter(cantos, 8.0, margem_m=0.0)
+    return {"ok": True, "r": r, "fonte": meta.get("fonte")}
 
 
 def publico(res: Dict[str, Any]) -> Dict[str, Any]:

@@ -75,13 +75,50 @@ def _ventilacao(horizonte: List[float], forma: Optional[str]) -> Dict[str, Any]:
             "recomendacao": txt}
 
 
-def avaliar(lat: float, lon: float, sol: Dict[str, Any], relevo: Dict[str, Any]) -> Dict[str, Any]:
+_AZ_RUMO = {"N": 0, "NE": 45, "E": 90, "SE": 135, "S": 180, "SO": 225, "O": 270, "NO": 315}
+
+
+def _ventilacao_medida(horizonte: List[float], forma: Optional[str], vt: Dict[str, Any]) -> Dict[str, Any]:
+    """Ventilação com o vento REAL do local (ERA5): exposição = horizonte no setor do vento dominante de verão."""
+    H = np.asarray(horizonte, dtype=float)
+    dv, di = vt.get("dominante_verao") or vt["dominante_anual"], vt["dominante_inverno"]
+    k = int(round(_AZ_RUMO[dv] / 10.0)) % 36
+    setor = float(H[[(k + j) % 36 for j in (-3, -2, -1, 0, 1, 2, 3)]].mean())
+    exp = "exposto" if setor < 3 else "parcialmente abrigado" if setor < 8 else "abrigado"
+    oposto = [r for r, a in _AZ_RUMO.items() if a == (_AZ_RUMO[dv] + 180) % 360][0]
+    freq_v = next((x["freq_pct"] for x in (vt.get("verao_quente") or []) if x["rumo"] == dv), None)
+    txt = {"exposto": f"Vento dominante nas horas quentes de verão de {dv}"
+                      + (f" ({freq_v:.0f} % das horas ≥ 24 °C)" if freq_v is not None else "")
+                      + f" e o relevo não o tapa: ventilação cruzada com aberturas a {dv} e a {oposto}.",
+           "parcialmente abrigado": f"Vento dominante de verão de {dv}, parcialmente abrigado pelo relevo: ventilação "
+                                    f"cruzada {dv}–{oposto} e vãos altos para o efeito chaminé.",
+           "abrigado": f"O relevo a {dv} abriga do vento dominante de verão: ventilação natural fraca — prever efeito "
+                       "chaminé (vãos altos, pátio, clarabóia) e ventilação noturna."}[exp]
+    txt += f" Proteger a fachada a {di} (vento dominante de inverno): menos vãos, entrada abrigada."
+    if forma in ("vale", "base_encosta"):
+        txt += " Fundo de vale: acumulação de ar frio e humidade nas noites de inverno."
+    elif forma == "cumeada":
+        txt += " Cumeada: rajadas fortes, reforçar a cobertura e a caixilharia."
+    return {"exposicao_vento_dominante": exp, "vento_dominante_verao": dv, "vento_dominante_inverno": di,
+            "horizonte_setor_vento_graus": round(setor, 1), "recomendacao": txt,
+            "rosa": {k2: vt.get(k2) for k2 in ("anual", "verao_quente", "inverno")}, "fonte": vt.get("fonte"),
+            "periodo": vt.get("periodo"), "medido": True}
+
+
+def avaliar(lat: float, lon: float, sol: Dict[str, Any], relevo: Dict[str, Any],
+            ventos: Optional[Dict[str, Any]] = None, clima: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     hz = [h["angulo"] for h in sol["horizonte_centro"]]
     fach = irradiacao_fachadas(lat, lon, hz)
     alt = float(relevo.get("cota_media") or 0)
     decl = float(relevo.get("declive_medio_pct") or 0)
     ori = _orientacao_otima(fach, relevo.get("exposicao_graus"), decl)
-    ven = _ventilacao(hz, relevo.get("forma_dominante"))
+    if (ventos or {}).get("ok"):
+        ven = _ventilacao_medida(hz, relevo.get("forma_dominante"), ventos)
+    else:
+        ven = _ventilacao(hz, relevo.get("forma_dominante"))
+        ven["medido"] = False
+        ven["recomendacao"] += " (Direção de vento típica de Portugal continental: dados ERA5 do local indisponíveis.)"
+    cl = clima if (clima or {}).get("ok") else None
     # potencial de sobreaquecimento: ganho de verão nas fachadas O/SO + latitude + altitude
     oeste = (fach["O"]["verao_kwh_m2"] + fach["SO"]["verao_kwh_m2"]) / 2
     p = 0.0
@@ -89,12 +126,18 @@ def avaliar(lat: float, lon: float, sol: Dict[str, Any], relevo: Dict[str, Any])
     p += max(0.0, min(1.0, (41.5 - lat) / 4.5)) * 0.25                 # mais a sul, mais quente
     p += max(0.0, min(1.0, (500.0 - alt) / 500.0)) * 0.2               # baixa altitude
     p += (0.1 if ven["exposicao_vento_dominante"] == "abrigado" else 0.0)
+    if cl:                                                                # zona de verão regulamentar do local
+        p += {"V1": -0.1, "V2": 0.0, "V3": 0.12}.get(cl["zona_verao"], 0.0)
     sobre = "elevado" if p >= 0.62 else "moderado" if p >= 0.4 else "baixo"
     inv = sol["horas_sol_21dez"]
     sombra = ("forte" if inv["media"] < 0.4 * inv["duracao_dia"] else "moderado" if inv["media"] < 0.75 * inv["duracao_dia"]
               else "fraco")
-    frio = alt >= 700 or (decl >= 10 and relevo.get("exposicao") in ("N", "NE", "NO"))
+    frio = alt >= 700 or (decl >= 10 and relevo.get("exposicao") in ("N", "NE", "NO")) or bool(cl and cl["zona_inverno"] == "I3")
     rec = [ori["texto"] + "."]
+    if cl:
+        gd = f"{cl['graus_dia']:,}".replace(",", " ")
+        rec.append(f"Zona climática {cl['zona_inverno']} / {cl['zona_verao']} (REH, {gd} graus-dia, "
+                   f"{str(cl['theta_ext_verao']).replace('.', ',')} °C de verão): base do projeto de comportamento térmico.")
     if sombra != "fraco":
         rec.append(f"Sombreamento de inverno {sombra} pelo relevo/edifícios a sul (horizonte a sul ≈ {sol['horizonte_sul_graus']}°): "
                    "subir a cota dos vãos principais ou implantar na zona mais desafogada.")
@@ -117,7 +160,9 @@ def avaliar(lat: float, lon: float, sol: Dict[str, Any], relevo: Dict[str, Any])
         "ventilacao": ven,
         "sobreaquecimento": {"nivel": sobre, "indice": round(p, 2), "ganho_verao_fachada_oeste_kwh_m2": round(oeste, 0)},
         "inverno_rigoroso": frio,
+        "clima_reh": cl or {"ok": False, "nota": (clima or {}).get("nota") or "zona climática por confirmar"},
         "recomendacoes": rec,
-        "nota": "Indicadores de anteprojeto sobre o horizonte real do terreno. A zona climática (REH, Despacho n.º 15793-F/2013) "
-                "e o desempenho energético são verificados no projeto de comportamento térmico.",
+        "nota": "Indicadores de anteprojeto sobre o horizonte real do terreno (relevo próximo e longínquo). A zona climática "
+                "indicada é a do REH (Despacho n.º 15793-F/2013) para o concelho e a altitude; o desempenho energético é "
+                "verificado no projeto de comportamento térmico.",
     }

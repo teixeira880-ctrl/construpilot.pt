@@ -263,3 +263,158 @@ def test_rotas_registadas():
     caminhos = {r.path for r in RV.router.routes}
     assert {"/viabilidade/avaliar", "/viabilidade/relatorio.pdf", "/viabilidade/terreno.ifc", "/viabilidade/modelo",
             "/viabilidade/modelo-implantado.ifc"} <= caminhos
+
+
+# ------------------------------------------------------------------ melhorias: relevo longínquo, PVGIS, vento ERA5, REH, BIM
+def test_horizonte_distante_serra_a_sul_tapa_o_sol_de_inverno():
+    """Serra de 600 m a 1 km para sul (fora da envolvente de 120 m) → horizonte sul ≈ atan(598,5 / 1000) ≈ 30,9°,
+    acima do sol do meio-dia de 21 de dezembro em Sintra (≈ 27,8°)."""
+    al = _raster(lambda x, y: np.where(y < -1000, 700.0, 100.0), lado=2800, res=8)
+    h = SO.horizonte_distante(al, XC, YC, 100.0)
+    assert h[18] == pytest.approx(math.degrees(math.atan2(598.5, 1000)), abs=1.2)
+    assert h[0] < 0.5                               # norte livre
+    r = _raster(_plano, lado=300, res=2)
+    m = np.zeros(r.z.shape, bool)
+    m[70:80, 70:80] = True
+    from engines.mdt_pt import analise as AN
+    decl, expo = AN.declive_exposicao(r)
+    sem = SO.analisar(r, m, decl, expo, LAT, LON)
+    com = SO.analisar(r, m, decl, expo, LAT, LON, h_distante=h)
+    # a 21 de dezembro o sol em Sintra sobe a ~27,8°: com 16,6° a sul perde-se o início e o fim do dia
+    assert com["horas_sol_21dez"]["media"] < sem["horas_sol_21dez"]["media"] - 1.5
+    assert com["horas_sol_21jun"]["media"] == pytest.approx(sem["horas_sol_21jun"]["media"], abs=0.5)
+    assert com["horizonte_distante"]["incluido"] and com["horizonte_distante"]["sul_graus"] > 10
+
+
+def test_rosa_dos_ventos_era5():
+    from engines.viabilidade_pt import externos as EX
+    t = [f"2024-{m:02d}-15T{h:02d}:00" for m in range(1, 13) for h in range(24)]
+    temp = [30.0 if m in (7, 8) and 13 <= h <= 18 else 12.0 for m in range(1, 13) for h in range(24)]
+    vel = [4.0] * len(t)
+    # verão quente: vento de NO (315°); inverno: SO (225°); resto: N
+    dirs = [315.0 if temp[i] >= 24 else 225.0 if t[i][5:7] in ("12", "01", "02") else 0.0 for i in range(len(t))]
+    ro = EX.rosa(t, temp, vel, dirs)
+    assert ro["dominante_verao"] == "NO" and ro["dominante_inverno"] == "SO"
+    assert sum(s["freq_pct"] for s in ro["anual"]) == pytest.approx(100, abs=0.5)
+
+
+def test_conforto_com_vento_medido_e_zona_climatica():
+    from engines.viabilidade_pt import externos as EX
+    rosa = {"ok": True, "dominante_anual": "N", "dominante_verao": "NO", "dominante_inverno": "SO",
+            "verao_quente": [{"rumo": "NO", "freq_pct": 41.0, "vel_media_ms": 5.1}], "anual": [], "inverno": [],
+            "fonte": "Copernicus ERA5 (ECMWF), via Open-Meteo", "periodo": "2024–2025"}
+    clima = EX.clima_reh("Braga", 190.0)
+    assert clima["ok"] and clima["zona_inverno"] in ("I1", "I2", "I3") and clima["zona_verao"] in ("V1", "V2", "V3")
+    sol = {"horizonte_centro": [{"azimute": k * 10.0, "angulo": 0.0} for k in range(36)], "horas_sol_21dez": {"media": 9.0, "duracao_dia": 9.4},
+           "horizonte_sul_graus": 0.0, "fracao_sombra_inverno": 0.0, "indice_solar_pct": 100, "horas_sol_21jun": {"media": 14.5},
+           "irradiacao_anual_kwh_m2": {"media": 1600}}
+    rel = {"cota_media": 190.0, "declive_medio_pct": 3.0, "exposicao": "S", "exposicao_graus": 180.0, "forma_dominante": "plano"}
+    cf = CF.avaliar(41.55, -8.42, sol, rel, rosa, clima)
+    v = cf["ventilacao"]
+    assert v["medido"] and v["vento_dominante_verao"] == "NO" and "SE" in v["recomendacao"] and "SO" in v["recomendacao"]
+    assert cf["clima_reh"]["ok"] and any("Zona climática" in x for x in cf["recomendacoes"])
+    # sem dados do local: continua a funcionar e diz que a direção é a típica
+    cf2 = CF.avaliar(41.55, -8.42, sol, rel, {"ok": False}, {"ok": False, "nota": "x"})
+    assert cf2["ventilacao"]["medido"] is False and cf2["clima_reh"]["ok"] is False
+
+
+def test_avaliar_usa_relevo_envolvente_pvgis_e_era5(monkeypatch):
+    from engines.viabilidade_pt import externos as EX
+    r = _raster(_encosta_sul)
+    serra = _raster(lambda x, y: np.where(y < -900, 450.0, 150.0 + 0.12 * y), lado=2800, res=8)
+
+    async def obter(pts, resolucao=None, margem_m=15.0, so_dgt=False):
+        if resolucao == 8.0:
+            return serra, {"fonte": "MDT alargado simulado", "oficial": True, "resolucao_m": 8.0}
+        return r, {"fonte": "MDT simulado", "oficial": True, "resolucao_m": 1.0}
+
+    async def territorio(pts, prazo):
+        t = _terr()
+        t["geometria"] = {"area_m2": 3000.0}
+        t["caop"] = {"ok": True, "data": {"principal": {"concelho": "Sintra", "freguesia": "x", "distrito": "Lisboa"}}}
+        return t
+
+    async def via(lat, lon):
+        return VIA_SUL
+
+    async def nada(lat, lon):
+        return {"ok": False}
+
+    async def pv(lat, lon):
+        return {"ok": True, "mensal_kwh_m2": [60, 80, 130, 160, 200, 215, 225, 200, 150, 105, 70, 55], "anual_kwh_m2": 1650,
+                "periodo": "2016–2023", "fonte": "PVGIS 5.3 — Comissão Europeia (JRC), com horizonte"}
+
+    async def vt(lat, lon):
+        return {"ok": True, "dominante_anual": "N", "dominante_verao": "N", "dominante_inverno": "SO",
+                "verao_quente": [{"rumo": "N", "freq_pct": 55.0, "vel_media_ms": 6.0}], "anual": [], "inverno": [],
+                "fonte": "Copernicus ERA5 (ECMWF), via Open-Meteo", "periodo": "2024–2025"}
+
+    monkeypatch.setattr(GR, "obter", obter)
+    monkeypatch.setattr(SV, "_territorio", territorio)
+    monkeypatch.setattr(SV, "_via", via)
+    monkeypatch.setattr(SV, "_edificios", nada)
+    monkeypatch.setattr(EX, "pvgis", pv)
+    monkeypatch.setattr(EX, "ventos", vt)
+    res = asyncio.run(SV.avaliar(_anel()))
+    s, c = res["solar"], res["conforto"]
+    assert s["horizonte_distante"]["incluido"] and s["horizonte_distante"]["sul_graus"] > 8
+    assert s["pvgis"]["anual_kwh_m2"] == 1650
+    assert c["ventilacao"]["medido"] and c["ventilacao"]["vento_dominante_verao"] == "N"
+    assert c["clima_reh"]["ok"] and c["clima_reh"]["nuts3"]
+    pdf = RL.pdf(res, "Encosta com serra a sul")
+    assert pdf[:4] == b"%PDF"
+    open("/tmp/viab_melhorias.pdf", "wb").write(pdf) if os.environ.get("CP_GRAVAR_PDF") else None
+
+
+def test_ifc_do_utilizador_em_milimetros_fica_no_sitio_e_com_terreno():
+    import tempfile
+    import ifcopenshell
+    import ifcopenshell.api
+    api = ifcopenshell.api.run
+    f = api("project.create_file", version="IFC4")
+    p = api("root.create_entity", f, ifc_class="IfcProject", name="Casa mm")
+    api("unit.assign_unit", f, units=[api("unit.add_si_unit", f, unit_type="LENGTHUNIT", prefix="MILLI")])
+    ctx = api("context.add_context", f, context_type="Model")
+    body = api("context.add_context", f, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=ctx)
+    site = api("root.create_entity", f, ifc_class="IfcSite", name="S")
+    bld = api("root.create_entity", f, ifc_class="IfcBuilding", name="B")
+    st = api("root.create_entity", f, ifc_class="IfcBuildingStorey", name="R/C")
+    api("aggregate.assign_object", f, products=[site], relating_object=p)
+    api("aggregate.assign_object", f, products=[bld], relating_object=site)
+    api("aggregate.assign_object", f, products=[st], relating_object=bld)
+    for e in (site, bld, st):
+        api("geometry.edit_object_placement", f, product=e, matrix=np.eye(4))
+    laje = api("root.create_entity", f, ifc_class="IfcSlab", name="Laje")
+    rep = api("geometry.add_slab_representation", f, context=body, depth=300.0,
+              polyline=[(0.0, 0.0), (12000.0, 0.0), (12000.0, 8000.0), (0.0, 8000.0)])
+    api("geometry.assign_representation", f, product=laje, representation=rep)
+    api("geometry.edit_object_placement", f, product=laje, matrix=np.eye(4))
+    api("spatial.assign_container", f, products=[laje], relating_structure=st)
+    with tempfile.NamedTemporaryFile(suffix=".ifc", delete=False) as fh:
+        pass
+    f.write(fh.name)
+    dados = open(fh.name, "rb").read()
+    mod = BM.ler_modelo_ifc(dados)
+    assert mod["largura_m"] == pytest.approx(12, abs=0.05) and mod["profundidade_m"] == pytest.approx(8, abs=0.05)
+    impl = {"centro_tm": [XC, YC], "azimute_fachada_principal": 180.0, "cota_soleira_sugerida": 151.2}
+    r = _raster(_encosta_sul, lado=200, res=2)
+    out = BM.georreferenciar_ifc(dados, impl, mod, r)
+    with tempfile.NamedTemporaryFile(suffix=".ifc", delete=False) as fh2:
+        fh2.write(out)
+    g = ifcopenshell.open(fh2.name)
+    mc = g.by_type("IfcMapConversion")[0]
+    assert mc.Scale == pytest.approx(0.001)
+    # o centro da laje (6000, 4000 mm) cai no centro da implantação
+    E = mc.Eastings + mc.Scale * (6000 * mc.XAxisAbscissa - 4000 * mc.XAxisOrdinate)
+    N = mc.Northings + mc.Scale * (6000 * mc.XAxisOrdinate + 4000 * mc.XAxisAbscissa)
+    assert abs(E - XC) < 0.05 and abs(N - YC) < 0.05
+    ter = g.by_type("IfcGeographicElement")
+    assert ter and ter[0].PredefinedType == "TERRAIN"
+    # a superfície, convertida para o mapa, reproduz as cotas do MDT
+    pl = ter[0].Representation.Representations[0].Items[0].Coordinates.CoordList
+    x, y, z = pl[len(pl) // 2]
+    Em = mc.Eastings + mc.Scale * (x * mc.XAxisAbscissa - y * mc.XAxisOrdinate)
+    Nm = mc.Northings + mc.Scale * (x * mc.XAxisOrdinate + y * mc.XAxisAbscissa)
+    Hm = mc.OrthogonalHeight + mc.Scale * z
+    from engines.mdt_pt.analise import amostrar
+    assert abs(Hm - float(amostrar(r, np.array([Em]), np.array([Nm]))[0])) < 0.3

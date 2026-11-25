@@ -177,7 +177,8 @@ async def modelo_implantado(body: AvaliarIn, user=Depends(current_user)):
         raise HTTPException(422, impl.get("nota") or "Sem implantação possível no terreno.")
     import asyncio
     try:
-        dados = await asyncio.to_thread(BM.georreferenciar_ifc, mod["bytes"], impl, mod["leitura"])
+        dados = await asyncio.to_thread(BM.georreferenciar_ifc, mod["bytes"], impl, mod["leitura"],
+                                        (res.get("_interno") or {}).get("r"))
     except Exception as e:  # noqa: BLE001
         raise HTTPException(422, f"Não foi possível georreferenciar o IFC: {str(e)[:200]}")
     base = (mod.get("nome") or "modelo").rsplit(".", 1)[0]

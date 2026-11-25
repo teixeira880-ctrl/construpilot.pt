@@ -22,9 +22,10 @@ DIA_TIPICO = (17, 47, 75, 105, 135, 162, 198, 228, 258, 288, 318, 344)      # di
 # fração média de céu limpo (irradiação global média / céu limpo), Portugal continental — sul / norte do Tejo-Mondego
 _KC_SUL = (0.71, 0.76, 0.80, 0.83, 0.87, 0.94, 0.96, 0.96, 0.92, 0.80, 0.71, 0.67)
 _KC_NORTE = (0.60, 0.66, 0.72, 0.75, 0.80, 0.88, 0.92, 0.92, 0.85, 0.71, 0.61, 0.58)
-FONTE = ("Cálculo ConstruPilot: posição solar (NOAA), horizonte sobre o MDT da envolvente analisada (~120 m) e os edifícios "
-         "vizinhos com altura conhecida, céu limpo de Meinel corrigido por "
-         "nebulosidade média de Portugal continental — indicativo (confirmar com PVGIS para sistemas solares).")
+FONTE = ("Cálculo ConstruPilot: posição solar (NOAA), horizonte sobre o MDT da envolvente analisada (~120 m), o relevo "
+         "longínquo até 1,4 km (quando o MDT alargado está disponível) e os edifícios vizinhos com altura conhecida, céu "
+         "limpo de Meinel corrigido por nebulosidade média de Portugal continental — indicativo; a irradiação real média "
+         "vem do PVGIS (Comissão Europeia) quando o serviço responde.")
 RUMOS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"]
 
 
@@ -124,6 +125,29 @@ def horizonte(r: Raster, alvo: Optional[np.ndarray] = None, dist_max: float = 60
     return out
 
 
+def horizonte_distante(r_alargado: Raster, x: float, y: float, z0: float, d_min: float = 100.0,
+                       d_max: float = 1400.0) -> np.ndarray:
+    """Horizonte (graus, N_AZ direções) do relevo LONGÍNQUO visto de (x, y, z0 + 1,5 m), entre d_min e d_max metros,
+    sobre o MDT alargado (±1,4 km). Serras e encostas fora da envolvente de 120 m cortam o sol baixo de inverno."""
+    z = _preencher_nan(r_alargado.z.astype(np.float64))
+    rr = Raster(z.astype(np.float32), r_alargado.x0, r_alargado.y0, r_alargado.px, r_alargado.py)
+    passos = []
+    d = d_min
+    while d <= d_max:
+        passos.append(d)
+        d += max(r_alargado.px, 4.0) * (1 + d / 500.0)
+    out = np.zeros(N_AZ, dtype=np.float32)
+    for k in range(N_AZ):
+        a = math.radians(k * 360.0 / N_AZ)
+        xs = x + math.sin(a) * np.array(passos)
+        ys = y + math.cos(a) * np.array(passos)
+        zz = amostrar(rr, xs, ys) - np.array(passos) ** 2 / (2 * 6_371_000.0) * 0.87   # curvatura + refração
+        ang = np.degrees(np.arctan2(zz - (z0 + 1.5), np.array(passos)))
+        ang = ang[~np.isnan(ang)]
+        out[k] = float(np.clip(ang.max(), 0, 90)) if ang.size else 0.0
+    return out
+
+
 def _svf(h: np.ndarray) -> np.ndarray:
     """Fator de céu visível aproximado a partir do horizonte (média de cos² do ângulo de horizonte)."""
     return np.cos(np.radians(h)) ** 2
@@ -140,10 +164,14 @@ def _ceu_limpo(alt: float) -> Tuple[float, float]:
 
 
 def analisar(r: Raster, mascara: np.ndarray, decl_pct: np.ndarray, expo: np.ndarray, lat: float, lon: float,
-             obstaculos: Optional[Raster] = None, passo_h: float = 0.5) -> Dict[str, Any]:
-    """Irradiação anual por célula do terreno, horas de sol nos solstícios e horizonte no centro."""
+             obstaculos: Optional[Raster] = None, passo_h: float = 0.5,
+             h_distante: Optional[np.ndarray] = None) -> Dict[str, Any]:
+    """Irradiação anual por célula do terreno, horas de sol nos solstícios e horizonte no centro.
+    h_distante: horizonte do relevo longínquo (N_AZ graus, MDT alargado) — soma-se ao horizonte próximo de cada célula."""
     sup = obstaculos or r
     H = horizonte(sup, mascara)                                  # [36, n]
+    if h_distante is not None:
+        H = np.maximum(H, np.asarray(h_distante, dtype=np.float32)[:, None])
     I, J = np.nonzero(mascara)
     s = np.arctan(np.nan_to_num(decl_pct[I, J]) / 100.0)
     asp = np.radians(np.nan_to_num(expo[I, J]))
@@ -208,6 +236,9 @@ def analisar(r: Raster, mascara: np.ndarray, decl_pct: np.ndarray, expo: np.ndar
         "fracao_sombra_inverno": round(float((horas_dez < 0.5 * dur_dez).mean()), 3),
         "horizonte_centro": [{"azimute": round(k * 360.0 / N_AZ, 0), "angulo": round(float(H[k, c]), 1)} for k in range(N_AZ)],
         "horizonte_sul_graus": round(float(H[[15, 16, 17, 18, 19, 20, 21], :].mean()), 1),
+        "horizonte_distante": None if h_distante is None else
+        {"incluido": True, "alcance_m": 1400, "sul_graus": round(float(np.asarray(h_distante)[15:22].mean()), 1),
+         "max_graus": round(float(np.max(h_distante)), 1)},
         "ceu_visivel": round(float(svf.mean()), 3),
         "mensal": mensal, "trajetorias": trajetorias(lat, lon),
         "_mapa_anual": mapa, "_horas_dez": sombra_dez,

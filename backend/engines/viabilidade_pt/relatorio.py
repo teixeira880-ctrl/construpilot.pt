@@ -231,7 +231,12 @@ def pdf(res: Dict[str, Any], nome: str = "", empresa: Optional[Dict[str, str]] =
         ("Horas de sol a 21 de dezembro", f"{_n(sol['horas_sol_21dez']['media'], 1)} h de {_n(sol['horas_sol_21dez']['duracao_dia'], 1)} h de dia"),
         ("Horas de sol a 21 de junho", _n(sol["horas_sol_21jun"]["media"], 1, "h")),
         ("Horizonte a sul / céu visível", f"{_n(sol['horizonte_sul_graus'], 1)}° / {_n(sol['ceu_visivel'] * 100, 0)} %"),
-    ]))
+    ] + ([("Relevo longínquo (até 1,4 km)", f"incluído — horizonte a sul {_n(sol['horizonte_distante']['sul_graus'], 1)}°, "
+                                              f"máximo {_n(sol['horizonte_distante']['max_graus'], 1)}°")]
+         if sol.get("horizonte_distante") else [])
+       + ([("Irradiação real média (PVGIS)", f"{_n(sol['pvgis']['anual_kwh_m2'], 0)} kWh/m²·ano no plano horizontal "
+                                              f"({sol['pvgis']['periodo']}, com nebulosidade e horizonte)")]
+          if sol.get("pvgis") else [])))
     fs = figura_solar(res)
     if fs:
         E.append(Image(io.BytesIO(fs), width=15.5 * cm, height=6.6 * cm))
@@ -314,7 +319,11 @@ def pdf(res: Dict[str, Any], nome: str = "", empresa: Optional[Dict[str, str]] =
     E.append(tabela([
         ("Orientação recomendada", cf["orientacao_recomendada"]["texto"]),
         ("Sombreamento de inverno", f"{cf['sombreamento']['nivel_inverno']} (horizonte a sul {_n(cf['sombreamento']['horizonte_sul_graus'], 1)}°)"),
-        ("Ventilação natural", cf["ventilacao"]["recomendacao"]),
+        ("Zona climática (REH)", (f"{cf['clima_reh']['zona_inverno']} / {cf['clima_reh']['zona_verao']} — NUTS III {cf['clima_reh']['nuts3']}, "
+                                  f"{_n(cf['clima_reh']['graus_dia'], 0)} graus-dia, θext,v {_n(cf['clima_reh']['theta_ext_verao'], 1)} °C")
+                                 if (cf.get("clima_reh") or {}).get("ok") else "por confirmar no projeto térmico"),
+        ("Ventilação natural", cf["ventilacao"]["recomendacao"]
+         + (f" (vento medido: {cf['ventilacao']['fonte']}, {cf['ventilacao']['periodo']})" if cf["ventilacao"].get("medido") else "")),
         ("Potencial de sobreaquecimento", f"{cf['sobreaquecimento']['nivel']} (índice {_n(cf['sobreaquecimento']['indice'], 2)})"),
     ]))
     E.append(p(cf["nota"], PS))

@@ -263,6 +263,11 @@ def ler_modelo_ifc(dados: bytes) -> Dict[str, Any]:
     if not sh:
         raise ValueError("O IFC não tem paredes, pilares nem lajes com geometria.")
     v = np.concatenate([vv for (_el, vv, _t) in sh.values()])
+    try:                                                   # coordenadas do ficheiro → metros (projetos em mm, cm…)
+        import ifcopenshell.util.unit as UU
+        v = v * float(UU.calculate_unit_scale(f) or 1.0)
+    except Exception:  # noqa: BLE001
+        pass
     xy = v[:, :2]
     zmin, zmax = float(v[:, 2].min()), float(v[:, 2].max())
     from scipy.spatial import ConvexHull
@@ -289,8 +294,10 @@ def ler_modelo_ifc(dados: bytes) -> Dict[str, Any]:
             "projeto": (proj[0].Name if proj else None), "esquema": f.schema}
 
 
-def georreferenciar_ifc(dados: bytes, implantacao: Dict[str, Any], modelo: Dict[str, Any]) -> bytes:
-    """Escreve a IfcMapConversion (EPSG:3763) que coloca o modelo do utilizador na implantação recomendada."""
+def georreferenciar_ifc(dados: bytes, implantacao: Dict[str, Any], modelo: Dict[str, Any], r: Optional[Raster] = None) -> bytes:
+    """Escreve a IfcMapConversion (EPSG:3763) que coloca o modelo do utilizador na implantação recomendada.
+    Com `r` (MDT da análise), acrescenta ao mesmo ficheiro a superfície do terreno natural (IfcGeographicElement
+    TERRAIN, nas coordenadas e unidades do projeto) — o relevo aparece à volta do edifício no Revit/Archicad/BlenderBIM."""
     import tempfile
     import os
     from engines.bim_core import ifc_reader as R
@@ -311,7 +318,20 @@ def georreferenciar_ifc(dados: bytes, implantacao: Dict[str, Any], modelo: Dict[
     mx, my = modelo.get("centro_local") or (0.0, 0.0)
     ca, sa = math.cos(ang), math.sin(ang)
     e0, n0 = float(cx) - (mx * ca - my * sa), float(cy) - (mx * sa + my * ca)   # origem local → centro da implantação
-    f.createIfcMapConversion(ctxs[0], crs, e0, n0, sol, ca, sa, 1.0)
+    # unidades do ficheiro: a pegada (ifcopenshell.geom) vem em metros; a IfcMapConversion aplica-se às coordenadas do
+    # ficheiro, por isso a escala tem de ser «metros por unidade» (0,001 num projeto em milímetros)
+    try:
+        import ifcopenshell.util.unit as UU
+        k = float(UU.calculate_unit_scale(f)) or 1.0
+    except Exception:  # noqa: BLE001
+        k = 1.0
+    f.createIfcMapConversion(ctxs[0], crs, e0, n0, sol, ca, sa, k)
+    if r is not None:
+        try:
+            _terreno_no_modelo(f, r, e0, n0, sol, ang, k)
+        except Exception as e:  # noqa: BLE001 — o IFC georreferenciado continua válido sem o terreno
+            import logging
+            logging.getLogger(__name__).info("terreno no IFC do utilizador: %s", e)
     fd, path = tempfile.mkstemp(suffix=".ifc")
     os.close(fd)
     try:
@@ -320,3 +340,42 @@ def georreferenciar_ifc(dados: bytes, implantacao: Dict[str, Any], modelo: Dict[
             return fh.read()
     finally:
         os.unlink(path)
+
+
+def _terreno_no_modelo(f, r: Raster, e0: float, n0: float, h0: float, ang: float, k: float, max_lado: int = 120) -> None:
+    """Superfície do MDT no IFC do utilizador, no referencial local do projeto (inverso da IfcMapConversion)."""
+    import ifcopenshell.api
+    from engines.mdt_pt.grelha import reamostrar
+    from engines.mdt_pt.analise import _preencher_nan, centros
+    api = ifcopenshell.api.run
+    rr = r
+    while max(rr.z.shape) > max_lado:
+        rr = reamostrar(rr, rr.px * 2)
+    z = _preencher_nan(rr.z.astype(np.float64))
+    xc, yc = centros(rr)
+    X, Y = np.meshgrid(xc, yc)
+    dx, dy = X.ravel() - e0, Y.ravel() - n0
+    ca, sa = math.cos(ang), math.sin(ang)
+    lx = (dx * ca + dy * sa) / k
+    ly = (-dx * sa + dy * ca) / k
+    lz = (z.ravel() - h0) / k
+    ny, nx = z.shape
+    idx = np.arange(ny * nx).reshape(ny, nx)
+    a, b, c, d = idx[:-1, :-1].ravel(), idx[:-1, 1:].ravel(), idx[1:, :-1].ravel(), idx[1:, 1:].ravel()
+    T = np.r_[np.c_[a, c, b], np.c_[b, c, d]] + 1
+    pts = f.createIfcCartesianPointList3D([(round(float(p), 4), round(float(q), 4), round(float(w), 4)) for p, q, w in zip(lx, ly, lz)])
+    fs = f.createIfcTriangulatedFaceSet(Coordinates=pts, Closed=False, CoordIndex=[tuple(int(i) for i in t) for t in T])
+    body = next((c for c in f.by_type("IfcGeometricRepresentationSubContext") if c.ContextIdentifier == "Body"), None)
+    if body is None:
+        body = next(c for c in f.by_type("IfcGeometricRepresentationContext") if not c.is_a("IfcGeometricRepresentationSubContext"))
+    el = api("root.create_entity", f, ifc_class="IfcGeographicElement", name="Terreno natural (MDT ConstruPilot)")
+    try:
+        el.PredefinedType = "TERRAIN"
+    except Exception:  # noqa: BLE001 — IFC2X3 não tem PredefinedType
+        pass
+    rep = f.createIfcShapeRepresentation(body, "Body", "Tessellation", [fs])
+    api("geometry.assign_representation", f, product=el, representation=rep)
+    api("geometry.edit_object_placement", f, product=el, matrix=np.eye(4))
+    sites = f.by_type("IfcSite")
+    if sites:
+        api("spatial.assign_container", f, products=[el], relating_structure=sites[0])

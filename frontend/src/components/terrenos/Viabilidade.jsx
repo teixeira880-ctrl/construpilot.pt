@@ -183,10 +183,14 @@ export default function Viabilidade({ terrenoId, anel, nome, mapa }) {
 
           <Secao titulo="Sol e conforto" icon={Sun}>
             <Linha k="Irradiação anual" v={`${num(res.solar.irradiacao_anual_kwh_m2.media, 0)} kWh/m² (índice ${num(res.solar.indice_solar_pct, 0)} %)`} />
-            <Linha k="Sol a 21 dez." v={`${num(res.solar.horas_sol_21dez.media, 1)} h de ${num(res.solar.horas_sol_21dez.duracao_dia, 1)} h`} />
+            <Linha k="Sol a 21 dez." v={`${num(res.solar.horas_sol_21dez.media, 1)} h de ${num(res.solar.horas_sol_21dez.duracao_dia, 1)} h${res.solar.horizonte_distante ? ` · relevo até 1,4 km: ${num(res.solar.horizonte_distante.sul_graus, 1)}° a sul` : ""}`} />
+            {res.solar.pvgis && <Linha k="Irradiação real (PVGIS)" v={`${num(res.solar.pvgis.anual_kwh_m2, 0)} kWh/m²·ano (${res.solar.pvgis.periodo})`} />}
+            {res.conforto.clima_reh?.ok && <Linha k="Zona climática" v={`${res.conforto.clima_reh.zona_inverno} / ${res.conforto.clima_reh.zona_verao} · ${num(res.conforto.clima_reh.graus_dia, 0)} graus-dia (REH)`} />}
             <Linha k="Orientação" v={res.conforto.orientacao_recomendada.texto} />
             <Linha k="Sobreaquecimento" v={res.conforto.sobreaquecimento.nivel} />
-            <Linha k={<span className="inline-flex items-center gap-1"><Wind className="h-3 w-3" /> Vento</span>} v={res.conforto.ventilacao.exposicao_vento_dominante} />
+            <Linha k={<span className="inline-flex items-center gap-1"><Wind className="h-3 w-3" /> Vento</span>} v={res.conforto.ventilacao.medido
+              ? `verão ${res.conforto.ventilacao.vento_dominante_verao} · inverno ${res.conforto.ventilacao.vento_dominante_inverno} (ERA5) · ${res.conforto.ventilacao.exposicao_vento_dominante}`
+              : res.conforto.ventilacao.exposicao_vento_dominante} />
           </Secao>
 
           <Secao titulo="Riscos naturais" icon={ShieldAlert}>
