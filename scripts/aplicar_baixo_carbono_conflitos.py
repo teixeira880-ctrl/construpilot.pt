@@ -85,16 +85,26 @@ def assistant(s):
 
 # --------------------------------------------------------------------------------------------- test_samples.py
 def samples(s):
+    if "carbone_pdf" in s:
+        return s
     linhas = s.split("\n")
     ok = False
-    for k, ln in enumerate(linhas):
-        if 'for a in st["artifacts"]] ==' in ln and '"kind"' in ln:
-            ok = True
-            if "carbone_pdf" not in ln:
+    out = []
+    for ln in linhas:
+        out.append(ln)
+        if '"kind"' in ln and 'st["artifacts"]' in ln and "assert" in ln and "==" in ln:
+            ind = ln[:len(ln) - len(ln.lstrip())]
+            if re.search(r'st\["artifacts"\]\]\[:\d+\] ==', ln):          # lista parcial ([:5]) : asserção acrescentada à parte
+                out.append(f'{ind}assert {{"carbone_pdf", "carbone_xlsx"}} <= {{a["kind"] for a in st["artifacts"]}}   # + carta de baixo carbono')
+            else:                                                             # lista completa : os 2 entregáveis no fim
                 j = ln.rfind("]")
-                linhas[k] = ln[:j] + ', "carbone_pdf", "carbone_xlsx"' + ln[j:] + "   # + carta de baixo carbono"
+                out[-1] = ln[:j] + ', "carbone_pdf", "carbone_xlsx"' + ln[j:] + "   # + carta de baixo carbono"
+            ok = True
+            break
+    if ok:
+        out += linhas[len(out) - (1 if re.search(r'carbone_pdf", "carbone_xlsx"\} <=', out[-1]) else 0):]
     need(ok, "test_samples: asserção da lista de entregáveis não encontrada")
-    return "\n".join(linhas)
+    return "\n".join(out)
 
 
 # --------------------------------------------------------------------------------------------- ChantierDetail.jsx
