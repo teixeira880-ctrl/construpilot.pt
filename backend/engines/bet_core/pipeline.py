@@ -197,6 +197,16 @@ def run(raw: dict, out: str | Path, date: str | None = None, lang: str | None = 
                 except Exception as exc:  # noqa: BLE001 — la note thermique ne bloque jamais le dossier
                     res["anomalies"].append({"code": "TH-02", "level": checks.WARN, "message": f"Note RE2020 non produite ({type(exc).__name__}: {str(exc)[:160]})"})
                 res["thermal"] = m.raw.get("thermal")
+            if country == "PT":                          # Carta de obra de baixo carbono (Excel + PDF) pré-preenchida pela medição do estudo
+                try:
+                    from engines.bas_carbone.depuis_etude import produire as _carbone
+                    from . import thermal as _th
+                    cx, cp, cd = _carbone(m.raw, r, tim, lines, _th.sref(m), out, stem, branding)
+                    res["files"]["carbone_xlsx"], res["files"]["carbone_pdf"] = str(cx), str(cp)
+                    res["carbone_dossier"] = cd
+                except Exception as exc:  # noqa: BLE001 — a carta de baixo carbono nunca bloqueia o estudo
+                    res["anomalies"].append({"code": "CO2-01", "level": checks.WARN,
+                                             "message": f"Carta de baixo carbono não produzida ({type(exc).__name__}: {str(exc)[:160]})"})
             return res
         except Exception as exc:  # noqa: BLE001 — rendu impossible : anomalie lisible avec l'emplacement, jamais un plantage muet
             return {"status": "MODELE_INVALIDE", "blocking": 1, "files": {},

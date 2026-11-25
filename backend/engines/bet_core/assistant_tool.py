@@ -126,7 +126,7 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-_BET_PREFIXES = ("Dossier_etude", "Plans_DXF", "Devis_metre", "Plans_PDF",
+_BET_PREFIXES = ("Carta_baixo_carbono", "Dossier_etude", "Plans_DXF", "Devis_metre", "Plans_PDF",
                  "Processo_estudo", "Desenhos_DXF", "Medicoes_orcamento", "Desenhos_PDF")
 
 
@@ -141,7 +141,7 @@ def _nom_livrable(path: Path) -> str:
 
 
 async def _store(db, uid, cid, request_id, kind, path: Path, title):
-    fmt = ("pdf" if kind in ("plans_pdf", "re2020_pdf", "estimate_pdf") else "xlsx" if kind == "estimate_xlsx"
+    fmt = ("pdf" if kind in ("plans_pdf", "re2020_pdf", "estimate_pdf", "carbone_pdf") else "xlsx" if kind in ("estimate_xlsx", "carbone_xlsx")
            else ("jpg" if path.suffix.lower() in (".jpg", ".jpeg") else "png") if kind == "render_png" else kind)
     data = path.read_bytes()
     if len(data) > MAX_ARTIFACT:
@@ -306,9 +306,19 @@ async def _work(db, job_id, uid, cid, request_id, docs, hypotheses, country, llm
                 labels = {"pdf": "Processo de estudo (memória de cálculo + desenhos)", "plans_pdf": "Desenhos PDF (para as empresas)",
                           "xlsx": "Medições e orçamento (Excel)", "zip": "Desenhos DXF (para software CAD)"}
             labels["re2020_pdf"] = "Étude thermique RE2020 (pré-étude, faite avant les plans)" if country != "PT" else "Estudo térmico"
-            for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf"):
+            labels["carbone_pdf"] = "Carta de obra de baixo carbono (dossier PDF)"
+            labels["carbone_xlsx"] = "Carta de obra de baixo carbono (quadro Excel a completar)"
+            for kind in ("pdf", "plans_pdf", "xlsx", "zip", "re2020_pdf", "carbone_pdf", "carbone_xlsx"):
                 if res["files"].get(kind):
                     arts.append(await _store(db, uid, cid, request_id, kind, Path(res["files"][kind]), labels[kind]))
+            if res.get("carbone_dossier"):        # retomado depois em Obra › Baixo carbono (importação do estudo)
+                try:
+                    await db.bas_carbone_etudes.update_one(
+                        {"user_id": uid, "job_id": job_id},
+                        {"$set": {"user_id": uid, "job_id": job_id, "conversation_id": cid, "dossier": res["carbone_dossier"],
+                                  "nom": (res["carbone_dossier"].get("projet") or {}).get("nom") or "", "created_at": _now()}}, upsert=True)
+                except Exception:  # noqa: BLE001
+                    log.warning("baixo carbono: dossier do estudo não guardado", exc_info=True)
         await step("Terminé", status="done", artifacts=arts, review_status=res["status"], blocking=res["blocking"],
                    sheets=res["sheets"], devis_ht=res["devis_ht"], devis_ttc=res["devis_ttc"], decisions=decisions, decide_alone=decide_alone,
                    extraction=extraction,

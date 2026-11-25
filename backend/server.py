@@ -255,6 +255,8 @@ api_router.include_router(company_page_routes.router)
 api_router.include_router(today_routes.router)
 from routes import chantiers as chantiers_routes, onboarding as onboarding_routes  # noqa: E402
 api_router.include_router(chantiers_routes.router)
+from routes import bas_carbone as bas_carbone_routes  # noqa: E402
+api_router.include_router(bas_carbone_routes.router)
 api_router.include_router(onboarding_routes.router)
 from routes import portal as portal_routes  # noqa: E402
 api_router.include_router(portal_routes.pro_router)
@@ -723,6 +725,8 @@ async def _seed_impl():
     from engines.journey import ensure_indexes as _journey_indexes
     await _journey_indexes()
     await db.chantiers.create_index("chantier_id", unique=True)
+    await db.bas_carbone.create_index([("chantier_id", 1), ("user_id", 1)], unique=True, name="bas_carbone_chantier")
+    await db.bas_carbone_etudes.create_index([("user_id", 1), ("job_id", 1)], unique=True, name="bas_carbone_etude_job")
     await db.chantiers.create_index("ref", unique=True, sparse=True)
     await db.chantier_participants.create_index("participant_id", unique=True)
     await db.chantier_participants.create_index([("chantier_ref", 1), ("email", 1)])
