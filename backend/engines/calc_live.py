@@ -1,11 +1,11 @@
-"""Acompanhamento do cálculo ao vivo — reservado à conta CLT Rezult (teste com o investidor).
+"""Acompanhamento do cálculo ao vivo — todas as contas profissionais (Pro e Pro Business).
 
 Cada pedido ao Assistente cria uma «execução» (db.calc_live_runs) onde os motores escrevem, à medida que trabalham, o que
 fizeram e PORQUÊ: ferramenta escolhida, dados oficiais lidos (com a fonte), fórmulas com os valores, decisões tomadas,
 verificações (valor obtido / limite / norma / OK-KO), hipóteses e avisos. A página /acompanhamento-calculo lê estas
 execuções a cada 2 s.
 
-Sem tracer ativo (todas as outras contas) cada chamada é um no-op: nada é gravado, nenhum motor muda de comportamento.
+Sem tracer ativo (contas de particulares, pedidos fora do Assistente) cada chamada é um no-op: nada é gravado, nenhum motor muda de comportamento.
 O tracer viaja num contextvar: segue as tarefas asyncio criadas dentro do pedido e os threads de asyncio.to_thread.
 """
 from __future__ import annotations
@@ -25,10 +25,9 @@ from typing import Any, Dict, Optional
 log = logging.getLogger(__name__)
 
 MAX_EVENTS = 2500
-CLT_EMAILS = {"clt-rezult.demo@construpilot.pt", "clt-rezult.demo@construpilot.fr", "office@clt-rezult.com"}
 TIPOS = {"etapa", "ferramenta", "dado", "calculo", "decisao", "verificacao", "pressuposto", "aviso", "erro", "resultado"}
 
-# Nome legível de cada motor (o Assistente escolhe a ferramenta; isto diz ao investidor que motor trabalha)
+# Nome legível de cada motor (o Assistente escolhe a ferramenta; isto diz ao utilizador que motor trabalha)
 MOTORES = {
     "licenciamento_automatico": "Motor de licenciamento automático (urbanismo PT: PDM, servidões, implantação, RJUE)",
     "licenciamento_atualizar": "Motor de licenciamento automático — recálculo com novos dados",
@@ -38,6 +37,10 @@ MOTORES = {
     "generate_full_bet_study": "Estudo BET completo (leitura dos planos + motores determinísticos)",
     "read_full_bet_study": "Leitura do estado do estudo BET",
     "generate_bet_lot_plans": "Planos de execução por especialidade",
+    "calcul_lsf": "Motor LSF — estrutura em aço leve perfil a perfil",
+    "calcul_clt": "Motor CLT — painéis, plano de prensa e ligações",
+    "calcul_gros_oeuvre": "Motor de estrutura e gros-œuvre (betão armado, alvenaria)",
+    "calcul_tradicional": "Motor de construção tradicional — betão armado e alvenarias elemento a elemento",
 }
 
 
@@ -45,13 +48,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def is_clt(user: Optional[Dict[str, Any]]) -> bool:
-    """Conta CLT Rezult (e as contas extra da variável CALC_LIVE_EMAILS, separadas por vírgulas)."""
+def acesso(user: Optional[Dict[str, Any]]) -> bool:
+    """Contas profissionais (Pro, Pro Business, contas de empresa) — mais as contas da variável CALC_LIVE_EMAILS (vírgulas)."""
     if not user:
         return False
+    if user.get("account_type") in ("pro", "pro_business") or user.get("role") == "admin" or user.get("company_id") or user.get("organization_id"):
+        return True
     email = str(user.get("email") or "").strip().lower()
     extra = {e.strip().lower() for e in (os.environ.get("CALC_LIVE_EMAILS") or "").split(",") if e.strip()}
-    return email in CLT_EMAILS or email in extra
+    return bool(email) and email in extra
+
+
+is_clt = acesso          # nome antigo (compatibilidade)
 
 
 # ------------------------------------------------------------------------------------------------ formatação

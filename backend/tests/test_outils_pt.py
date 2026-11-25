@@ -85,6 +85,17 @@ def _o(name, *keys, **over):
 
 
 CASOS = {
+    "calcul_tradicional": lambda: _fill("calcul_tradicional", titulo="Moradia tradicional 9 × 7 m",
+                                        implantacao=_o("calcul_tradicional", "implantacao", comprimento_m=9, largura_m=7, pisos=2),
+                                        vaos=[_o("calcul_tradicional", "vaos", piso=0, fachada="frente", tipo="porta", x_m=4, largura_m=1)]),
+    "calcul_clt": lambda: _fill("calcul_clt", titulo="Moradia CLT 9 × 7 m",
+                                implantacao=_o("calcul_clt", "implantacao", comprimento_m=9, largura_m=7, pisos=2),
+                                vaos=[_o("calcul_clt", "vaos", piso=0, fachada="frente", tipo="porta", x_m=4, largura_m=1),
+                                      _o("calcul_clt", "vaos", piso=1, fachada="tras", tipo="janela", x_m=2, largura_m=1.2)]),
+    "calcul_lsf": lambda: _fill("calcul_lsf", titulo="Moradia LSF 9 × 7 m",
+                                implantacao=_o("calcul_lsf", "implantacao", comprimento_m=9, largura_m=7, pisos=1),
+                                vaos=[_o("calcul_lsf", "vaos", piso=0, fachada="frente", tipo="porta", x_m=4, largura_m=1),
+                                      _o("calcul_lsf", "vaos", piso=0, fachada="tras", tipo="janela", x_m=2, largura_m=1.2)]),
     "pre_certificado_reh": lambda: _fill("pre_certificado_reh", area_util_m2=110, concelho="Porto", obra="existente", ano_construcao=1985,
                                          aquecimento=_o("pre_certificado_reh", "aquecimento", tipo="bomba_calor")),
     "calcul_instalacoes": lambda: _fill("calcul_instalacoes",

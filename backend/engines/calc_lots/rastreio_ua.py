@@ -1,4 +1,4 @@
-"""Live trace of the Ukrainian engine (calcul_ucrania) for the calculation-tracking page (CLT Rezult account only).
+"""Live trace of the Ukrainian engine (calcul_ucrania) for the calculation-tracking page (all professional accounts).
 
 Runs inside the calculation thread: uses calc_live.ev_sync, a no-op for every other account. Nothing is recomputed:
 it shows the inputs, formulas, intermediate values and checks the engine actually used, with the DBN / DSTU reference.

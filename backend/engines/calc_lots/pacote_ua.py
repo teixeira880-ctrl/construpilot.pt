@@ -43,7 +43,7 @@ def parametros(caso: str) -> dict:
     c = carregar(caso)
     mod = {k: v for k, v in c.items() if k not in ("divisoes", "mep", "envolvente", "render_opcoes", "fonte", "parametros")}
     p = {"cidade": "kyiv", "uso": "residencial", "area_aquecida_m2": 200, "volume_m3": 560, "sistema": "clt", "produto_clt": "rezult_clt",
-         "fogo_min": 60, "empresa": "clt-rezult", "projeto_uk": PROJ["uk"], "projeto_en": PROJ["en"]}
+         "fogo_min": 60, "projeto_uk": PROJ["uk"], "projeto_en": PROJ["en"]}
     p.update(c.get("parametros") or {})
     p.update(elementos=c.get("envolvente") or [], modelo_estrutural=mod, render_opcoes=c.get("render_opcoes"))
     return p
@@ -68,7 +68,7 @@ def pacote(caso: str, dossiers: dict, renders: list, p: dict) -> list[tuple[str,
     if not c.get("divisoes") or not c.get("mep"):
         return []
     nv = ucrania.navantazhennya(ucrania.clima(p.get("cidade") or "kyiv"))
-    emp = PR.marca(p.get("empresa") or "clt-rezult")
+    emp = PR.marca_conta(p)
     proj = {"uk": p.get("projeto_uk") or PROJ["uk"], "en": p.get("projeto_en") or PROJ["en"]}
     out = []
     for lg in ("uk", "en"):

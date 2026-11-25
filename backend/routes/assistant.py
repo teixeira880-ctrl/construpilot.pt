@@ -407,9 +407,9 @@ async def _compare_source(ident: str, user_id: str) -> dict:
 
 
 async def _exec_tool(name: str, args: dict, user: dict, conv: dict) -> dict:
-    """Conta CLT Rezult: cada ferramenta é seguida ao vivo na página /acompanhamento-calculo (motor, dados, fórmulas, decisões)."""
+    """Contas profissionais: cada ferramenta é seguida ao vivo na página /acompanhamento-calculo (motor, dados, fórmulas, decisões)."""
     from engines import calc_live
-    if not calc_live.is_clt(user):
+    if not calc_live.acesso(user):
         return await _exec_tool_inner(name, args, user, conv)
     async with calc_live.ferramenta(db, user, conv, name, args):
         res = await _exec_tool_inner(name, args, user, conv)

@@ -446,8 +446,73 @@ UCRANIA_TOOL = _tool(
                    "delivers the COMPLETE package (dossiers UK + EN, construction drawings UK + EN with electrical / water / heating, detailed cost "
                    "estimate UK + EN). Other fields may stay null.")})
 
+# --------------------------------------------------------------------------------------------------------------------------------
+# Estrutura em aço leve (LSF) — engines/lsf
+_VAO_LSF = {"piso": _n("0 = R/C"), "fachada": _enum(["frente", "direita", "tras", "esquerda"]), "tipo": _enum(["janela", "porta"]),
+            "x_m": {"type": "number", "description": "distância ao canto esquerdo da fachada (m)"}, "largura_m": {"type": "number"},
+            "altura_m": _n(), "peitoril_m": _n()}
+LSF_TOOL = _tool(
+    "calcul_lsf",
+    "Estudo completo de uma construção em AÇO LEVE / LIGHT STEEL FRAMING (LSF): estrutura perfil a perfil (montantes, guias, vergas, "
+    "peitoris, bloqueadores, vigas de piso, asnas), placas com plano de corte (OSB, gesso cartonado), parafusos contados um a um, ancoragens, "
+    "isolamento, ETICS; mapa de quantidades com preços da biblioteca da empresa; dossier PDF com plantas e alçados de fabrico numerados, Excel e "
+    "visualizador 3D. Use plan_id quando o utilizador já tem a planta lida no ConstruPilot (geometria real); senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto LSF completo em JSON (formato engines.lsf), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos (1 ou 2)"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]), "espacamento_mm": _n("modulação dos montantes; null = 600"),
+     "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# Estrutura em CLT (madeira lamelada-colada cruzada) — engines/clt
+CLT_TOOL = _tool(
+    "calcul_clt",
+    "Estudo completo de uma construção em CLT / MADEIRA LAMELADA-COLADA CRUZADA / X-LAM / cross laminated timber: painéis de parede, laje, "
+    "cobertura e empenas com a geometria real da planta e os recortes dos vãos, volumes líquido / envolvente / de prensa e perda (plano de "
+    "prensa), ligações contadas painel a painel (esquadros, hold-downs, parafusos de canto e de apoio, réguas de junta, fitas, bandas), "
+    "isolamento e membranas (exceto com so_clt); mapa de quantidades com preços da biblioteca da empresa; dossier PDF com plantas, alçados de "
+    "fabrico numerados e plano de prensa, Excel, visualizador 3D e render fotorrealista. Use plan_id quando a planta já foi lida no "
+    "ConstruPilot (geometria real); senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto CLT completo em JSON (formato engines.clt), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]),
+     "produto": _enum(["generico_c24", "rezult_clt"], "produto CLT com ETA (prensa, classe); null = genérico C24"),
+     "parede_exterior": _enum(["CLT80-3s", "CLT90-3s", "CLT100-3s", "CLT120-3s", "CLT140-5s"], "composição das paredes exteriores; null = CLT100-3s"),
+     "parede_interior": _enum(["CLT80-3s", "CLT90-3s", "CLT100-3s", "CLT120-3s"], "composição das paredes interiores; null = CLT100-3s"),
+     "so_clt": {"type": ["boolean", "null"], "description": "true = calcular só o CLT e as suas ligações (sem isolamento, membranas…); os vãos são sempre medidos"},
+     "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# Construção tradicional (betão armado + alvenarias) — engines/tradicional
+TRAD_TOOL = _tool(
+    "calcul_tradicional",
+    "Estudo completo de uma construção TRADICIONAL (estrutura porticada de betão armado + alvenarias de tijolo / bloco) a partir da planta: "
+    "sapatas, vigas de fundação, pilares, vigas, lajes e cobertura dimensionados elemento a elemento (NP EN 1992-1-1 / 1997-1) com as cargas "
+    "descidas piso a piso; betão, cofragem e aço pelos varões e malhas calculados; alvenarias contadas fiada a fiada parede a parede, vergas, "
+    "pavimento térreo, ETICS, rebocos, telhas; mapa de quantidades POR PISO das fundações à cobertura (primeiro as quantidades, preços só da "
+    "biblioteca da empresa); dossier PDF com plantas estruturais e alçado de cada parede numerados, Excel, visualizador 3D e render fotorrealista. "
+    "Use plan_id quando a planta já foi lida no ConstruPilot; senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto completo em JSON (formato engines.tradicional), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]),
+     "q_adm_kpa": _n("tensão admissível do terreno do estudo geotécnico (kPa); null = 200 kPa assinalado como hipótese"),
+     "alvenaria_exterior": _enum(["T30x20x22", "T30x20x15", "B50x20x20", "B50x20x15"], "unidade das paredes exteriores; null = tijolo 30×20×22"),
+     "alvenaria_interior": _enum(["T30x20x11", "T30x20x15", "B50x20x15"], "unidade das paredes interiores; null = tijolo 30×20×11"),
+     "titulo": _NS(), "pais": _enum(["PT", "FR"])})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, LSF_TOOL, CLT_TOOL, TRAD_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -466,6 +531,9 @@ PROGRESS_LABELS = {
     "calcul_patio_pluvial": "A dimensionar a drenagem do pátio rebaixado…",
     "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
+    "calcul_lsf": "A calcular a estrutura em aço leve (LSF) perfil a perfil, as placas e os parafusos…",
+    "calcul_clt": "A calcular a estrutura em CLT painel a painel, o plano de prensa e as ligações…",
+    "calcul_tradicional": "A dimensionar a estrutura de betão armado elemento a elemento e a contar as alvenarias fiada a fiada…",
 }
 
 PROTOCOL_PT = (
@@ -480,6 +548,13 @@ PROTOCOL_PT = (
     "verificar_solar_termico; pátio rebaixado / pátio inglês abaixo da rua: calcul_patio_pluvial; estrutura completa de um edifício com planos de execução de gros-œuvre "
     "cotados (fundações, pavimento, cobertura, cortes) a partir da geometria dos planos: calcul_gros_oeuvre; projeto na Ucrânia ou pedido em "
     "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo "
+    "; construção em aço leve / Light Steel Framing / LSF (estrutura metálica leve, perfis C e U, montantes, quantidades de perfis, placas e "
+    "parafusos, lista de corte): calcul_lsf, com plan_id se a planta já foi lida "
+    "; construção em CLT / madeira lamelada-colada cruzada / X-LAM (painéis, m³ de CLT, plano de prensa, esquadros, hold-downs, parafusos, "
+    "alçados de fabrico): calcul_clt, com plan_id se a planta já foi lida — para estudos de estrutura / térmica / orçamento completo de um "
+    "edifício em madeira maciça continua o estudo BET "
+    "; construção tradicional (betão armado + alvenaria de tijolo / bloco: medições e mapa de quantidades por piso das fundações à cobertura, "
+    "betão, aço, cofragem, tijolos, sapatas, pilares, vigas, lajes): calcul_tradicional, com plan_id se a planta já foi lida "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -790,10 +865,10 @@ def run(name: str, args: dict) -> dict:
     if name == "calcul_ucrania":
         caso = a.get("caso")
         p = pacote_ua.parametros(caso) if caso else ((ucrania.exemplo_clt() if a.get("sistema") == "clt" else ucrania.exemplo_kyiv()) if a.get("exemplo") else {})
-        from . import rastreio_ua as RTU                           # acompanhamento ao vivo (conta CLT Rezult; no-op nas outras)
+        from . import rastreio_ua as RTU                           # acompanhamento ao vivo (contas profissionais; no-op sem tracer)
         RTU.inicio(p, caso)
         if caso:                                                   # o caso guardado manda na geometria; título/empresa do utilizador mantêm-se
-            a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt")}
+            a = {k: v for k, v in a.items() if k in ("projeto_uk", "projeto_en", "empresa", "fogo_min", "produto_clt", "_branding")}
             # ordem: 1) estudo estrutural (geometria lida nos planos) 2) renders 3D Full HD desse modelo 3) dossiers com os renders
             mod_calc = gros_oeuvre.calcular(__import__("copy").deepcopy(p["modelo_estrutural"]))["modelo"]
             RTU.renders()
@@ -827,5 +902,28 @@ def run(name: str, args: dict) -> dict:
                              "q_kwh_m2": round(r.get("q_kwh_m2", 0), 1), "envolvente_conforme": all(e["ok"] for e in r["elementos"]),
                              "custo_com_pdv_uah": round(o["orcamento"]["com_pdv"]) if o.get("orcamento") else None},
                     extra=[("Dossier-EN", oen["titre"], oen["pdf"])] + extra_pac)
+        return out_
+    if name == "calcul_lsf":
+        from engines.lsf import note as lsf_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}       # planta / marca / biblioteca injetadas pela ponte
+        o = lsf_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
+        if o.get("files_extra"):
+            out_["files_extra"] = o["files_extra"]
+        return out_
+    if name == "calcul_clt":
+        from engines.clt import note as clt_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}
+        o = clt_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
+        if o.get("files_extra"):
+            out_["files_extra"] = o["files_extra"]
+        return out_
+    if name == "calcul_tradicional":
+        from engines.tradicional import note as trad_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}
+        o = trad_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"],
+                "files_extra": o["files_extra"]}
         return out_
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

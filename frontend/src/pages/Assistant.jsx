@@ -40,7 +40,7 @@ export default function Assistant() {
   const dossierImport = useDossierImport();
   const confirm = useConfirm();
   const { user } = useAuth();
-  const [calcLive, setCalcLive] = useState(false);   // conta CLT Rezult: página de acompanhamento do cálculo
+  const [calcLive, setCalcLive] = useState(false);   // contas profissionais: página de acompanhamento do cálculo
   useEffect(() => { api.get("/calc-live/acesso").then(({ data }) => setCalcLive(Boolean(data?.acesso))).catch(() => {}); }, []);
   const chantierParam = searchParams.get("chantier") || "";
   const requestedConversation = searchParams.get("conversation") || (!chantierParam && lastConversation(user?.user_id));

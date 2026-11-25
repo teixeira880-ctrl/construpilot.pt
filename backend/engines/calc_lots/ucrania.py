@@ -406,7 +406,7 @@ def note(p: dict) -> dict:
     out = d.tobytes(garbage=3, deflate=True)
     if p.get("premium", True):
         from . import premium as PR
-        emp = PR.marca(p.get("empresa"))
+        emp = PR.marca_conta(p)
         idx = []
         for i, pg in enumerate(pymupdf.open(stream=pdf, filetype="pdf")):
             for ln in pg.get_text().splitlines():

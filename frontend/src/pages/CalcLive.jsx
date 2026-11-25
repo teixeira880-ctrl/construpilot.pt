@@ -7,7 +7,7 @@ import {
   Loader2, Sigma, ListChecks, BookOpen, ArrowDown, Pause,
 } from "lucide-react";
 
-/* Acompanhamento do cálculo ao vivo — conta CLT Rezult (o servidor recusa as outras contas).
+/* Acompanhamento do cálculo ao vivo — todas as contas profissionais (o servidor recusa as contas de particulares).
    Cada pedido ao Assistente = uma execução; os motores escrevem o que fazem e porquê (fórmula, valores, norma). */
 
 const TXT = {
@@ -17,7 +17,7 @@ const TXT = {
     stopped: "Interrompido", all: "Tudo", calc: "Cálculos", dec: "Decisões", chk: "Verificações", data: "Dados", hyp: "Pressupostos",
     why: "Porquê", formula: "Fórmula", result: "Resultado", norm: "Norma", source: "Fonte", follow: "Seguir ao vivo", paused: "Pausado",
     ok: "OK", ko: "Não conforme", tbc: "A confirmar", checks: "verificações", decisions: "decisões", calcs: "cálculos",
-    denied: "Esta página está reservada à conta CLT Rezult.", del: "Apagar", motor: "Motor", tool: "Ferramenta escolhida",
+    denied: "Esta página está reservada às contas profissionais.", del: "Apagar", motor: "Motor", tool: "Ferramenta escolhida",
   },
   en: {
     title: "Calculation tracking", sub: "Every engine shows, live, the data it reads, the formulas with their values, its decisions and its checks.",
@@ -25,7 +25,7 @@ const TXT = {
     stopped: "Interrupted", all: "All", calc: "Calculations", dec: "Decisions", chk: "Checks", data: "Data", hyp: "Assumptions",
     why: "Why", formula: "Formula", result: "Result", norm: "Standard", source: "Source", follow: "Follow live", paused: "Paused",
     ok: "OK", ko: "Not compliant", tbc: "To confirm", checks: "checks", decisions: "decisions", calcs: "calculations",
-    denied: "This page is reserved for the CLT Rezult account.", del: "Delete", motor: "Engine", tool: "Engine chosen",
+    denied: "This page is reserved for professional accounts.", del: "Delete", motor: "Engine", tool: "Engine chosen",
   },
   fr: {
     title: "Suivi du calcul", sub: "Chaque moteur montre en direct les données lues, les formules avec leurs valeurs, ses décisions et ses vérifications.",
@@ -33,7 +33,7 @@ const TXT = {
     done: "Terminé", stopped: "Interrompu", all: "Tout", calc: "Calculs", dec: "Décisions", chk: "Vérifications", data: "Données",
     hyp: "Hypothèses", why: "Pourquoi", formula: "Formule", result: "Résultat", norm: "Norme", source: "Source", follow: "Suivre en direct",
     paused: "En pause", ok: "OK", ko: "Non conforme", tbc: "À confirmer", checks: "vérifications", decisions: "décisions", calcs: "calculs",
-    denied: "Cette page est réservée au compte CLT Rezult.", del: "Supprimer", motor: "Moteur", tool: "Moteur choisi",
+    denied: "Cette page est réservée aux comptes professionnels.", del: "Supprimer", motor: "Moteur", tool: "Moteur choisi",
   },
 };
 

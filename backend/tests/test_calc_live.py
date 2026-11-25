@@ -1,4 +1,4 @@
-"""Acompanhamento do cálculo ao vivo (conta CLT Rezult): rastreio do licenciamento, do motor Ucrânia, acesso e no-op."""
+"""Acompanhamento do cálculo ao vivo (todas as contas profissionais): rastreio do licenciamento, do motor Ucrânia, acesso e no-op."""
 import asyncio
 
 import pytest
@@ -10,8 +10,9 @@ from engines.urbanismo_pt.auto import geo as G
 from engines.urbanismo_pt.auto import pipeline as P
 from tests.test_urbanismo_auto import fake
 
-CLT = {"user_id": "u_clt", "email": "clt-rezult.demo@construpilot.pt"}
-OUTRO = {"user_id": "u_x", "email": "alguem@exemplo.pt"}
+CLT = {"user_id": "u_clt", "email": "clt-rezult.demo@construpilot.pt", "account_type": "pro_business"}
+PRO = {"user_id": "u_p", "email": "construtora@exemplo.pt", "account_type": "pro"}
+OUTRO = {"user_id": "u_x", "email": "alguem@exemplo.pt", "account_type": "particulier"}
 
 
 @pytest.fixture(autouse=True)
@@ -29,11 +30,12 @@ def _run(c):
         loop.close()
 
 
-def test_acesso_so_clt(monkeypatch):
-    assert CL.is_clt(CLT) and CL.is_clt({"email": "Office@CLT-Rezult.com"})
-    assert not CL.is_clt(OUTRO) and not CL.is_clt(None)
+def test_acesso_contas_profissionais(monkeypatch):
+    assert CL.acesso(CLT) and CL.acesso(PRO) and CL.acesso({"email": "x@y.pt", "role": "admin"})
+    assert not CL.acesso(OUTRO) and not CL.acesso(None)
+    assert not CL.acesso({"email": "office@clt-rezult.com"})          # nenhum e-mail com regime próprio
     monkeypatch.setenv("CALC_LIVE_EMAILS", "alguem@exemplo.pt")
-    assert CL.is_clt(OUTRO)
+    assert CL.acesso(OUTRO)
 
 
 def test_sem_tracer_nada_e_gravado():
@@ -110,8 +112,8 @@ def test_motor_ucrania_rastreado_num_thread():
 
 
 def test_outra_conta_nao_e_seguida():
-    """O envoltório do Assistente só cria execuções para a conta CLT."""
-    assert not CL.is_clt(OUTRO)
+    """O envoltório do Assistente não cria execuções para contas de particulares."""
+    assert not CL.acesso(OUTRO)
     db = AsyncMongoMockClient()["t"]
 
     async def go():
