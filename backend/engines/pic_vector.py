@@ -37,7 +37,7 @@ def sheet_info(pdf_bytes: bytes, page_index: int = 0) -> dict:
 
 def parse_scale(text) -> int | None:
     """«1/100», «1:100», «1-100», «Escala: 1-100» → 100. None se não for uma escala."""
-    m = re.search(r"\b1\s*[/:\-]\s*(\d{2,5})\b", str(text or ""))
+    m = re.search(r"\b1\s*[/:\-]\s*(\d{2,5})(?:e|ème)?\b", str(text or ""))
     if not m:
         return None
     n = int(m.group(1))
