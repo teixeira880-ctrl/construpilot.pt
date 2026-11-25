@@ -1,6 +1,6 @@
 import { AssistantMark } from "@/components/assistant/AssistantMark";
 import { APP_FAMILIES, FAMILY_MEMBER_PATHS, familyOfPath, familyHubFor } from "./families";
-import { Trash2, Bot, LayoutDashboard, FileText, Calculator, Ruler, Search, Users, HardHat, Building2, Receipt, Layers, Camera, Truck, Wand2, Radar, Contact, Library, Tag, Brain, KeyRound, Sparkles, Wrench, FileSearch, MessageSquare, Handshake, TrendingUp, Inbox, Shield, Globe, LifeBuoy, FileSpreadsheet, Footprints, Leaf, CalendarRange } from "lucide-react";
+import { Trash2, Bot, LayoutDashboard, FileText, Calculator, Ruler, Search, Users, HardHat, Building2, Receipt, Layers, Camera, Truck, Wand2, Radar, Contact, Library, Tag, Brain, KeyRound, Sparkles, Wrench, FileSearch, MessageSquare, Handshake, TrendingUp, Inbox, Shield, Globe, LifeBuoy, FileSpreadsheet, Footprints, Leaf, CalendarRange, Construction } from "lucide-react";
 
 export const AssistantIcon = ({ size = 18, className = "" }) => (
   <AssistantMark size={size} className={className} />
@@ -36,6 +36,7 @@ export const WORKSPACE_LINKS = [
   { to: "/escaliers", key: "nav.stairs", label: "Cálculo de escadas", icon: Footprints, group: "chantiers", pro: true, pin: true, words: "escada degraus cobertor espelho blondel rgeu quarto de volta helicoidal betão armado lanço armaduras" },
   { to: "/suivi-chantier", key: "nav.site", label: "Acompanhamento de obra", icon: HardHat, group: "chantiers", pro: true, perm: "chantier", pin: true },
   { to: "/planning", label: "Planeamento de obra", icon: CalendarRange, group: "chantiers", pro: true, pin: true, words: "planeamento gantt caminho crítico equipas atraso replaneamento sequenciamento or-tools prazos" },
+  { to: "/plano-estaleiro", label: "Plano de estaleiro", icon: Construction, group: "chantiers", pro: true, pin: true, words: "estaleiro plano de estaleiro grua lança alcance carga ponta contentor descarga vedação instalações sociais corte vertical altura sob gancho 3d vista aérea pss act folha técnica" },
   { to: "/plan/compare", label: "Comparar plantas", icon: Layers, group: "chantiers", pro: true },
   { to: "/medicao-rapida", label: "Medição rápida", icon: Ruler, group: "chantiers", words: "área perímetro volume divisão prompt" },
   { to: "/bim", label: "ConstruPilot BIM Studio", icon: Layers, group: "chantiers", pro: true, words: "ifc ifcopenshell 3d bim medições orçamento" },
@@ -147,6 +148,7 @@ export const UPSELL_BENEFITS = {
   "/escaliers": "Cálculo de escadas conforme o RGEU e o DL 163/2006 (lei de Blondel).",
   "/suivi-chantier": "Acompanhe o avanço, as notas e as fotografias de obra.",
   "/planning": "Gantt determinístico: caminho crítico, equipas, replaneamento e propostas de reorganização.",
+  "/plano-estaleiro": "Planta de estaleiro com grua calculada, zonas, corte vertical com alturas, vista 3D e folha técnica à escala.",
   "/dpgf": "Transforme um mapa de quantidades do arquiteto num orçamento detalhado automaticamente.",
   "/analyse-documents": "Verifique a proveniência, o IVA e as quantidades dos seus documentos.",
   "/situations": "Faturação por autos de medição com dedução do adiantamento.",

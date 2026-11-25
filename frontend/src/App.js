@@ -148,6 +148,7 @@ import SharedCalc from "@/pages/SharedCalc";
 import PriceCatalog from "@/pages/PriceCatalog";
 import SiteTracking from "@/pages/SiteTracking";
 import Planning from "@/pages/Planning";
+const PlanoEstaleiro = lazy(() => import("@/pages/PlanoEstaleiro"));
 import RenderStudio from "@/pages/RenderStudio";
 import MyLeads from "@/pages/MyLeads";
 import RenderShare from "@/pages/RenderShare";
@@ -307,6 +308,7 @@ function AppRouter() {
       <Route path="/rentabilite" element={<ProRoute><Shell><Profitability /></Shell></ProRoute>} />
       <Route path="/suivi-chantier" element={<ProRoute><Shell><SiteTracking /></Shell></ProRoute>} />
       <Route path="/planning" element={<ProRoute><Shell><Planning /></Shell></ProRoute>} />
+      <Route path="/plano-estaleiro" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlanoEstaleiro /></Suspense></Shell></ProRoute>} />
       <Route path="/agents" element={<Protected><Shell><AgentsHub /></Shell></Protected>} />
       <Route path="/acompanhamento-calculo" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><CalcLiveLazy /></Suspense></Shell></Protected>} />
       <Route path="/calc-live" element={<Protected><Shell><Suspense fallback={<RouteSkeleton />}><CalcLiveLazy /></Suspense></Shell></Protected>} />

@@ -97,13 +97,13 @@ export const APP_FAMILIES = [
   },
   {
     id: "obra", to: "/obra", icon: CalendarRange, group: "chantiers", pin: true,
-    label: { pt: "Acompanhamento & planeamento", en: "Site tracking & planning", fr: "Suivi & planning de chantier" },
+    label: { pt: "Estaleiro, acompanhamento & planeamento", en: "Site setup, tracking & planning", fr: "Installation, suivi & planning de chantier" },
     desc: {
-      pt: "Acompanhamento de obra (avanço, notas, fotografias) e planeamento Gantt.",
-      en: "Site tracking (progress, notes, photos) and Gantt planning.",
-      fr: "Suivi de chantier (avancement, notes, photos) et planning Gantt.",
+      pt: "Plano de estaleiro (grua, zonas, corte e 3D), acompanhamento de obra (avanço, notas, fotografias) e planeamento Gantt.",
+      en: "Site layout plan (crane, zones, section and 3D), site tracking (progress, notes, photos) and Gantt planning.",
+      fr: "Plan d'installation de chantier (grue, zones, coupe et 3D), suivi de chantier (avancement, notes, photos) et planning Gantt.",
     },
-    members: ["/suivi-chantier", "/planning"],
+    members: ["/suivi-chantier", "/planning", "/plano-estaleiro"],
   },
   {
     id: "empresa", to: "/empresa-equipa", icon: Users, group: "account",
