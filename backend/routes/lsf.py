@@ -112,6 +112,7 @@ async def _branding(uid: str) -> dict | None:
 def _public(doc: dict) -> dict:
     doc.pop("_id", None)
     doc.pop("render_png_b64", None)
+    doc["has_photo"] = bool(doc.pop("photo_png_b64", None))
     return doc
 
 
@@ -189,7 +190,7 @@ async def update_project(study_id: str, body: ProjectIn, user=Depends(current_us
     st = _calc(body.project, await _biblioteca(user["user_id"]))
     patch = {"project": body.project, "summary": _resumo(st), "lines": st["linhas"], "totals": st["totais"], "warnings": st["resultado"]["avisos"],
              "assumptions": st["resultado"]["hipoteses"], "updated_at": _now(), "version": int(doc.get("version", 1)) + 1,
-             "render_png_b64": None}
+             "render_png_b64": None, "photo_png_b64": None}
     await db.lsf_studies.update_one({"study_id": study_id, "user_id": user["user_id"]}, {"$set": patch})
     return _public({**doc, **patch})
 
@@ -232,12 +233,43 @@ async def _render(doc: dict, st: dict, uid: str):
     return out[:1]
 
 
+async def _photo(doc: dict, st: dict, uid: str, gerar: bool = False):
+    """Foto fotorrealista a partir do render calculado (todas as contas). Guardada no estudo; só gerada a pedido."""
+    if doc.get("photo_png_b64"):
+        return base64.b64decode(doc["photo_png_b64"])
+    if not gerar:
+        return None
+    ren = await _render(doc, st, uid)
+    if not ren:
+        return None
+    from engines.foto_estrutura import fotorrealista
+    r = await fotorrealista(ren[0][1], "lsf")
+    if not r:
+        return None
+    await db.lsf_studies.update_one({"study_id": doc["study_id"], "user_id": uid}, {"$set": {"photo_png_b64": base64.b64encode(r[0]).decode()}})
+    return r[0]
+
+
+@router.post("/studies/{study_id}/photo")
+async def study_photo(study_id: str, user=Depends(current_user)) -> Response:
+    """Render fotorrealista da estrutura montada (mesma geometria do render calculado) — disponível para todas as contas Pro."""
+    doc = await _get(study_id, user["user_id"])
+    st = await _full(doc, user["user_id"])
+    img = await _photo(doc, st, user["user_id"], gerar=True)
+    if not img:
+        raise HTTPException(503, "Motores de imagem indisponíveis — o render calculado continua disponível")
+    return Response(content=img, media_type="image/jpeg" if img[:3] == b"\xff\xd8\xff" else "image/png")
+
+
 @router.get("/studies/{study_id}/pdf")
 async def study_pdf(study_id: str, lang: str = "pt", user=Depends(current_user)) -> Response:
     from engines.lsf.pdf import dossier
     doc = await _get(study_id, user["user_id"])
     st = await _full(doc, user["user_id"])
     ren = await _render(doc, st, user["user_id"])
+    foto = await _photo(doc, st, user["user_id"])
+    if foto:
+        ren = [("fotorrealista", foto)] + ren
     pdf = await asyncio.to_thread(dossier, st["resultado"], st["linhas"], st["totais"], lang if lang in ("pt", "fr", "en", "uk") else "pt",
                                   await _branding(user["user_id"]), ren, doc.get("title"))
     return Response(content=pdf, media_type="application/pdf",

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Boxes, Trash2, ArrowLeft, Loader2, FileDown, AlertTriangle, Info, FileSpreadsheet, Box, Coins, Globe, Save, Sparkles, Ruler,
+  Boxes, Trash2, ArrowLeft, Loader2, FileDown, AlertTriangle, Info, FileSpreadsheet, Box, Coins, Globe, Save, Sparkles, Ruler, Camera,
 } from "lucide-react";
 
 // Estrutura em aço leve (LSF): motor determinístico engines/lsf — a geometria vem da planta lida no ConstruPilot.
@@ -193,6 +193,12 @@ function StudyDetail({ study, setStudy, onBack }) {
     const { data } = await api.get(`/lsf/studies/${study.study_id}/viewer`, { responseType: "text" });
     setViewer(data);
   });
+  const [foto, setFoto] = useState(null);
+  const photo = () => run("foto", async () => {
+    const res = await api.post(`/lsf/studies/${study.study_id}/photo`, {}, { responseType: "blob" });
+    setFoto(URL.createObjectURL(res.data));
+    toast.success("Render fotorrealista pronto — também incluído no dossier PDF");
+  });
   const price = (mercado) => run(mercado ? "mercado" : "preco", async () => {
     const { data } = await api.post(`/lsf/studies/${study.study_id}/price`, { mercado });
     setStudy({ ...study, lines: data.lines, totals: data.totals });
@@ -223,9 +229,12 @@ function StudyDetail({ study, setStudy, onBack }) {
           {busy === "xlsx" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}Excel</Button>
         <Button variant="outline" onClick={openViewer} disabled={!!busy} data-testid="lsf-3d">
           {busy === "viewer" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Box className="h-4 w-4 mr-1" />}Visualizador 3D</Button>
+        <Button variant="outline" onClick={photo} disabled={!!busy} data-testid="lsf-photo">
+          {busy === "foto" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Camera className="h-4 w-4 mr-1" />}Render fotorrealista</Button>
         <Button variant="outline" onClick={() => price(false)} disabled={!!busy}><Coins className="h-4 w-4 mr-1" />Preços da biblioteca</Button>
         <Button variant="outline" onClick={() => price(true)} disabled={!!busy}><Globe className="h-4 w-4 mr-1" />Procurar preços de mercado</Button>
       </div>
+      {foto && <img src={foto} alt="Render fotorrealista da estrutura LSF" className="w-full rounded-lg border" />}
       {viewer && (
         <div className="rounded-lg border overflow-hidden" style={{ height: "70vh" }}>
           <iframe title="Visualizador 3D LSF" srcDoc={viewer} sandbox="allow-scripts" className="w-full h-full border-0" />

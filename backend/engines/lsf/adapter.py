@@ -278,6 +278,9 @@ def from_levels(levels, country: str = "PT", nome: str | None = None, opcoes: di
     dt_ext = st["h"] + 2 * st["t"]
     esp_int = sum(proj["placas"][c["placa"]]["esp"] for c in T["EXT"]["interior"])
     out_off = (esp_int + dt_ext) / 1000.0            # m: face interior → face exterior da estrutura
+    if o.get("dtExt_mm"):                             # outro sistema construtivo (ex.: CLT) — espessuras próprias
+        dt_ext = float(o["dtExt_mm"])
+        out_off = (float(o.get("espInt_mm") or 0) + dt_ext) / 1000.0
     hip = proj["hipoteses"]
     hip.append("Geometria lida na planta: faces interiores = divisões calibradas; a estrutura LSF (gesso + perfis) é posta para fora "
                "e o ETICS por fora da estrutura — áreas úteis das divisões preservadas")
@@ -317,7 +320,7 @@ def from_levels(levels, country: str = "PT", nome: str | None = None, opcoes: di
 
     viga = perfis[o["viga"]]
     pl_piso = proj["placas"]["OSB22"]
-    prof_piso = viga["h"] + 2 * viga["t"] + pl_piso["esp"]
+    prof_piso = float(o["profPiso_mm"]) if o.get("profPiso_mm") else viga["h"] + 2 * viga["t"] + pl_piso["esp"]
     elev = [round(lv.elevation * 1000) for lv in lv_sorted]
     for k, lv in enumerate(lv_sorted):
         fp, rooms = fps[k], extras_lv[k]

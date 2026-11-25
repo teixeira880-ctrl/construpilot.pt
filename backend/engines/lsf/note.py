@@ -101,8 +101,8 @@ def note(a: dict) -> dict:
     lin = Q.linhas(res, lang)
     tot = Q.precificar(lin, a.get("_biblioteca"), p.get("precos"))
     br = a.get("_branding")
-    renders = []
-    if a.get("render", True):
+    renders = list(a.get("_renders") or [])          # render calculado + foto fotorrealista já preparados pela ponte do Assistente
+    if not renders and a.get("render", True):
         try:
             from .render import render
             renders = render(res, largura=1600, altura=900, spp=64, vistas=[("estrutura", (-0.62, -0.78), 0.55)], orcamento_s=180)

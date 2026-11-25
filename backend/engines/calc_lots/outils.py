@@ -466,8 +466,31 @@ LSF_TOOL = _tool(
      "cobertura": _enum(["auto", "duas_aguas", "plana"]), "espacamento_mm": _n("modulação dos montantes; null = 600"),
      "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
 
+# --------------------------------------------------------------------------------------------------------------------------------
+# Estrutura em CLT (madeira lamelada-colada cruzada) — engines/clt
+CLT_TOOL = _tool(
+    "calcul_clt",
+    "Estudo completo de uma construção em CLT / MADEIRA LAMELADA-COLADA CRUZADA / X-LAM / cross laminated timber: painéis de parede, laje, "
+    "cobertura e empenas com a geometria real da planta e os recortes dos vãos, volumes líquido / envolvente / de prensa e perda (plano de "
+    "prensa), ligações contadas painel a painel (esquadros, hold-downs, parafusos de canto e de apoio, réguas de junta, fitas, bandas), "
+    "isolamento e membranas (exceto com so_clt); mapa de quantidades com preços da biblioteca da empresa; dossier PDF com plantas, alçados de "
+    "fabrico numerados e plano de prensa, Excel, visualizador 3D e render fotorrealista. Use plan_id quando a planta já foi lida no "
+    "ConstruPilot (geometria real); senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto CLT completo em JSON (formato engines.clt), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]),
+     "produto": _enum(["generico_c24", "rezult_clt"], "produto CLT com ETA (prensa, classe); null = genérico C24"),
+     "parede_exterior": _enum(["CLT80-3s", "CLT90-3s", "CLT100-3s", "CLT120-3s", "CLT140-5s"], "composição das paredes exteriores; null = CLT100-3s"),
+     "parede_interior": _enum(["CLT80-3s", "CLT90-3s", "CLT100-3s", "CLT120-3s"], "composição das paredes interiores; null = CLT100-3s"),
+     "so_clt": {"type": ["boolean", "null"], "description": "true = calcular só o CLT e as suas ligações (sem isolamento, membranas…); os vãos são sempre medidos"},
+     "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, LSF_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, LSF_TOOL, CLT_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -487,6 +510,7 @@ PROGRESS_LABELS = {
     "calcul_gros_oeuvre": "A verificar a estrutura e a desenhar os planos de gros-œuvre cotados…",
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
     "calcul_lsf": "A calcular a estrutura em aço leve (LSF) perfil a perfil, as placas e os parafusos…",
+    "calcul_clt": "A calcular a estrutura em CLT painel a painel, o plano de prensa e as ligações…",
 }
 
 PROTOCOL_PT = (
@@ -503,6 +527,9 @@ PROTOCOL_PT = (
     "ucraniano / inglês sobre a Ucrânia (ДБН, теплотехніка, тепловтрати, сніг, фундаменти, креслення): calcul_ucrania (responde na língua do utilizador) — se o plano for o «Home A» / «Fração A» da CLT Rezult, chama calcul_ucrania com caso=home_a_rezult_kyiv (pacote completo: dossiers, planos de execução e orçamento UK + EN) e NÃO lances o estudo BET completo "
     "; construção em aço leve / Light Steel Framing / LSF (estrutura metálica leve, perfis C e U, montantes, quantidades de perfis, placas e "
     "parafusos, lista de corte): calcul_lsf, com plan_id se a planta já foi lida "
+    "; construção em CLT / madeira lamelada-colada cruzada / X-LAM (painéis, m³ de CLT, plano de prensa, esquadros, hold-downs, parafusos, "
+    "alçados de fabrico): calcul_clt, com plan_id se a planta já foi lida — para estudos de estrutura / térmica / orçamento completo de um "
+    "edifício em madeira maciça continua o estudo BET "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -855,6 +882,14 @@ def run(name: str, args: dict) -> dict:
         from engines.lsf import note as lsf_note
         args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}       # planta / marca / biblioteca injetadas pela ponte
         o = lsf_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
+        if o.get("files_extra"):
+            out_["files_extra"] = o["files_extra"]
+        return out_
+    if name == "calcul_clt":
+        from engines.clt import note as clt_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}
+        o = clt_note.note({**a, **args_priv})
         out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
         if o.get("files_extra"):
             out_["files_extra"] = o["files_extra"]
