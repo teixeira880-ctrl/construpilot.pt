@@ -100,3 +100,35 @@ def test_metre_pdf_is_premium_with_company_colour():
     txt = "".join(p.get_text() for p in d)
     assert len(d) >= 3 and "CM RENOV" in txt and "Resumo por capítulo" in txt and "Quantidade a confirmar" in txt
     assert [t[1] for t in d.get_toc()][:2] == ["Capa", "Resumo por capítulo"]
+
+
+def test_cover_never_uses_a_document_scan_as_background():
+    """Le scan d'un plan / cahier d'architecte n'est jamais étiré derrière le titre ; une vraie photo/3D l'est."""
+    from PIL import ImageDraw
+    feuille = Image.new("RGB", (600, 850), "white")
+    dr = ImageDraw.Draw(feuille)
+    for y in range(0, 850, 40):
+        dr.line((20, y, 580, y), fill=(120, 120, 120), width=2)
+    photo = Image.new("RGB", (600, 400), (90, 110, 70))
+    ImageDraw.Draw(photo).rectangle((100, 80, 500, 300), fill=(150, 120, 90))
+
+    def png(im):
+        b = io.BytesIO()
+        im.save(b, "PNG")
+        return b.getvalue()
+    assert pdf_premium._e_documento(png(feuille)) is True
+    assert pdf_premium._e_documento(png(photo)) is False
+    for img, en_fond in ((feuille, False), (photo, True)):
+        d = dict(_doc(), attachment_image_b64=base64.b64encode(png(img)).decode())
+        cov = pymupdf.open(stream=build_document_pdf(d, branding=BR, lang="fr"), filetype="pdf")[0]
+        largeurs = [i[2] for i in cov.get_images()]
+        assert (600 in largeurs) is en_fond                      # l'image source (600 px) n'est en fond que si c'est une photo
+
+
+def test_logo_margins_are_trimmed():
+    im = Image.new("RGB", (400, 300), "white")
+    im.paste(Image.new("RGB", (100, 50), (200, 20, 20)), (150, 120))
+    b = io.BytesIO()
+    im.save(b, "PNG")
+    out = Image.open(io.BytesIO(pdf_premium._recorta(b.getvalue())))
+    assert out.width < 120 and out.height < 70

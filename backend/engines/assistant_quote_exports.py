@@ -387,7 +387,7 @@ def build_metre_pdf(doc, branding=None, lang="fr") -> bytes:
             "kpis": [(TT["lines"], str(len(rows)), ""), (TT["lots"], str(len(lots)), ""),
                      (t["to_confirm"], str(n_conf), "")],
             "indice": [t["summary"], titulo_tipo],
-            "imagem": ((doc.get("_house_views") or {}).get("main"))}
+            "imagem": ((doc.get("_house_views") or {}).get("main")), "imagem_3d": True}
     return PP.acabar(raw, capa, PP.com_cor(branding) if branding is not None else {}, lg, paginas="completo")
 
 

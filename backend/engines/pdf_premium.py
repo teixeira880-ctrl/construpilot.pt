@@ -13,6 +13,7 @@ original sem alterações. Desativável por conta com branding["premium_pdf"] = 
 from __future__ import annotations
 
 import base64
+import io
 import logging
 import re
 
@@ -191,6 +192,92 @@ def _opaco(png: bytes, alpha: float) -> bytes:
     return pymupdf.Pixmap(pix.colorspace, pix.width, pix.height, bytes(s), True).tobytes("png")
 
 
+def _recorta(png: bytes | None) -> bytes | None:
+    """Tira as margens vazias (brancas ou transparentes) à volta do logótipo, para ele ocupar todo o cartão."""
+    if not png:
+        return png
+    try:
+        from PIL import Image, ImageChops
+        im = Image.open(io.BytesIO(png))
+        im.load()
+        rgba = im.convert("RGBA")
+        fundo = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+        plano = Image.alpha_composite(fundo, rgba).convert("RGB")
+        dif = ImageChops.difference(plano, Image.new("RGB", plano.size, (255, 255, 255))).convert("L")
+        caixa = dif.point(lambda v: 255 if v > 18 else 0).getbbox()
+        if not caixa:
+            return png
+        x0, y0, x1, y1 = caixa
+        m = max(2, int(0.02 * max(x1 - x0, y1 - y0)))
+        x0, y0, x1, y1 = max(0, x0 - m), max(0, y0 - m), min(im.width, x1 + m), min(im.height, y1 + m)
+        if (x1 - x0) * (y1 - y0) > 0.92 * im.width * im.height:
+            return png                                   # já sem margens: não mexe
+        b = io.BytesIO()
+        rgba.crop((x0, y0, x1, y1)).save(b, "PNG")
+        return b.getvalue()
+    except Exception:  # noqa: BLE001
+        return png
+
+
+def _e_documento(img: bytes) -> bool:
+    """True se a imagem parece uma página de documento (plano, caderno, scan: maioritariamente branco/cinzento) e não
+    uma foto ou uma imagem 3D. Uma página assim não serve de fundo de capa."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(img)).convert("RGB").resize((96, 96))
+        px = list(im.getdata())
+        n = len(px)
+        branco = sum(1 for r, g, b in px if r > 222 and g > 222 and b > 222) / n
+        sat = sum((max(p) - min(p)) / 255 for p in px) / n
+        return branco > 0.40 or (branco > 0.22 and sat < 0.07)
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _hero(pg, img: bytes, r):
+    """Imagem a cobrir o retângulo, recortada ao centro (sem deformação)."""
+    import pymupdf
+    pix = pymupdf.Pixmap(img)
+    iw, ih = pix.width, pix.height
+    alvo = r.width / r.height
+    if iw / ih > alvo:                                  # imagem mais larga: corta os lados
+        cw = ih * alvo
+        clip = (int((iw - cw) / 2), 0, int((iw + cw) / 2), ih)
+    else:                                               # mais alta: corta em cima/baixo (ligeiramente acima do centro)
+        ch = iw / alvo
+        y0 = int((ih - ch) * 0.4)
+        clip = (0, y0, iw, int(y0 + ch))
+    from PIL import Image
+    im = Image.open(io.BytesIO(img)).convert("RGB").crop(clip)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=90)
+    pg.insert_image(r, stream=b.getvalue(), keep_proportion=False)
+
+
+def _degrade(pg, r, cor):
+    """Véu escuro em degradê (forte à esquerda, onde está o texto → transparente à direita): legível sem tapar a imagem."""
+    import pymupdf
+    n = 48
+    larg = r.width * 0.78
+    pg.draw_rect(r, color=None, fill=cor, fill_opacity=0.12)
+    for i in range(n):
+        a = 0.80 * (1 - i / n) ** 1.6
+        x0 = r.x0 + larg * i / n
+        pg.draw_rect(pymupdf.Rect(x0, r.y0, x0 + larg / n + 0.6, r.y1), color=None, fill=cor, fill_opacity=a)
+
+
+def _extrato(pg, sp, r):
+    """Extrato nítido do topo da 1.ª página do documento (ex.: o quadro do orçamento) num cartão com sombra."""
+    import pymupdf
+    pr = sp.rect
+    h = min(pr.height, pr.width * r.height / r.width)
+    clip = pymupdf.Rect(pr.x0, pr.y0, pr.x1, pr.y0 + h)
+    pix = sp.get_pixmap(dpi=150, clip=clip)
+    pg.draw_rect(r + (3, 4, 3, 4), color=None, fill=(0, 0, 0), fill_opacity=0.35, radius=0.03)
+    pg.draw_rect(r, color=None, fill=(1, 1, 1), radius=0.03)
+    pg.insert_image(r + (5, 5, -5, -5), pixmap=pix, keep_proportion=True)
+
+
 def _paginas_de(src, titulos: list[str]) -> list[tuple[str, int | str]]:
     """Página (na versão final, capa = 1) onde cada título aparece pela primeira vez."""
     out = []
@@ -222,7 +309,7 @@ def _acabar(pdf: bytes, capa: dict, branding: dict | None, lang: str, paginas: s
     import pymupdf
     T = TXT.get(lang, TXT["pt"])
     emp = empresa(branding)
-    cor, logo, nome = emp["cor"], emp["logo_bytes"], emp["nome"]
+    cor, logo, nome = emp["cor"], _recorta(emp["logo_bytes"]), emp["nome"]
     fr, fb = _fontes()
     src = pymupdf.open(stream=pdf, filetype="pdf")
     if logo:
@@ -241,28 +328,47 @@ def _acabar(pdf: bytes, capa: dict, branding: dict | None, lang: str, paginas: s
     pg.draw_rect(pymupdf.Rect(0, 0, W, H), color=None, fill=(0.985, 0.98, 0.972))
     pg.draw_rect(pymupdf.Rect(0, 0, W, 300), color=None, fill=ESCURO)
     pg.draw_rect(pymupdf.Rect(0, 296, W, 304), color=None, fill=cor)
+    # Fundo do cabeçalho: SÓ uma imagem 3D/foto real (recortada, sem deformar) ou, na falta dela, um extrato nítido da
+    # primeira página do próprio documento (ex.: o quadro do orçamento). Nunca o scan de um plano/caderno do arquiteto
+    # esticado e escurecido por trás do título (era ilegível e feio).
     imagem = capa.get("imagem")
+    if imagem and not capa.get("imagem_3d") and _e_documento(imagem):
+        imagem = None
+    HH = 296
     if imagem:
-        pg.insert_image(pymupdf.Rect(0, 0, W, 296), stream=imagem, keep_proportion=False)
-        pg.draw_rect(pymupdf.Rect(0, 0, W * 0.62, 296), color=None, fill=ESCURO, fill_opacity=0.72)
+        _hero(pg, imagem, pymupdf.Rect(0, 0, W, HH))
+        _degrade(pg, pymupdf.Rect(0, 0, W, HH), ESCURO)
     elif len(src):
-        sp = src[0]
-        mini = sp.get_pixmap(dpi=60)
-        r = pymupdf.Rect(W * 0.52, 30, W - 30, 280)
-        pg.draw_rect(r, color=None, fill=(1, 1, 1), fill_opacity=0.96)
-        pg.insert_image(r + (6, 6, -6, -6), pixmap=mini, keep_proportion=True)
+        _extrato(pg, src[0], pymupdf.Rect(W * 0.555, 26, W - 26, HH - 24))
+    yb = 0
     if logo:
-        pg.draw_rect(pymupdf.Rect(30, 34, 210, 100), color=None, fill=(1, 1, 1))
-        pg.insert_image(pymupdf.Rect(*_logo_rect(lw, lh, 40, 42, 160, 50)), stream=logo)
-    t(30, 140, "ConstruPilot", 11, (0.85, 0.85, 0.85), True)
+        # cartão branco à medida do logótipo: o logótipo preenche o cartão (só uma margem fina), em vez de ficar pequeno
+        # num retângulo branco fixo
+        lx0, ly0, lx1, ly1 = _logo_rect(lw, lh, 0, 0, 230 if imagem or not len(src) else 200, 88)
+        pad = 7
+        card = pymupdf.Rect(30, 30, 30 + (lx1 - lx0) + 2 * pad, 30 + (ly1 - ly0) + 2 * pad)
+        pg.draw_rect(card + (1.5, 2, 1.5, 2), color=None, fill=(0, 0, 0), fill_opacity=0.18, radius=0.08)
+        pg.draw_rect(card, color=None, fill=(1, 1, 1), radius=0.08)
+        pg.insert_image(pymupdf.Rect(card.x0 + pad, card.y0 + pad, card.x1 - pad, card.y1 - pad), stream=logo)
+        yb = card.y1
+    y = max(132, yb + 22)
+    t(30, y, "ConstruPilot", 11, (0.85, 0.85, 0.85), True)
     if nome:
-        t(30, 156, "× " + nome[:40], 11, cor, True)
-    t(30, 184, str(capa.get("tipo") or "").upper(), 8.5, (0.75, 0.75, 0.75), True)
-    y = 205
-    largura = 22 if not imagem else 30
-    for linha in _quebra(capa.get("titulo") or capa.get("tipo") or "", largura, 3):
-        t(30, y, linha, 17, (1, 1, 1), True)
-        y += 21
+        t(30, y + 16, "× " + nome[:40], 11, cor, True)
+    t(30, y + 42, str(capa.get("tipo") or "").upper(), 8.5, (0.75, 0.75, 0.75), True)
+    y += 63
+    largura = 27 if not imagem else 30
+    titulo = capa.get("titulo") or capa.get("tipo") or ""
+    fs = 17
+    if len(_quebra(titulo, largura, 9)) > 3:            # título longo: letra um pouco menor em vez de o cortar
+        fs, largura = 14, int(largura * 17 / 14)
+    linhas = _quebra(titulo, largura, 9)
+    if len(linhas) > 3:
+        linhas = linhas[:3]
+        linhas[2] = linhas[2].rstrip(" &–-,") + "…"
+    for linha in linhas:
+        t(30, y, linha, fs, (1, 1, 1), True)
+        y += fs + 4
     for linha in _quebra(capa.get("subtitulo", ""), 48, 3):
         t(30, y + 6, linha, 9, (0.80, 0.80, 0.80))
         y += 12
@@ -372,6 +478,7 @@ def acabar_orcamento(pdf: bytes, doc: dict, branding: dict | None, lang: str | N
     cli_nome = cli.get("name") or cli.get("company") or cli.get("nom") or ""
     site = doc.get("site_address") or doc.get("worksite_address") or cli.get("address") or ""
     imagem = (doc.get("_house_views") or {}).get("main")      # vista 3D da moradia (fotorrealista se já disponível)
+    imagem_3d = bool(imagem)
     if not imagem and doc.get("attachment_image_b64"):
         try:
             imagem = base64.b64decode(str(doc["attachment_image_b64"]).split(",", 1)[-1])
@@ -381,7 +488,8 @@ def acabar_orcamento(pdf: bytes, doc: dict, branding: dict | None, lang: str | N
                                   f" {doc['number']}" if doc.get("number") else ""),
             "titulo": doc.get("title") or T["quote"],
             "subtitulo": (f"{T['client']}{' : ' if lg == 'fr' else ': '}{cli_nome}" if cli_nome else ""),
-            "local": site, "data": str(doc.get("issue_date") or "")[:10], "kpis": kpis, "indice": lots, "imagem": imagem}
+            "local": site, "data": str(doc.get("issue_date") or "")[:10], "kpis": kpis, "indice": lots, "imagem": imagem,
+            "imagem_3d": imagem_3d}
     return acabar(pdf, capa, branding, lg, paginas="leve")
 
 
