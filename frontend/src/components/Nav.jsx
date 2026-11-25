@@ -38,6 +38,7 @@ const NAV_PRO = [
   { to: "/factures", label: "Faturas", key: "nav.invoices", icon: FileText, perm: "factures", min: "pro" },
   { to: "/situations", label: "Autos de medição", key: "nav.situations", icon: Layers, perm: "situations", min: "business" },
   { to: "/dpgf", label: "Mapa de quantidades do arquiteto → orçamento", key: "nav.dpgf", icon: FileSpreadsheet, perm: "devis", badge: "Novo", min: "pro" },
+  { to: "/caderno-encargos", label: "Caderno de encargos e concurso", key: "nav.cctp", icon: FileText, perm: "devis", badge: "Novo", min: "pro" },
   { to: "/suivi-chantier", label: "Acompanhamento de obra", key: "nav.site", icon: HardHat, perm: "chantier", min: "pro" },
   { to: "/appro", label: "Análise técnica & Aprovisionamento IA", key: "nav.appro", icon: Truck, auth: true, badge: "Novo", min: "pro" },
   { to: "/controle-cotes", label: "Analisar cotas das plantas", key: "nav.cotes", icon: Ruler, auth: true, badge: "Novo", min: "pro" },

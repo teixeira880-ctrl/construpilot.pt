@@ -62,6 +62,7 @@ import AppPrivacy from "@/pages/AppPrivacy";
 import DeleteAccountPage from "@/pages/DeleteAccountPage";
 import RfqPublic from "@/pages/RfqPublic";
 import DpgfPage from "@/pages/DpgfPage";
+import CctpPage from "@/pages/CctpPage";
 import DocIntelPage from "@/pages/DocIntelPage";
 import Welcome from "@/pages/Welcome";
 import Pricing from "@/pages/Pricing";
@@ -389,6 +390,8 @@ function AppRouter() {
       <Route path="/preferences" element={<Protected><Shell><Preferences /></Shell></Protected>} />
       <Route path="/compte" element={<Protected><Shell><Account /></Shell></Protected>} />
       <Route path="/dpgf" element={<ProRoute><Shell><DpgfPage /></Shell></ProRoute>} />
+      <Route path="/caderno-encargos" element={<ProRoute><Shell><CctpPage /></Shell></ProRoute>} />
+      <Route path="/cctp" element={<Navigate to="/caderno-encargos" replace />} />
       <Route path="/analyse-documents" element={<ProRoute><Shell><DocIntelPage /></Shell></ProRoute>} />
       <Route path="/pc" element={<ProRoute><Shell><PcDashboard /></Shell></ProRoute>} />
       <Route path="/plan" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><PlanTakeoffLazy /></Suspense></Shell></ProRoute>} />

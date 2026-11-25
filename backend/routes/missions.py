@@ -362,6 +362,25 @@ async def _exec_structure(ctx) -> dict:
     return {"kind": "notes", "lot": "structure", "notes": out}
 
 
+async def _caderno_redigido(ctx, doc: dict, titulo: str, lotes) -> bytes:
+    """Caderno de encargos redigido (condições técnicas por capítulo) pelo redator ; recurso ao esqueleto mapa_caderno."""
+    from engines import cctp_redacteur as CR
+    from engines import mapa_caderno as MC
+    try:
+        projeto = {"nom": titulo, "nature": "renovation", "phase": "Concurso", "indice": "A"}
+        rediges = await CR.rediger(projeto, CR.selection_depuis_devis(doc.get("lines") or []), ia=True)
+        if rediges:
+            from routes.plans_common import _resolve_branding
+            try:
+                branding = await _resolve_branding(ctx["user"]["user_id"])
+            except Exception:  # noqa: BLE001 — sem logótipo em vez de sem caderno
+                branding = None
+            return CR.caderno_docx(projeto, rediges, branding)
+    except Exception:  # noqa: BLE001
+        log.exception("dpgf: redator de caderno de encargos indisponível, caderno esqueleto")
+    return MC.caderno_docx(lotes, titulo)
+
+
 async def _exec_dpgf(ctx) -> dict:
     from engines import mapa_caderno as MC
     devis = (ctx["results"].get("devis") or {})
@@ -379,7 +398,7 @@ async def _exec_dpgf(ctx) -> dict:
                           "referencias": l["refs"]} for l in lotes],
                "total": round(sum(l["total"] for l in lotes), 2)}
     files = [await _save_note(ctx, "mapa_quantidades", f"Mapa de quantidades — {titulo}", MC.mapa_xlsx(lotes, titulo), {}, ext="xlsx"),
-             await _save_note(ctx, "caderno_encargos", f"Caderno de encargos — {titulo}", MC.caderno_docx(lotes, titulo), {}, ext="docx")]
+             await _save_note(ctx, "caderno_encargos", f"Caderno de encargos — {titulo}", await _caderno_redigido(ctx, doc, titulo, lotes), {}, ext="docx")]
     return {"kind": "files", "files": [{"note_id": f["note_id"], "title": f["title"], "ext": f["ext"], "url": f["pdf"]} for f in files], **summary}
 
 

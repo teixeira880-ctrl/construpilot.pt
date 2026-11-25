@@ -169,7 +169,12 @@ def test_caderno_docx_content():
 
 
 @pytest.mark.asyncio
-async def test_dpgf_from_draft_quote(db):
+async def test_dpgf_from_draft_quote(db, monkeypatch):
+    from engines import ai
+
+    async def sem_ia(*a, **k):
+        raise RuntimeError("IA desligada no teste")
+    monkeypatch.setattr(ai, "_complete", sem_ia)
     db.pro_documents.rows = [copy.deepcopy(ORC)]
     res = await R._exec_dpgf(_ctx(["devis", "dpgf"], results={"devis": {"doc_id": "d1"}}))
     assert res["kind"] == "files" and [f["ext"] for f in res["files"]] == ["xlsx", "docx"]
@@ -178,6 +183,9 @@ async def test_dpgf_from_draft_quote(db):
     assert resp.body[:2] == b"PK" and "spreadsheet" in resp.media_type
     resp = await R.note_file(res["files"][1]["note_id"], USER)
     assert resp.body[:2] == b"PK" and "wordprocessing" in resp.media_type
+    from docx import Document
+    texto = "\n".join(p.text for p in Document(io.BytesIO(resp.body)).paragraphs)
+    assert "CONDIÇÕES TÉCNICAS GERAIS" in texto and "Localização :" in texto       # caderno redigido, não o esqueleto
 
 
 @pytest.mark.asyncio
