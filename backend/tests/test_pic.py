@@ -390,3 +390,105 @@ def test_normas_portuguesas_e_textos_em_portugues():
     assert not [t for t in todos if frances.search(t)]
     liv = next(e for e in r["elements"] if e["type"] == "livraison")
     assert (liv["w"], liv["h"]) == (18.5, 4.55)                     # veículo articulado 16,50 × 2,55 m + margem
+
+
+# ---------------------------------------------------------------------------
+# Folha vetorial: limite a vermelho, escala exata, folha técnica
+# ---------------------------------------------------------------------------
+def _folha_vetorial(rotacao=90, fechar=True):
+    """Folha A1 sintética: limite do prédio em traços vermelhos grossos (como numa planta real)."""
+    import pymupdf
+    w, h = (1684, 2384) if rotacao else (2384, 1684)          # A1; com rotação a página é guardada ao alto
+    doc = pymupdf.open()
+    page = doc.new_page(width=w, height=h)
+    vistos = [(700, 300), (1700, 300), (1900, 1200), (800, 1400)]       # vértices na folha como é vista
+    lados = list(zip(vistos, vistos[1:] + vistos[:1]))
+    if not fechar:
+        lados = lados[:-1]
+    sh = page.new_shape()
+    for (x1, y1), (x2, y2) in lados:
+        n = int(math.hypot(x2 - x1, y2 - y1) // 14)
+        for i in range(n):
+            t = (i + 0.5) / n
+            cx, cy = x1 + (x2 - x1) * t, y1 + (y2 - y1) * t
+            if rotacao:                                         # vista (x, y) → página guardada ao alto
+                cx, cy = cy, 2384 - cx
+            sh.draw_rect(pymupdf.Rect(cx - 3.5, cy - 3.5, cx + 3.5, cy + 3.5))
+    sh.finish(color=(1, 0, 0), fill=(1, 0, 0))
+    sh.draw_line((100, 100), (900, 900))                        # desenho a preto: não é limite
+    sh.finish(color=(0, 0, 0), width=1)
+    sh.commit()
+    if rotacao:
+        page.set_rotation(rotacao)
+    data = doc.tobytes()
+    doc.close()
+    return data, [[x / 2384, y / 1684] for x, y in vistos]
+
+
+def test_escala_escrita_e_formato_da_folha():
+    from engines import pic_vector as pv
+    assert [pv.parse_scale(t) for t in ("Escala: 1-100", "1/200", "1:50", "ESC 1 : 500", "piso 1", "", None)] == \
+        [100, 200, 50, 500, None, None, None]
+    data, _ = _folha_vetorial()
+    info = pv.sheet_info(data)
+    assert (round(info["w_mm"]), round(info["h_mm"])) == (841, 594)          # A1 ao baixo, apesar da rotação
+    assert pv.m_per_px(100, info["w_mm"], 2384) * 2384 == pytest.approx(84.1, abs=0.01)
+
+
+@pytest.mark.parametrize("rotacao", [0, 90])
+def test_limite_vermelho_lido_dos_vetores(rotacao):
+    from engines import pic_vector as pv
+    data, esperado = _folha_vetorial(rotacao)
+    b = pv.red_boundary(data)
+    assert b["closed"] and b["marks"] > 100
+    for vx, vy in esperado:                                     # cada vértice real é encontrado a menos de 1 %
+        assert min(math.hypot(px - vx, py - vy) for px, py in b["points"]) < 0.002
+    assert len(b["points"]) <= 8
+    aberto, _ = _folha_vetorial(rotacao, fechar=False)
+    assert pv.red_boundary(aberto)["closed"] is False
+
+
+def test_sem_tracado_vermelho_nao_inventa_limite():
+    import pymupdf
+    from engines import pic_vector as pv
+    doc = pymupdf.open(); page = doc.new_page(width=2384, height=1684)
+    page.draw_rect(pymupdf.Rect(100, 100, 800, 800), color=(0, 0, 0))
+    page.draw_rect(pymupdf.Rect(300, 300, 320, 320), color=(1, 0, 0), fill=(1, 0, 0))   # um só símbolo vermelho
+    assert pv.red_boundary(doc.tobytes()) is None
+
+
+def test_site_completado_pelo_pdf_vetorial():
+    from engines import pic_vector as pv
+    data, esperado = _folha_vetorial()
+    site = {"img_w": 2384, "img_h": 1684, "m_per_px": 0.05, "parcel": [[0, 0], [1, 0], [1, 1]], "buildings": []}
+    notas = pv.apply_to_site(site, data, "Escala: 1-100")
+    assert site["m_per_px"] == pytest.approx(84.1 / 2384, rel=1e-3) and site["sheet"]["scale_n"] == 100
+    assert site["sheet"]["boundary"] == "vetor" and len(site["parcel"]) >= 4
+    assert any("escala diferente" in n for n in notas) and any("traçado a vermelho" in n for n in notas)
+    # área real do prédio: quadrilátero de vértices conhecidos, a 1:100
+    r = pic.compute({**site, "buildings": [[[0.45, 0.35], [0.6, 0.35], [0.6, 0.6], [0.45, 0.6]]]}, {"grue": False})
+    pts = [(x * 84.1, y * 59.41) for x, y in esperado]
+    area = abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1]))) / 2
+    assert r["site"]["parcel_m2"] == pytest.approx(area, rel=0.003)
+    # imagem que não é a folha inteira: nada é alterado
+    outro = {"img_w": 1000, "img_h": 1000, "m_per_px": 0.05, "parcel": []}
+    assert pv.apply_to_site(outro, data, "1/100") == [] and "sheet" not in outro and outro["m_per_px"] == 0.05
+
+
+def test_folha_tecnica_mantem_formato_e_desenho_original():
+    import pymupdf
+    from engines import pic_sheet, pic_vector as pv
+    data, _ = _folha_vetorial()
+    site = {"base": "plan", "img_w": 2384, "img_h": 1684, "m_per_px": 0.05, "buildings": [], "accesses": [[0.5, 0.8]]}
+    pv.apply_to_site(site, data, "1:100")
+    site["buildings"] = [[[0.45, 0.35], [0.6, 0.35], [0.6, 0.6], [0.45, 0.6]]]
+    res = pic.compute(site, {**BASE, "charge_max_t": 1.5, "bennes": True, "base_vie": True, "effectif": 8})
+    out = pic_sheet.build(data, {"site": site, "result": res, "filename": "folha"}, {"company_name": "Empresa Teste"})
+    doc = pymupdf.open(stream=out, filetype="pdf")
+    page = doc[0]
+    assert len(doc) == 1 and (round(page.rect.width), round(page.rect.height)) == (2384, 1684)   # A1, sem redução
+    texto = page.get_text()
+    assert "PLANO DE ESTALEIRO" in texto and "Escala 1:100" in texto and "Empresa Teste" in texto
+    assert res["crane"]["label"] in texto and "R = " in texto
+    tracos = sum(len(g["items"]) for g in page.get_drawings() if g.get("fill") == (1.0, 0.0, 0.0))
+    assert tracos > 400                                          # o traçado vetorial original continua lá

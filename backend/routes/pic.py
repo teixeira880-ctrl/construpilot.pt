@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
-from engines import ai, pic, pic_pdf
+from engines import ai, pic, pic_pdf, pic_sheet, pic_vector
 
 router = APIRouter(prefix="/pro/pic", tags=["pic"])
 
@@ -42,6 +42,21 @@ async def _base_image(d: dict | None, plan_id: str, uid: str) -> bytes:
     if not img:
         raise HTTPException(422, "Nenhuma imagem de planta")
     return base64.b64decode(img)
+
+
+async def _source_pdf(plan_id: str, uid: str) -> bytes | None:
+    """PDF original da planta (vetorial), quando foi importado um PDF."""
+    try:
+        from engines.plan_sources import load_plan_source
+        src = await load_plan_source(db, plan_id, uid)
+    except Exception:  # noqa: BLE001 — sem fonte utilizável: fica-se pela imagem
+        return None
+    if not src or not src.get("data_b64") or "pdf" not in str(src.get("mime") or ""):
+        return None
+    try:
+        return base64.b64decode(src["data_b64"])
+    except (binascii.Error, ValueError):
+        return None
 
 
 async def _plan(plan_id, uid, with_image=True):
@@ -77,12 +92,19 @@ async def analyze(plan_id: str, user=Depends(current_user)) -> dict:
     img_w, img_h = _image_size(images[0])
     d = await ai.analyze_site_plan(images)
     site = {"base": "plan", **pic.site_from_analysis(d, img_w, img_h)}
+    vector_notes: list[str] = []
+    pdf_src = await _source_pdf(plan_id, user["user_id"])
+    if pdf_src:
+        try:    # escala e limite exatos a partir do PDF vetorial
+            vector_notes = pic_vector.apply_to_site(site, pdf_src, d.get("scale_detected"))
+        except Exception:  # noqa: BLE001 — PDF ilegível: fica a leitura da IA
+            vector_notes = []
     doc = {"plan_id": plan_id, "user_id": user["user_id"], "filename": p.get("filename"),
            "site": site, "questions": pic.questions(pic.hints(d)),
            "analysis": {"scale_detected": d.get("scale_detected"),
                         "scale_confidence": d.get("scale_confidence"),
                         "obstacles": d.get("obstacles") or [], "streets": d.get("streets") or [],
-                        "notes": d.get("notes"), **pic.hints(d)},
+                        "notes": " ".join([n for n in [d.get("notes")] + vector_notes if n]), **pic.hints(d)},
            "answers": {}, "result": None, "updated_at": _now()}
     await db.pic_plans.update_one({"plan_id": plan_id, "user_id": user["user_id"]},
                                   {"$set": doc, "$setOnInsert": {"created_at": _now()}}, upsert=True)
@@ -255,6 +277,29 @@ async def compute(plan_id: str, body: ComputeIn, user=Depends(current_user)) -> 
         {"$set": {"site": site, "answers": body.answers, "result": result, "snapshot_3d": None, "render_ia": None,
                   "updated_at": _now()}})
     return {"site": site, "result": result}
+
+
+@router.get("/{plan_id}/sheet")
+async def sheet(plan_id: str, user=Depends(current_user)):
+    """Folha técnica: o plano de estaleiro desenhado sobre o PDF original, à escala da folha."""
+    d = await _doc(plan_id, user["user_id"])
+    if not d or not (d.get("result") or {}).get("elements"):
+        raise HTTPException(404, "Calcule primeiro o plano de estaleiro")
+    if (d.get("site") or {}).get("base") != "plan":
+        raise HTTPException(422, "A folha técnica só existe para uma planta importada em PDF")
+    pdf_src = await _source_pdf(plan_id, user["user_id"])
+    if not pdf_src:
+        raise HTTPException(422, "O PDF original desta planta não está disponível")
+    try:
+        from routes.phase7 import get_branding
+        branding = await get_branding(user)
+    except Exception:  # noqa: BLE001
+        branding = {}
+    data = pic_sheet.build(pdf_src, d, branding)
+    raw = unicodedata.normalize("NFKD", (d.get("filename") or plan_id).rsplit(".", 1)[0])
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "-", raw.encode("ascii", "ignore").decode()).strip("-")
+    return Response(data, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="Plano-de-estaleiro-folha-{stem or plan_id}.pdf"'})
 
 
 @router.get("/{plan_id}/pdf")

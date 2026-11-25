@@ -184,6 +184,13 @@ export default function PicTab({ plans }) {
     } catch { toast.error("Não foi possível exportar o PDF — gere primeiro o plano"); }
   };
 
+  const downloadSheet = async () => {
+    try {
+      const res = await api.get(`/pro/pic/${planId}/sheet`, { responseType: "blob" });
+      saveBlob(res.data, filenameFromResponse(res, "Plano-de-estaleiro-folha.pdf"));
+    } catch { toast.error("Folha técnica indisponível — é precisa uma planta importada em PDF"); }
+  };
+
   // ---- interactions sur le plan -------------------------------------------
   const pos = (ev) => {
     const svg = svgRef.current;
@@ -615,6 +622,11 @@ export default function PicTab({ plans }) {
             <Button variant="outline" onClick={downloadPdf} disabled={!result?.elements?.length || stale} className="w-full gap-2 rounded-sm" data-testid="pic-pdf-btn">
               <Download className="h-4 w-4" />Descarregar o PDF
             </Button>
+            {base === "plan" && site.sheet && (
+              <Button variant="outline" onClick={downloadSheet} disabled={!result?.elements?.length || stale} className="w-full gap-2 rounded-sm" data-testid="pic-sheet-btn">
+                <Download className="h-4 w-4" />Folha técnica à escala{site.sheet.scale_n ? ` (1:${site.sheet.scale_n})` : ""}
+              </Button>
+            )}
           </div>
         </div>
       )}
