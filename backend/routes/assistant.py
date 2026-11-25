@@ -265,10 +265,10 @@ INDIVIDUAL_TOOL_NAMES = {"start_construction_study", "read_construction_study", 
 
 def tools_for(user: dict) -> list:
     if account_type(user) == "individual":
-        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + DOSSIER_TOOLS
+        return [t for t in TOOLS if t.get("type") == "web_search" or t.get("name") in INDIVIDUAL_TOOL_NAMES] + [TOOL_ESTIMATE] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + CALC_TOOLS + WINDOW_TOOLS + [t for t in DOSSIER_TOOLS if t["name"] != "orcamentar_partes"]
     from core.permissions import permissions_for
-    quote_names = {t["name"] for t in QUOTE_TOOLS}
-    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + DOSSIER_TOOLS + CRM_TOOLS
+    quote_names = {t["name"] for t in QUOTE_TOOLS} | {"orcamentar_partes"}
+    out = [t for t in TOOLS if permissions_for(user)["devis"] or t.get("name") not in quote_names] + EXTRA_TOOLS + FILE_TOOLS + [STATE_TOOL, SCHEMA_TOOL] + BET_TOOLS + AUTORIZACAO_TOOLS + BET_CORE_TOOLS + EDIF_TOOLS + CALC_TOOLS + WINDOW_TOOLS + MISSION_TOOLS + [t for t in DOSSIER_TOOLS if permissions_for(user)["devis"] or t["name"] not in quote_names] + CRM_TOOLS
     return [t for t in out if t.get("name") not in BET_SUPERSEDED_TOOL_NAMES]
 
 
