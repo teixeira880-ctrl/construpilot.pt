@@ -1,0 +1,76 @@
+/* Navegação ConstruPilot — verde escuro (referência visual: ecrãs do Dossier de Obra).
+   Carregado depois de workspace.css / workspace-design.css / workspace-ambient.css. Só estilos: nenhuma rota ou permissão muda. */
+:root { --cp-nav:#1f3a2a; --cp-nav-2:#183223; --cp-nav-active:#2d5a40; --cp-nav-text:#e9f0eb; --cp-nav-muted:#a3bcac; --cp-mint:#45d391; --cp-mint-ink:#0f2d1d; --cp-orange:#ef7d32; --cp-cream:#f7f1e8; }
+
+/* Cabeçalho */
+:root:root .workspace .workspace-header { background:#fbf8f3; border-bottom:1px solid #ece4d8; box-shadow:none; }
+:root:root.dark .workspace .workspace-header { background:hsl(var(--card)); border-bottom-color:hsl(var(--border)); }
+:root:root .workspace .workspace-brand { font-weight:800; color:var(--cp-nav); font-size:24px; letter-spacing:-.4px; }
+:root:root.dark .workspace .workspace-brand { color:hsl(var(--foreground)); }
+:root:root .workspace .workspace-brand-accent { color:var(--cp-orange); }
+:root:root .workspace .workspace-brand img { width:40px; height:40px; border-radius:11px; }
+:root:root .workspace .workspace-search-trigger { width:min(476px,36vw); min-height:46px; border-radius:14px; border:1px solid #e6ded2; background:#fffdf9; padding:0 10px 0 7px; font-size:14px; color:#7b7f78; }
+:root:root.dark .workspace .workspace-search-trigger { background:hsl(var(--background)); border-color:hsl(var(--border)); }
+:root:root .workspace .workspace-search-trigger > svg { box-sizing:content-box; padding:6px; border-radius:9px; background:#3dbb77; color:#fff; }
+:root:root .workspace .workspace-search-trigger kbd { font-size:11px; padding:2px 7px; border-radius:6px; background:#fff; border-color:#e2dacd; color:#55604f; font-family:ui-monospace,monospace; }
+:root:root .workspace .workspace-header-actions { gap:14px; }
+:root:root .workspace .workspace-desktop-setting button[aria-haspopup], .workspace .workspace-desktop-setting > button:first-child { border:1px solid #e6ded2; border-radius:12px; padding:0 12px; background:#fffdf9; font-weight:700; }
+:root:root .workspace .workspace-icon-button { color:#2b342e; }
+:root:root .workspace .workspace-avatar { width:42px; height:42px; border-radius:50%; background:var(--cp-nav); color:#fff; font-size:16px; font-weight:700; }
+
+/* Menu lateral */
+@media (min-width:1200px) { .workspace { --workspace-sidebar:278px; } }
+:root:root .workspace .workspace-sidebar { background:linear-gradient(180deg,var(--cp-nav) 0%,var(--cp-nav-2) 100%); border-inline-end:0; color:var(--cp-nav-text); padding:16px 18px 18px; }
+:root:root .workspace .workspace-sidebar-title { color:var(--cp-nav-muted); font-size:12.5px; letter-spacing:0; text-transform:none; margin:0 10px; }
+:root:root .workspace .workspace-pin-toggle { color:var(--cp-nav-muted); }
+:root:root .workspace .workspace-pin-toggle:hover { color:#fff; background:rgb(255 255 255 / .08); }
+:root:root .workspace .workspace-sidebar .workspace-create { background:var(--cp-mint); color:var(--cp-mint-ink); min-height:46px; border-radius:12px; font-size:14.5px; font-weight:650; margin:4px 0 18px; box-shadow:0 6px 18px -8px rgb(69 211 145 / .7); }
+:root:root .workspace .workspace-sidebar .workspace-create:hover { background:#5ee0a3; }
+:root:root .workspace .workspace-go-pro { color:#fff; }
+:root:root .workspace .workspace-sidebar-links { scrollbar-color:rgb(255 255 255 / .2) transparent; }
+:root:root .workspace .workspace-nav-group { margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid rgb(255 255 255 / .1); }
+:root:root .workspace .workspace-nav-group > p { color:var(--cp-nav-muted); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:650; padding:6px 10px 6px; }
+:root:root .workspace .workspace-nav-link { color:var(--cp-nav-text); font-size:14.5px; font-weight:500; min-height:38px; padding:7px 12px; margin:1px 0; border-radius:10px; opacity:.95; }
+:root:root .workspace .workspace-nav-link svg { color:#bcd0c3; }
+:root:root .workspace .workspace-nav-link:hover { background:rgb(255 255 255 / .07); color:#fff; }
+:root:root .workspace .workspace-nav-link[aria-current="page"] { background:var(--cp-nav-active); color:#fff; font-weight:650; box-shadow:none; }
+:root:root .workspace .workspace-nav-link[aria-current="page"]::after { content:""; width:4px; height:20px; border-radius:3px; background:var(--cp-orange); margin-inline-start:auto; }
+:root:root .workspace .workspace-nav-link[aria-current="page"] svg { color:#fff; }
+:root:root .workspace .workspace-nav-assistant { color:var(--cp-nav-text); }
+:root:root .workspace .workspace-all-tools { color:var(--cp-nav-muted); }
+:root:root .workspace .workspace-help-card { background:rgb(255 255 255 / .06); border-color:rgb(255 255 255 / .14); color:var(--cp-nav-text); }
+:root:root .workspace .workspace-help-card small { color:var(--cp-nav-muted); }
+:root:root .workspace .workspace-sidebar-account { color:var(--cp-nav-muted); border-top-color:rgb(255 255 255 / .12); }
+:root:root .workspace .workspace-sidebar-account:hover { color:#fff; }
+:root:root .workspace .workspace-locked { opacity:.6; }
+
+/* ícones simples (contorno branco), como nos ecrãs de referência */
+:root:root .workspace .workspace-sidebar .workspace-nav-link > svg:first-child { padding:0; background:none !important; width:20px; height:20px; color:#cfe0d5; border-radius:0; }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] > svg:first-child { color:#fff; }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] { background:var(--cp-nav-active); box-shadow:none; }
+:root:root .workspace .workspace-sidebar { background:linear-gradient(180deg,var(--cp-nav) 0%,var(--cp-nav-2) 100%); color:var(--cp-nav-text); }
+:root:root .workspace .workspace-sidebar .workspace-create { background:var(--cp-mint); }
+
+/* Árvore de especialidades no menu lateral (dossier aberto) */
+.cp-spec-tree > p { display:flex; align-items:center; justify-content:space-between; }
+.cp-spec-area { display:flex; align-items:center; gap:10px; width:100%; padding:7px 12px; border-radius:10px; color:#fff; font-weight:650; font-size:14.5px; text-align:start; }
+.cp-spec-area:hover { background:rgb(255 255 255 / .07); }
+.cp-spec-area svg { color:#cfe0d5; flex-shrink:0; }
+.cp-spec-area > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.cp-spec-area .cp-chev { margin-inline-start:auto; color:var(--cp-nav-muted); }
+.cp-spec-list { margin:2px 0 6px 22px; padding-inline-start:10px; border-inline-start:1.5px dashed rgb(255 255 255 / .28); display:grid; gap:1px; }
+.cp-spec-link { display:flex; align-items:center; gap:9px; padding:5px 10px; border-radius:9px; color:#dbe7df; font-size:13.5px; min-width:0; }
+.cp-spec-link span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp-spec-link svg { flex-shrink:0; color:#c3d6c9; }
+.cp-spec-link:hover { background:rgb(255 255 255 / .07); color:#fff; }
+.cp-spec-link[aria-current="page"] { background:#3a7a52; color:#fff; font-weight:650; }
+.cp-spec-link[aria-current="page"] svg { color:#fff; }
+.cp-spec-count { margin-inline-start:auto; font-size:10.5px; background:rgb(255 255 255 / .16); border-radius:999px; padding:0 7px; }
+.cp-doc-final { display:flex; align-items:center; gap:12px; width:100%; margin-top:12px; border:1.5px solid rgb(255 255 255 / .75); border-radius:12px; padding:12px 16px; color:#fff; font-weight:650; font-size:15.5px; }
+.cp-doc-final:hover { background:rgb(255 255 255 / .07); }
+.cp-doc-final[aria-current="page"] { background:var(--cp-nav-active); border-color:var(--cp-mint); }
+.cp-doc-final[aria-current="page"]::after { content:""; width:4px; height:22px; border-radius:3px; background:var(--cp-orange); margin-inline-start:auto; }
+
+/* Fundo do conteúdo: creme com tons quentes discretos */
+:root:root .workspace .workspace-content { background:radial-gradient(1200px 600px at 85% -10%, rgb(239 125 50 / .05), transparent 60%), var(--cp-cream); }
+:root:root.dark .workspace .workspace-content { background:hsl(var(--background)); }

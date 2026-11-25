@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useDossierContext, useOverview, useCatalog, useMode, DossierNav, DossierTree, Loading, ErrorBox } from "@/components/dossierObra/common";
+import { setDossierSidebar } from "@/components/dossierObra/sidebarStore";
 import { Overview } from "@/components/dossierObra/Overview";
 import { Specialty } from "@/components/dossierObra/Specialty";
 import { Compile } from "@/components/dossierObra/Compile";
@@ -18,29 +19,33 @@ function SpecialtyRoute(props) {
 }
 
 function DossierObraContent() {
-  const { chantierId } = useDossierContext();
+  const { chantierId, base, qs } = useDossierContext();
   const { data: ov, error, reload } = useOverview(chantierId);
   const cat = useCatalog();
   const [mode, setMode] = useMode();
-  const [hasAssistant, setHasAssistant] = useState(false);
   const location = useLocation();
   const activeKey = (location.pathname.match(/\/especialidade\/([^/?]+)/) || [])[1];
+  const isCompile = location.pathname.endsWith("/compilar");
+  const isOverview = !activeKey && !isCompile;
+
+  // A árvore de especialidades vive no menu lateral verde (computador); no telemóvel, dentro da página.
+  useEffect(() => {
+    if (ov) setDossierSidebar({ overview: ov, activeKey, base, qs, compile: isCompile });
+  }, [ov, activeKey, base, qs, isCompile]);
+  useEffect(() => () => setDossierSidebar(null), []);
 
   if (error === "notfound") return <ErrorBox>Processo não encontrado. <Link to="/chantiers" className="text-primary underline">Voltar às obras</Link></ErrorBox>;
   if (error) return <ErrorBox onRetry={reload}>{error}</ErrorBox>;
   if (!ov || !cat) return <Loading>A abrir o dossier de obra…</Loading>;
-  const isCompile = location.pathname.endsWith("/compilar");
   return (
-    <div className={`dob ${hasAssistant ? "assistant-open" : ""}`} data-testid="dossier-obra">
-      <DossierNav active={isCompile ? "final" : new URLSearchParams(location.search).get("vista") === "especialidades" ? "especialidades" : "overview"} />
-      <div className={`dob-layout ${hasAssistant ? "has-assistant" : ""}`}>
-        <DossierTree overview={ov} activeKey={activeKey} />
-        <Routes>
-          <Route index element={<div className="min-w-0"><Overview ov={ov} cat={cat} mode={mode} reload={reload} /></div>} />
-          <Route path="especialidade/:key" element={<SpecialtyRoute cat={cat} mode={mode} setMode={setMode} reloadTree={reload} setHasAssistant={setHasAssistant} />} />
-          <Route path="compilar" element={<div className="min-w-0"><Compile ov={ov} cat={cat} mode={mode} /></div>} />
-        </Routes>
-      </div>
+    <div className="dob" data-testid="dossier-obra">
+      {isOverview && <DossierNav active={new URLSearchParams(location.search).get("vista") === "especialidades" ? "especialidades" : "overview"} />}
+      <div className="dob-mobile-tree"><DossierTree overview={ov} activeKey={activeKey} /></div>
+      <Routes>
+        <Route index element={<Overview ov={ov} cat={cat} mode={mode} reload={reload} />} />
+        <Route path="especialidade/:key" element={<SpecialtyRoute cat={cat} mode={mode} setMode={setMode} reloadTree={reload} />} />
+        <Route path="compilar" element={<Compile ov={ov} cat={cat} mode={mode} />} />
+      </Routes>
     </div>
   );
 }

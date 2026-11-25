@@ -77,7 +77,7 @@ def _specialties(cfg: dict) -> dict:
     """Catálogo + especialidades/subdivisões personalizadas desta obra."""
     out = {k: dict(v) for k, v in C.SPECIALTIES.items()}
     for s in cfg.get("custom", []):
-        out[s["key"]] = {"key": s["key"], "area": s["area"], "label": s["label"], "description": s.get("description", ""),
+        out[s["key"]] = {"key": s["key"], "area": s["area"], "label": s["label"], "short": s["label"], "description": s.get("description", ""),
                          "examples": [], "terms": s.get("terms", ""), "custom": True, "parent": s.get("parent")}
     return out
 
@@ -115,6 +115,26 @@ async def catalogo(q: str = "") -> dict:
     return out
 
 
+# Catálogo de ações do dossier: permite ligar mais tarde a Aurora / o Assistente BTP como ferramentas («tudo por prompt»).
+ACTIONS = [
+    {"name": "abrir_especialidade", "method": "GET", "path": "/dossier-obra/{cid}/especialidades/{key}", "params": ["fase", "local"], "effect": "leitura"},
+    {"name": "ativar_especialidades", "method": "PUT", "path": "/dossier-obra/{cid}/config", "body": ["enabled", "hidden", "global_phase"], "effect": "configuração"},
+    {"name": "registar", "method": "POST", "path": "/dossier-obra/{cid}/itens", "body": ["specialty", "kind", "title", "phase", "location_id", "measurement", "quantities", "unit_price"], "effect": "cria registo"},
+    {"name": "alterar_registo", "method": "PATCH", "path": "/dossier-obra/{cid}/itens/{item_id}", "body": ["…", "confirm"], "effect": "altera (409 com impacto se precisar de confirmação)"},
+    {"name": "validar_interpretacao", "method": "POST", "path": "/dossier-obra/{cid}/itens/{item_id}/validacao", "body": ["action", "layer_order", "material"], "effect": "confirma/corrige/rejeita"},
+    {"name": "orcamento_especialidade", "method": "GET", "path": "/dossier-obra/{cid}/orcamento", "params": ["especialidades"], "effect": "leitura"},
+    {"name": "criar_orcamento", "method": "POST", "path": "/dossier-obra/{cid}/orcamento/rascunho", "body": ["specialties"], "effect": "cria orçamento em rascunho"},
+    {"name": "dependencias", "method": "POST", "path": "/dossier-obra/{cid}/dependencias", "body": ["from_specialty", "relation", "to_specialty", "confirm"], "effect": "propõe/confirma sequência"},
+    {"name": "previsualizar", "method": "POST", "path": "/dossier-obra/{cid}/compilar/previsualizar", "body": ["scope", "specialties", "phases", "locations", "include", "recipient"], "effect": "leitura"},
+    {"name": "emitir_dossier", "method": "POST", "path": "/dossier-obra/{cid}/emissoes", "body": ["…selecção"], "effect": "cria emissão versionada"},
+]
+
+
+@router.get("/acoes")
+async def actions() -> dict:
+    return {"actions": ACTIONS, "rules": "Alterações com impacto exigem confirm=true depois de apresentar o impacto ao utilizador."}
+
+
 class PrefIn(BaseModel):
     mode: Literal["guiado", "tecnico"]
 
@@ -138,6 +158,10 @@ def _display_status(item: dict) -> str:
     """Estado para a compilação: validado / rascunho / pendente / nao_aplicavel."""
     if item.get("status") == "nao_aplicavel":
         return "nao_aplicavel"
+    if item.get("kind") == "orcamento":
+        q = (item.get("quantities") or {}).get("orcamentada")
+        if item.get("unit_price") is None or q is None or item.get("price_source") == "mercado":
+            return "pendente"   # preço ou quantidade em falta, ou preço de mercado por confirmar
     if item.get("validation") == "rejeitado":
         return "rejeitado"
     interpretation = item.get("kind") in ("medicao", "material", "documento") or item.get("source") == "inferido"
@@ -384,6 +408,7 @@ async def specialty(cid: str, key: str, fase: Optional[str] = None, local: Optio
                        "direction": "out" if d["from_specialty"] == key else "in",
                        "relation_label": C.RELATIONS.get(d["relation"], d["relation"]),
                        "other_open": len([i for i in other_items if _is_open(i)]),
+                       "other_blocked": len([i for i in other_items if i.get("status") == "bloqueado"]),
                        "other_status": (states.get(other) or {}).get("status", "por_iniciar")})
     state = states.get(key) or {"key": key, "status": "por_iniciar", "stage": "preparar", "responsible": "", "next_step": ""}
     by_kind: dict = {}
@@ -464,6 +489,8 @@ class MeasurementIn(BaseModel):
     method: str = Field("", max_length=160)
     quantity: Optional[float] = Field(None, ge=0, le=1e9, allow_inf_nan=False)
     unit: str = Field("", max_length=12)
+    width_m: Optional[float] = Field(None, gt=0, le=10000, allow_inf_nan=False)    # dimensões medidas (esquema da medição)
+    height_m: Optional[float] = Field(None, gt=0, le=10000, allow_inf_nan=False)
 
 
 class LayerIn(BaseModel):
@@ -484,7 +511,7 @@ class RefIn(BaseModel):
 class ItemIn(BaseModel):
     specialty: str = Field(..., max_length=60)
     element: str = Field("", max_length=160)             # subespecialidade ou elemento (ex.: Cerâmica exterior)
-    kind: Literal["tarefa", "pendencia", "verificacao", "medicao", "material", "registo", "documento", "alteracao", "nota"]
+    kind: Literal["tarefa", "pendencia", "verificacao", "medicao", "material", "orcamento", "registo", "documento", "alteracao", "nota"]
     title: str = Field(..., min_length=1, max_length=300)
     detail: str = Field("", max_length=4000)
     status: Literal["por_fazer", "em_curso", "pendente", "bloqueado", "concluido", "nao_aplicavel"] = "por_fazer"
@@ -499,6 +526,13 @@ class ItemIn(BaseModel):
     ref: Optional[RefIn] = None
     revision: str = Field("", max_length=30)
     related_specialty: Optional[str] = Field(None, max_length=60)   # pendência ligada a outra especialidade
+    # Linha de orçamento da especialidade (quantidade em quantities.orcamentada; preço nunca inventado)
+    unit: str = Field("", max_length=12)
+    unit_price: Optional[float] = Field(None, ge=0, le=1e8, allow_inf_nan=False)
+    vat_rate: Optional[float] = Field(None, ge=0, le=100, allow_inf_nan=False)
+    price_source: Literal["", "biblioteca", "manual", "mercado"] = ""
+    price_reference: str = Field("", max_length=200)
+    from_item_id: Optional[str] = Field(None, max_length=40)        # medição de origem
 
 
 def _clean_quantities(q: Optional[dict]) -> dict:
@@ -541,6 +575,14 @@ async def create_item(cid: str, body: ItemIn, user=Depends(current_user)) -> dic
     data = body.model_dump()
     await _check_ref(data.get("ref"), cid, uid)
     data["quantities"] = _clean_quantities(body.quantities)
+    if body.from_item_id:
+        src = await db.dossier_obra_items.find_one({"item_id": body.from_item_id, "chantier_id": cid, "user_id": uid}, {"_id": 0})
+        if not src:
+            raise HTTPException(404, "Medição de origem não encontrada")
+        mq = (src.get("measurement") or {}).get("quantity")
+        if body.kind == "orcamento" and "orcamentada" not in data["quantities"] and mq is not None:
+            data["quantities"]["orcamentada"] = float(mq)   # a quantidade vem da medição (rastreável)
+        data["unit"] = data["unit"] or (src.get("measurement") or {}).get("unit", "")
     # Informação inferida nunca nasce validada.
     if data["source"] == "inferido" and data["validation"] in ("confirmado", "validado"):
         data["validation"] = "por_confirmar"
@@ -632,6 +674,11 @@ class ItemPatch(BaseModel):
     quantities: Optional[dict[str, Optional[float]]] = None
     layers: Optional[list[LayerIn]] = Field(None, max_length=30)
     revision: Optional[str] = Field(None, max_length=30)
+    unit: Optional[str] = Field(None, max_length=12)
+    unit_price: Optional[float] = Field(None, ge=0, le=1e8, allow_inf_nan=False)
+    vat_rate: Optional[float] = Field(None, ge=0, le=100, allow_inf_nan=False)
+    price_source: Optional[Literal["", "biblioteca", "manual", "mercado"]] = None
+    price_reference: Optional[str] = Field(None, max_length=200)
     validation: Optional[Literal["por_confirmar", "confirmado", "corrigido", "rejeitado", "validado"]] = None
     approved: Optional[bool] = None
     note: str = Field("", max_length=300)                # motivo da alteração (histórico)
@@ -896,7 +943,7 @@ async def specialty_assistant(cid: str, key: str, body: AssistantCtxIn, user=Dep
     uid = user["user_id"]
     c = await _chantier(cid, uid)
     cfg = await _config(cid, uid)
-    spec = _spec(cfg, key)
+    spec = {"label": "Compilação", "area": None} if key == COMPILE_KEY else _spec(cfg, key)
     ctx = {"specialty": key, "specialty_label": spec["label"], "area": spec["area"], "phase": body.fase,
            "location_id": body.local, "location_path": _location_path(cfg, body.local)}
     conv = await db.assistant_convs.find_one({"user_id": uid, "chantier_id": cid, "dossier_context.specialty": key}, {"_id": 0, "conversation_id": 1})
@@ -912,11 +959,25 @@ async def specialty_assistant(cid: str, key: str, body: AssistantCtxIn, user=Dep
     return {"conversation_id": cid_conv, "context": ctx, "label": context_label(spec["label"], body.fase, ctx["location_path"])}
 
 
+COMPILE_KEY = "_compilacao"
+
+
 async def assistant_context(cid: str, uid: str, ctx: dict) -> dict:
     """Contexto especializado entregue ao assistente: só dados registados e autorizados (do próprio utilizador)."""
     cfg = await _config(cid, uid)
     specs = _specialties(cfg)
     key = ctx.get("specialty")
+    if key == COMPILE_KEY:
+        # Compilação: visão de conjunto (estado e pendências por especialidade ativa), sem dados financeiros.
+        items = await _items(cid, uid)
+        states = await _states(cid, uid)
+        out = []
+        for k in [k for k in cfg.get("enabled", []) if k in specs]:
+            its = [i for i in items if i.get("specialty") == k]
+            out.append({"especialidade": specs[k]["label"], "estado": C.SPECIALTY_STATUS.get((states.get(k) or {}).get("status") or "por_iniciar"),
+                        "registos": len(its), "pendencias": [i["title"] for i in its if _display_status(i) == "pendente"][:15],
+                        "por_confirmar": [i["title"] for i in its if i.get("validation") == "por_confirmar" and i.get("kind") in ("material", "medicao")][:10]})
+        return {"especialidade": "Compilação do dossier", "fase_global_obra": dict(C.PHASES).get(cfg.get("global_phase")), "especialidades": out}
     if key not in specs:
         return {"erreur": "especialidade inexistente"}
     items = await _items(cid, uid, specialty=key)
@@ -931,7 +992,8 @@ async def assistant_context(cid: str, uid: str, ctx: dict) -> dict:
             "camadas": [{"n": lay.get("order"), "camada": lay.get("name"), "material": lay.get("material") or None,
                          "origem": lay.get("source"), "validacao": lay.get("validation"), "referencia": lay.get("reference") or None}
                         for lay in i.get("layers") or []] or None,
-            "a_rever": i.get("needs_review") or None, "pendencia_ligada_a": (specs.get(i.get("related_specialty")) or {}).get("label"),
+            "a_rever": i.get("needs_review") or None,
+            "preco_unitario": i.get("unit_price"), "origem_preco": i.get("price_source") or None, "unidade": i.get("unit") or None, "pendencia_ligada_a": (specs.get(i.get("related_specialty")) or {}).get("label"),
         }.items() if v not in (None, "", [], {})}
     deps = []
     for d in await _deps(cid, uid):
@@ -957,6 +1019,85 @@ ASSISTANT_RULES = (
     "inventes medidas, preços, materiais nem conformidade regulamentar: uma trama ou legenda não prova o material nem todas as camadas. "
     "Se for relevante, considera as dependências e pendências das outras especialidades indicadas. Antes de qualquer alteração com "
     "impacto (orçamento aceite, encomenda, auto, documento aprovado) pede validação explícita ao utilizador.")
+
+
+# ───────────────────────── orçamento por especialidade ─────────────────────────
+
+def _line_total(i: dict) -> Optional[float]:
+    q = (i.get("quantities") or {}).get("orcamentada")
+    return None if q is None or i.get("unit_price") is None else round(q * i["unit_price"], 2)
+
+
+async def budget_model(cid: str, uid: str, keys: Optional[list[str]] = None) -> dict:
+    """Orçamento por especialidade: cada módulo é orçamentado sozinho; o total é a soma dos módulos escolhidos."""
+    cfg = await _config(cid, uid)
+    specs = _specialties(cfg)
+    lines = [i for i in await _items(cid, uid, kind="orcamento") if i.get("status") != "nao_aplicavel"]
+    order = [k for k in (keys or cfg.get("enabled", [])) if k in specs]
+    out, total, missing = [], 0.0, 0
+    for k in order:
+        ls = [i for i in lines if i.get("specialty") == k]
+        if not ls and keys is None:
+            continue
+        rows = []
+        for i in ls:
+            t = _line_total(i)
+            if t is None:
+                missing += 1
+            rows.append({"item_id": i["item_id"], "title": i["title"], "element": i.get("element") or "", "unit": i.get("unit") or "",
+                         "qty": (i.get("quantities") or {}).get("orcamentada"), "unit_price": i.get("unit_price"), "vat_rate": i.get("vat_rate"),
+                         "total": t, "price_source": i.get("price_source") or "", "price_reference": i.get("price_reference") or "",
+                         "from_item_id": i.get("from_item_id"), "status": _display_status(i)})
+        sub = round(sum(r["total"] or 0 for r in rows), 2)
+        total += sub
+        out.append({"key": k, "label": specs[k]["label"], "area": specs[k]["area"], "lines": rows, "subtotal_ht": sub,
+                    "missing_prices": len([r for r in rows if r["total"] is None])})
+    return {"specialties": out, "total_ht": round(total, 2), "missing_prices": missing,
+            "note": "Totais só com linhas com quantidade e preço. Preços de mercado ficam por confirmar; nenhum preço é inventado."}
+
+
+@router.get("/{cid}/orcamento")
+async def budget(cid: str, especialidades: str = "", user=Depends(current_user)) -> dict:
+    uid = user["user_id"]
+    await _chantier(cid, uid)
+    if not _can_finance(user):
+        raise HTTPException(403, "A sua função não permite ver orçamentos.")
+    keys = [k for k in especialidades.split(",") if k] or None
+    return await budget_model(cid, uid, keys)
+
+
+class BudgetDraftIn(BaseModel):
+    specialties: list[str] = Field(default_factory=list, max_length=200)   # vazio = todas as que têm linhas
+    title: str = Field("", max_length=160)
+
+
+@router.post("/{cid}/orcamento/rascunho")
+async def budget_to_quote(cid: str, body: BudgetDraftIn, user=Depends(current_user)) -> dict:
+    """Cria um NOVO orçamento em rascunho no módulo de orçamentos (nunca altera orçamentos existentes)."""
+    uid = user["user_id"]
+    c = await _chantier(cid, uid)
+    if not _can_finance(user):
+        raise HTTPException(403, "A sua função não permite criar orçamentos.")
+    model = await budget_model(cid, uid, body.specialties or None)
+    groups = [g for g in model["specialties"] if g["lines"]]
+    if not groups:
+        raise HTTPException(422, "Sem linhas de orçamento nas especialidades escolhidas.")
+    from routes.documents import DocIn, DocLine, create_document
+    lines = []
+    for g in groups:
+        lines.append(DocLine(kind="section", title=g["label"]))
+        for r in g["lines"]:
+            lines.append(DocLine(kind="line", designation=r["title"], description=r["element"], unit=r["unit"] or "u",
+                                 qty=r["qty"] if r["qty"] is not None else 0, unit_price_ht=r["unit_price"] if r["unit_price"] is not None else 0,
+                                 vat_rate=r["vat_rate"], category=g["label"],
+                                 price_source=r["price_source"] or ("a_definir" if r["unit_price"] is None else ""), price_reference=r["price_reference"]))
+    title = body.title.strip() or (f"{c['name']} — {groups[0]['label']}" if len(groups) == 1 else f"{c['name']} — orçamento completo")
+    notes = "Gerado a partir do dossier de obra."
+    if model["missing_prices"]:
+        notes += f" {model['missing_prices']} linha(s) sem preço ou quantidade: a completar antes de enviar."
+    doc = await create_document(DocIn(doc_type="quote", title=title, lines=lines, notes=notes, chantier_id=cid, client_id=c.get("client_id"), status="draft"), user)
+    return {"doc_id": doc["doc_id"], "title": title, "specialties": [g["label"] for g in groups], "total_ht": model["total_ht"],
+            "missing_prices": model["missing_prices"]}
 
 
 # ───────────────────────── compilação do dossier ─────────────────────────
@@ -1082,6 +1223,12 @@ async def build_model(cid: str, user: dict, sel: SelectionIn) -> dict:
                          "documents": [{"number": x.get("number"), "title": x.get("title"), "type": x.get("doc_type"), "status": x.get("status"),
                                         "total_ht": (x.get("totals") or {}).get("ht"), "total_ttc": (x.get("totals") or {}).get("ttc")}
                                        for x in d.get("documents", [])[:100]]}
+    budget_block = None
+    if finance:
+        b = await budget_model(cid, uid, chosen)
+        if any(g["lines"] for g in b["specialties"]):
+            b["specialties"] = [g for g in b["specialties"] if g["lines"]]
+            budget_block = b
     revisions = sorted({f"{i.get('measurement', {}).get('document') if i.get('measurement') else i['title']} · {i['revision']}"
                         for i in items if i.get("revision")})
     totals = {s: len([i for i in items if _display_status(i) == s]) for s in STATUS_LABEL}
@@ -1095,7 +1242,7 @@ async def build_model(cid: str, user: dict, sel: SelectionIn) -> dict:
     toc = ["Resumo", *[ch["label"] for ch in chapters]]
     toc += [t for t, ok in (("Plantas e referências", refs), ("Medições", measurements), ("Materiais e sistemas", materials),
                             ("Registos e verificações", records), ("Alterações", changes), ("Pendências", pend),
-                            ("Informação financeira", finance_block), ("Anexos", photos or refs)) if ok]
+                            ("Orçamento por especialidade", budget_block), ("Informação financeira", finance_block), ("Anexos", photos or refs)) if ok]
     toc.append("Identificação da emissão")
     kind_title = {"especialidade": f"Relatório da especialidade — {specs[chosen[0]]['label']}" if len(chosen) == 1 else "Relatório",
                   "fase_local": "Relatório de fase / local", "global": "Dossier de obra"}[sel.scope]
@@ -1110,7 +1257,7 @@ async def build_model(cid: str, user: dict, sel: SelectionIn) -> dict:
         "filters": {"phases": [phases.get(p, p) for p in sel.phases], "locations": [_location_path(cfg, loc) for loc in sel.locations]},
         "toc": toc, "summary": {"specialties": len(chosen), "items": len(items), **totals},
         "chapters": chapters, "references": refs, "measurements": measurements, "materials": materials, "records": records,
-        "changes": changes, "pendencias": pend, "photos": photos, "finance": finance_block, "revisions": revisions,
+        "changes": changes, "pendencias": pend, "photos": photos, "finance": finance_block, "budget": budget_block, "revisions": revisions,
         "warnings": warnings, "branding": branding,
         "notice": "A compilação reúne a informação registada e não equivale à validação técnica da obra.",
         "selection": sel.model_dump(),

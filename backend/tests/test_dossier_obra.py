@@ -9,7 +9,8 @@ import zipfile
 
 import pytest
 
-os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
+# Servidor inexistente com falha rápida: qualquer acesso esquecido à base real falha em 0,2 s em vez de 30 s.
+os.environ.setdefault("MONGO_URL", "mongodb://localhost:1/?serverSelectionTimeoutMS=200")
 os.environ.setdefault("DB_NAME", "test_dossier_obra")
 os.environ.setdefault("JWT_SECRET", "test")
 os.environ.setdefault("STUDIES_MODEL_ANALYSIS", "test")
@@ -308,3 +309,40 @@ def test_search_custom_specialties_and_locations(fdb):
     assert e.value.status_code == 409
     v = run(R.records_view("c1", vista="local", user=USER))
     assert v["groups"][0]["label"] == "Bloco A · Piso 1 · Cozinha"
+
+
+# ───────── orçamento por módulo → orçamento completo ─────────
+
+def test_budget_per_specialty_and_complete(fdb, monkeypatch):
+    d = demo()
+    cid = d["chantier_id"]
+    only = run(R.budget(cid, especialidades="revest_exteriores", user=USER))
+    assert [g["key"] for g in only["specialties"]] == ["revest_exteriores"]
+    assert only["total_ht"] == 3192.0 and only["missing_prices"] == 1            # 84 m² × 38 €; impermeabilização sem preço
+    full = run(R.budget(cid, user=USER))
+    assert {g["key"] for g in full["specialties"]} == {"revest_exteriores", "agua"} and full["total_ht"] == 3842.0
+    with pytest.raises(HTTPException) as e:
+        run(R.budget(cid, user=WORKER))
+    assert e.value.status_code == 403
+    # medição → linha de orçamento: a quantidade vem da medição
+    med = spec(cid, "revest_exteriores")["by_kind"]["medicao"][0]
+    ln = run(R.create_item(cid, R.ItemIn(specialty="revest_exteriores", kind="orcamento", title="Rodapé", from_item_id=med["item_id"]), user=USER))
+    assert ln["quantities"]["orcamentada"] == 84.0 and ln["unit"] == "m²" and ln["display_status"] == "pendente"
+    # rascunho no módulo de orçamentos (novo documento; nada existente é alterado)
+    import sys
+    import core.db as CDB
+    import routes.documents, engines.monetization, engines.access  # noqa: F401,E401 — carregados antes de substituir a base
+    for mod in list(sys.modules.values()):   # todos os módulos que usam a base real passam a usar a base em memória
+        if getattr(mod, "db", None) is CDB.db and mod is not CDB:
+            monkeypatch.setattr(mod, "db", fdb)
+    out = run(R.budget_to_quote(cid, R.BudgetDraftIn(specialties=["revest_exteriores"]), user=USER))
+    doc = run(fdb.pro_documents.find_one({"doc_id": out["doc_id"]}, {"_id": 0}))
+    assert doc["status"] == "draft" and doc["chantier_id"] == cid and doc["doc_type"] == "quote"
+    assert [ln["title"] for ln in doc["lines"] if ln["kind"] == "section"] == ["Fachadas e revestimentos exteriores"]
+    assert any(ln.get("price_source") == "a_definir" for ln in doc["lines"])
+    out2 = run(R.budget_to_quote(cid, R.BudgetDraftIn(), user=USER))
+    doc2 = run(fdb.pro_documents.find_one({"doc_id": out2["doc_id"]}, {"_id": 0}))
+    assert len([ln for ln in doc2["lines"] if ln["kind"] == "section"]) == 2 and out2["doc_id"] != out["doc_id"]
+    # compilação com informação financeira inclui o orçamento por especialidade
+    pv = run(R.preview(cid, R.SelectionIn(include=["medicoes", "financeiro"]), user=USER))
+    assert pv["budget"]["total_ht"] >= 3842.0 and "Orçamento por especialidade" in pv["toc"]

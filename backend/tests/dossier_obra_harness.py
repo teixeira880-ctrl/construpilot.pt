@@ -5,6 +5,7 @@ BACK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BACK)
 for k, v in {"MONGO_URL": "mongodb://x", "DB_NAME": "t", "JWT_SECRET": "t", "STUDIES_MODEL_ANALYSIS": "t", "STUDIES_MODEL_LIGHT": "t"}.items():
     os.environ.setdefault(k, v)
+os.environ["MONGO_URL"] = "mongodb://localhost:1/?serverSelectionTimeoutMS=200"
 import mongomock_motor
 from fastapi import FastAPI, APIRouter
 from fastapi.responses import HTMLResponse
@@ -15,7 +16,7 @@ import routes.dossier_obra as R, routes.chantiers as CH, routes.plans_common as 
 db = mongomock_motor.AsyncMongoMockClient()["t"]
 R.db = CH.db = PC.db = A.db = db
 E.ENVIRONMENT = "development"
-USER = {"user_id": "u_a", "account_type": "pro", "active": True, "name": "Martinho (teste)", "email": "teste@exemplo.pt"}
+USER = {"user_id": "u_a", "account_type": "pro_business", "active": True, "name": "Martinho (teste)", "email": "teste@exemplo.pt"}
 app = FastAPI()
 api = APIRouter(prefix="/api")
 api.include_router(R.router)
@@ -41,14 +42,39 @@ async def message(body: dict):
     return {"role": "assistant", "content": text}
 
 api.include_router(stub)
+
+
+@api.get("/auth/me")
+async def me():
+    return {**USER, "account_type": "pro_business", "role": "user", "nav_favorites": []}
+
+
+@api.api_route("/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def not_here(rest: str):
+    from fastapi import HTTPException
+    raise HTTPException(404, "fora do âmbito do banco de ensaio")
 app.include_router(api)
 app.dependency_overrides[S.current_user] = lambda: USER
 app.dependency_overrides[S.pro_required] = lambda: USER
+PUBLIC = os.path.join(os.path.dirname(BACK), "frontend", "public")
+
+
+@app.get("/construpilot-icon.png")
+async def icon():
+    from fastapi.responses import FileResponse
+    return FileResponse(os.path.join(PUBLIC, "construpilot-icon.png"))
+
+
 app.mount("/static", StaticFiles(directory=os.environ["DOSSIER_E2E_STATIC"]), name="static")
 STATE = {}
 
 @app.on_event("startup")
 async def seed():
+    import core.db as CDB
+    import routes.documents, engines.monetization, engines.access  # noqa: F401,E401
+    for mod in list(sys.modules.values()):   # nenhum módulo toca numa base real
+        if getattr(mod, "db", None) is CDB.db and mod is not CDB:
+            mod.db = db
     await db.users.insert_one({"user_id": "u_a", "name": USER["name"]})
     STATE["cid"] = (await R.create_demo(user=USER))["chantier_id"]
     # registo antigo, por classificar

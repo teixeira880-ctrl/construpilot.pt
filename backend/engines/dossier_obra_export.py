@@ -202,6 +202,16 @@ def to_pdf(model: dict) -> bytes:
             [22 * mm, 34 * mm, 66 * mm, 26 * mm, 22 * mm])
     section("Pendências", ["Especialidade", "Pendência", "Estado", "Ligada a"],
             [[p["specialty"], p["title"], p["status"], p["related"] or "—"] for p in model["pendencias"]], [40 * mm, 76 * mm, 24 * mm, 30 * mm])
+    if model.get("budget"):
+        b = model["budget"]
+        story += [PageBreak(), Paragraph("Orçamento por especialidade", H1), P(b["note"], S)]
+        for g in b["specialties"]:
+            story.append(KeepTogether([Paragraph(escape(g["label"]), H3),
+                table(["Designação", "Un.", "Qtd.", "Preço unit. (€)", "Total s/ IVA (€)", "Origem do preço"],
+                      [[r["title"], r["unit"], _num(r["qty"]), _num(r["unit_price"]), _num(r["total"]) if r["total"] is not None else "a definir",
+                        r["price_source"] or "—"] for r in g["lines"]] + [["Subtotal", "", "", "", _num(g["subtotal_ht"]), ""]],
+                      [62 * mm, 12 * mm, 18 * mm, 24 * mm, 28 * mm, 26 * mm])]))
+        story.append(P(f"Total s/ IVA das especialidades: {_num(b['total_ht'])} €" + (f" · {b['missing_prices']} linha(s) sem preço" if b["missing_prices"] else ""), B))
     if model.get("finance"):
         f = model["finance"]
         k = f.get("kpis") or {}
@@ -323,6 +333,16 @@ def to_docx(model: dict) -> bytes:
     if model["pendencias"]:
         h("Pendências", 1)
         table(["Especialidade", "Pendência", "Estado", "Ligada a"], [[p["specialty"], p["title"], p["status"], p["related"] or "—"] for p in model["pendencias"]])
+    if model.get("budget"):
+        b = model["budget"]
+        h("Orçamento por especialidade", 1)
+        d.add_paragraph(b["note"])
+        for g in b["specialties"]:
+            h(g["label"], 3)
+            table(["Designação", "Un.", "Qtd.", "Preço unit. (€)", "Total s/ IVA (€)", "Origem"],
+                  [[r["title"], r["unit"], _num(r["qty"]), _num(r["unit_price"]), _num(r["total"]) if r["total"] is not None else "a definir", r["price_source"] or "—"] for r in g["lines"]]
+                  + [["Subtotal", "", "", "", _num(g["subtotal_ht"]), ""]])
+        d.add_paragraph(f"Total s/ IVA: {_num(b['total_ht'])} €")
     if model.get("finance"):
         h("Informação financeira", 1)
         table(["Número", "Documento", "Tipo", "Estado", "Total s/ IVA", "Total c/ IVA"],
@@ -387,6 +407,23 @@ def to_xlsx(model: dict) -> bytes:
           [22, 28, 12, 6, 18, 26, 22, 14, 26])
     sheet(wb.create_sheet(), "Pendências", ["Especialidade", "Pendência", "Estado", "Ligada a"],
           [[p["specialty"], p["title"], p["status"], p["related"]] for p in model["pendencias"]], [24, 50, 14, 24])
+    if model.get("budget"):
+        ws = sheet(wb.create_sheet(), "Orçamento", ["Especialidade", "Designação", "Unidade", "Quantidade", "Preço unitário (€)", "Total s/ IVA (€)", "Origem do preço"], [], [26, 40, 9, 12, 16, 16, 16])
+        sub_cells = []
+        for g in model["budget"]["specialties"]:
+            first = ws.max_row + 1
+            for r in g["lines"]:
+                ws.append([g["label"], r["title"], r["unit"], r["qty"], r["unit_price"], None, r["price_source"] or ("a definir" if r["unit_price"] is None else "")])
+                n = ws.max_row
+                ws.cell(n, 6).value = f'=IF(OR(D{n}="",E{n}=""),"",D{n}*E{n})'
+            last = ws.max_row
+            ws.append(["", f"Subtotal {g['label']}", "", "", "", f"=SUM(F{first}:F{last})", ""])
+            sub_cells.append(f"F{ws.max_row}")
+            for c in ws[ws.max_row]:
+                c.font = Font(bold=True)
+        ws.append(["", "TOTAL", "", "", "", "=" + "+".join(sub_cells) if sub_cells else 0, ""])
+        for c in ws[ws.max_row]:
+            c.font = Font(bold=True, color=GREEN[1:])
     if model.get("finance"):
         rows = [[x.get("number"), x.get("title"), x.get("type"), x.get("status"), x.get("total_ht"), x.get("total_ttc")] for x in model["finance"].get("documents") or []]
         ws = sheet(wb.create_sheet(), "Custos", ["Número", "Documento", "Tipo", "Estado", "Total s/ IVA (€)", "Total c/ IVA (€)"], rows, [14, 40, 12, 12, 16, 16])

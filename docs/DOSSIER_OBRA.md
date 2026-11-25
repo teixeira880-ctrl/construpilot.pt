@@ -18,6 +18,21 @@ API: `/api/dossier-obra/*` (`backend/routes/dossier_obra.py`). Coleções novas:
 `dossier_obra_specialties`, `dossier_obra_dependencies`, `dossier_obra_emissions` (índices em `server.py`, incluídas na purga de conta).
 Nenhuma migração destrutiva: obras antigas abrem sem configuração; os registos já ligados à obra aparecem em «Por organizar».
 
+## Desenho (ecrãs de referência)
+
+- Cabeçalho e menu lateral verde-escuro para toda a plataforma (`styles/workspace-green.css`); com um dossier aberto, o menu mostra «ESPECIALIDADES» e «Documento final».
+- Especialidade com medições/materiais → resumo (etapas, próximo passo, pendências, ligações, informação, «Da especialidade ao dossier completo»).
+- `?secao=plantas|medicoes|orcamento|materiais|registos` → detalhe (separadores, esquema da medição, camadas, trama, «Antes de começar»).
+- Especialidade de verificação → sequência («Preparar…», «Este trabalho liga-se a…», «Documentos e registos»).
+- Compilação → conteúdo / pré-visualização / assistente, formatos, orçamento completo e emissões.
+
+## Orçamento por módulo
+
+Cada especialidade tem o separador «Orçamento»: quantidades a partir das medições, preços da biblioteca ou introduzidos (sem preço → «a definir»).
+«Orçamentar só esta especialidade» cria um orçamento novo em rascunho; na compilação, «Criar orçamento completo» junta as especialidades escolhidas.
+API: `GET /dossier-obra/{id}/orcamento?especialidades=…`, `POST /dossier-obra/{id}/orcamento/rascunho`.
+Ações para ligar a Aurora/assistente por prompt: `GET /dossier-obra/acoes`.
+
 ## Regras implementadas
 
 - Isolamento: mesma regra do processo de obra (só o dono) + permissão `chantier`; informação financeira só com permissão `devis`/`factures`.

@@ -1,5 +1,6 @@
 import "@/styles/workspace-design.css";
 import "@/styles/workspace-ambient.css";
+import "@/styles/workspace-green.css";
 import { WorkspaceBackdrop, useWorkspaceMotion } from "./WorkspaceBackdrop";
 import { useExperienceCopy } from "./experienceCopy";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +24,8 @@ import { familyHubFor, familyById } from "./families";
 import { translatedToolLabel } from "./translations";
 import { UpgradeLock } from "@/components/UpgradeLock";
 import InstallAppButton from "@/components/InstallAppButton";
+import { DossierSidebarSection, DossierFinalLink } from "@/components/dossierObra/SidebarSection";
+import { useDossierSidebar } from "@/components/dossierObra/sidebarStore";
 
 export default function WorkspaceNavigation() {
   const { user, logout, setUser } = useAuth();
@@ -34,6 +37,7 @@ export default function WorkspaceNavigation() {
   const motion = useWorkspaceMotion();
   const location = useLocation();
   const navigate = useNavigate();
+  const dossierOpen = Boolean(useDossierSidebar());
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("essentials");
@@ -127,7 +131,7 @@ export default function WorkspaceNavigation() {
       {!sidebarPinned && <button type="button" className="workspace-icon-button workspace-reopen-menu" onClick={openTools} aria-label={experience("showMenu")} data-testid="workspace-reopen-menu"><Menu size={20} /></button>}
       <Link to="/dashboard" className="workspace-brand" data-testid="nav-logo" aria-label="ConstruPilot">
         <img src="/construpilot-icon.png" alt="" width="34" height="34" />
-        <span>Constru<span className="text-primary">Pilot</span></span>
+        <span>Constru<span className="workspace-brand-accent">Pilot</span></span>
       </Link>
       <button type="button" onClick={openTools} className="workspace-search-trigger" data-testid="workspace-search-trigger" aria-label={`${ui("search")} Ctrl K`} aria-haspopup="dialog">
         <Search size={18} aria-hidden="true" /><span>{ui("search")}</span><kbd>Ctrl K</kbd>
@@ -173,6 +177,7 @@ export default function WorkspaceNavigation() {
       {!isPro && <Link to="/planos" className="workspace-go-pro" data-testid="workspace-go-pro"><Sparkles size={16} />{experience("upgrade")}</Link>}
       <nav className="workspace-sidebar-links" aria-label={ui("menu")}>
         <div className="workspace-nav-group" data-testid="workspace-nav-essentials"><p>{experience("essentials")}</p>{essentials.map(item => renderLink(item))}</div>
+        <DossierSidebarSection />
         {extraFavorites.length > 0 && <div className="workspace-nav-group" data-testid="workspace-nav-favorites"><p>{ui("favorites")}</p>
           {extraFavorites.slice(0, 4).map(item => renderLink(item))}
           {extraFavorites.length > 4 && <button type="button" className="workspace-nav-link" onClick={() => { openTools(); setCategory("favorites"); }}>{experience("moreFavorites")}</button>}
@@ -181,8 +186,8 @@ export default function WorkspaceNavigation() {
         <button type="button" className="workspace-nav-link workspace-all-tools" onClick={openTools} aria-haspopup="dialog" data-testid="workspace-all-tools"><Grid2X2 size={18} />{ui("allTools")}<Search size={15} className="ms-auto" /></button>
         <a className="workspace-nav-link" href="/presentation/index.html" target="_blank" rel="noopener noreferrer" data-testid="workspace-nav-deck" title="ConstruPilot — PT / FR / EN"><Download size={18} />{deckLabel}</a>
       </nav>
-      <Link to="/aide" className="workspace-help-card" data-testid="workspace-help"><LifeBuoy size={19} /><span><strong>{experience("help")}</strong><small>{experience("helpHint")}</small></span><ArrowRight size={15} /></Link>
-      <Link className="workspace-sidebar-account" to="/compte" data-testid="workspace-sidebar-account"><Settings2 size={17} />{ui("account")}<ArrowRight size={15} className="ms-auto" /></Link>
+      {dossierOpen ? <DossierFinalLink /> : <Link to="/aide" className="workspace-help-card" data-testid="workspace-help"><LifeBuoy size={19} /><span><strong>{experience("help")}</strong><small>{experience("helpHint")}</small></span><ArrowRight size={15} /></Link>}
+      {!dossierOpen && <Link className="workspace-sidebar-account" to="/compte" data-testid="workspace-sidebar-account"><Settings2 size={17} />{ui("account")}<ArrowRight size={15} className="ms-auto" /></Link>}
     </aside>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="workspace-directory" onOpenAutoFocus={(event) => { event.preventDefault(); (window.matchMedia("(max-width: 767px)").matches ? titleRef.current : searchRef.current)?.focus(); }}

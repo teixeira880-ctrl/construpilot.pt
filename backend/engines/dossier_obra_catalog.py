@@ -138,7 +138,17 @@ _S = [
      ["Compilação técnica da obra"], "dossier final compilacao tecnica entrega"),
 ]
 
-SPECIALTIES = {k: {"key": k, "area": a, "label": lab, "description": d, "examples": ex, "terms": t, "custom": False}
+# Rótulos curtos para a árvore lateral (o rótulo completo continua nos títulos e documentos).
+SHORT = {"implantacao": "Plantas e espaços", "revest_exteriores": "Revestimentos exteriores", "caixilharias": "Portas e janelas",
+         "pavimentos": "Pavimentos e rodapés", "tetos": "Tetos e tetos falsos", "arranjos_exteriores": "Arranjos exteriores",
+         "levantamentos": "Levantamentos", "agua": "Abastecimento de água", "residuais": "Águas residuais", "pluviais": "Águas pluviais",
+         "ited": "Telecomunicações", "climatizacao": "Climatização", "aqs": "Águas quentes", "gas": "Gás", "termica": "Térmica e energia",
+         "incendio": "Segurança contra incêndio", "solar": "Solar e fotovoltaico", "domotica": "Domótica", "especiais": "Instalações especiais",
+         "administrativo": "Documentação", "provisorios": "Trabalhos provisórios", "planeamento": "Planeamento", "equipas": "Equipas",
+         "compras": "Materiais e compras", "custos": "Orçamento e custos", "autos": "Medições e autos", "alteracoes": "Alterações",
+         "diario": "Diário e fotografias", "qualidade": "Qualidade e ensaios", "comunicacoes": "Comunicações", "inspecoes": "Inspeções",
+         "telas_finais": "Telas finais", "manuais": "Manuais e garantias", "manutencao": "Plano de manutenção"}
+SPECIALTIES = {k: {"key": k, "area": a, "label": lab, "short": SHORT.get(k, lab), "description": d, "examples": ex, "terms": t, "custom": False}
                for k, a, lab, d, ex, t in _S}
 
 # Fases globais da obra (uma por obra) — distintas da etapa de cada trabalho e do estado de cada tarefa.
@@ -157,7 +167,7 @@ SPECIALTY_STATUS = {"por_iniciar": "Por iniciar", "em_preparacao": "Em preparaç
 TASK_STATUS = {"por_fazer": "Por fazer", "em_curso": "Em curso", "pendente": "Pendente", "bloqueado": "Bloqueado",
                "concluido": "Concluído", "nao_aplicavel": "Não aplicável"}
 ITEM_KINDS = {"tarefa": "Tarefa", "pendencia": "Pendência", "verificacao": "Verificação", "medicao": "Medição",
-              "material": "Material", "registo": "Registo", "documento": "Documento", "alteracao": "Alteração", "nota": "Nota"}
+              "material": "Material", "orcamento": "Linha de orçamento", "registo": "Registo", "documento": "Documento", "alteracao": "Alteração", "nota": "Nota"}
 SOURCES = {"extraido": "Extraído de documento", "manual": "Introduzido manualmente", "inferido": "Inferido (a confirmar)"}
 VALIDATION = {"por_confirmar": "Por confirmar", "confirmado": "Confirmado", "corrigido": "Corrigido",
               "rejeitado": "Rejeitado", "validado": "Validado"}
