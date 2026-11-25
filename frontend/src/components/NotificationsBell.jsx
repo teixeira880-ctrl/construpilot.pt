@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { startSmartPoll } from "@/lib/smartPoll";
 
 const POLL_MS = 30_000;
 
@@ -28,9 +29,10 @@ export function NotificationsBell() {
 
   useEffect(() => {
     if (!user) return;
-    fetchNotifs();
-    timer.current = setInterval(fetchNotifs, POLL_MS);
-    return () => clearInterval(timer.current);
+    // Mesmo intervalo de 30 s, mas sem pedidos com o separador escondido.
+    const stop = startSmartPoll(fetchNotifs, () => POLL_MS);
+    timer.current = stop;
+    return () => stop();
   }, [user]);
 
   useEffect(() => { if (open) fetchNotifs(); }, [open]);

@@ -14,6 +14,7 @@ from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 
 from core.db import db
+from core.job_wake import idle_wait, wake
 from engines.expenses.context import bind
 from fastapi import HTTPException
 from pymongo import ReturnDocument
@@ -113,6 +114,7 @@ async def enqueue(body, user):
         update["title"] = body.text[:60]
     await db.assistant_convs.update_one({"conversation_id": body.conversation_id, "user_id": uid}, {"$set": update})
     await db.assistant_jobs.update_one({"job_id": ident, "status": "preparing"}, {"$set": {"status": "queued"}})
+    wake("assistant")
     return public_job({**job, "status": "queued"})
 
 
@@ -267,18 +269,20 @@ async def claim_next(worker):
 async def worker_loop():
     worker = uuid.uuid4().hex
     info = WORKERS.setdefault(worker, {"last_tick": None, "job_id": None, "last_error": None})
+    idle = None
     while True:
         info["last_tick"] = datetime.now(timezone.utc).isoformat()
         try:
             job = await claim_next(worker)
             if job:
+                idle = None
                 info["job_id"] = job["job_id"]
                 try:
                     await run_job(job)
                 finally:
                     info["job_id"] = None
             else:
-                await asyncio.sleep(1)
+                idle = await idle_wait("assistant", idle)
         except asyncio.CancelledError:
             raise
         except Exception as exc:

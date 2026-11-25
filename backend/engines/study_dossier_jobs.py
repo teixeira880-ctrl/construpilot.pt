@@ -13,6 +13,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from core.db import db
+from core.job_wake import idle_wait, wake
 from engines.study_dossier import StudyError, build_dossier, fingerprint
 
 log = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ async def enqueue_study(plan_id, body, user):
            "cancel_requested": False, "error": None}
     try:
         await db.pc_study_jobs.insert_one(copy.deepcopy(job))
+        wake("study")
     except DuplicateKeyError:
         old = await db.pc_study_jobs.find_one({"active_key": active_key, "active": True}, {"_id": 0})
         if old and old.get("payload_hash") == digest:
@@ -167,6 +169,7 @@ async def run_job(job):
 
 
 async def worker():
+    idle = None
     while True:
         job = None
         try:
@@ -176,8 +179,9 @@ async def worker():
                 {"$set": {"status": "running", "worker": uuid.uuid4().hex, "lease_until": now()+timedelta(seconds=LEASE_SECONDS)}},
                 sort=[("created_at", 1)], return_document=ReturnDocument.AFTER)
             if not job:
-                await asyncio.sleep(2)
+                idle = await idle_wait("study", idle)
                 continue
+            idle = None
             task = asyncio.create_task(run_job(job))
             try:
                 while not task.done():

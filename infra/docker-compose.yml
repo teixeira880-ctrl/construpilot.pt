@@ -1,0 +1,72 @@
+# ConstruPilot — pilha independente (.pt + .fr) num único servidor.
+# Funciona igual em Oracle Cloud (Ampere A1), Hetzner (CAX/CX) ou qualquer VM Linux com Docker.
+#
+#   cd infra && cp env/pt.env.example env/pt.env && cp env/fr.env.example env/fr.env   # preencher (nunca no GitHub)
+#   ./build_frontend.sh pt && ./build_frontend.sh fr
+#   docker compose up -d --build
+#
+# Memória pensada para 8 GB (CAX21). Numa VM de 12 GB (Oracle) pode subir os limites.
+name: construpilot
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: ["--wiredTigerCacheSizeGB", "0.5", "--bind_ip_all", "--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?defina MONGO_ROOT_USER em infra/.env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD em infra/.env}
+    volumes:
+      - mongo_data:/data/db
+      - ./backups:/backups
+    mem_limit: 1200m
+    networks: [internal]
+    # Sem "ports": o MongoDB nunca fica exposto à internet.
+
+  backend_pt:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+    restart: unless-stopped
+    env_file: env/pt.env
+    environment:
+      MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+    depends_on: [mongo]
+    mem_limit: 2500m
+    cpus: 2.0
+    networks: [internal]
+
+  backend_fr:
+    build:
+      context: ${FR_REPO_DIR:-../../construpilot.fr_1}
+      dockerfile: infra/backend.Dockerfile
+    restart: unless-stopped
+    env_file: env/fr.env
+    environment:
+      MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+    depends_on: [mongo]
+    mem_limit: 2500m
+    cpus: 2.0
+    networks: [internal]
+    profiles: ["fr"]     # ativar com: docker compose --profile fr up -d
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    env_file: .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./www:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 200m
+    networks: [internal]
+
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:

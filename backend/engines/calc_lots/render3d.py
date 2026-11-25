@@ -25,6 +25,12 @@ def _mi():
                 break
             except Exception:  # noqa: BLE001
                 continue
+        try:  # núcleos limitados (metade por defeito) para a API continuar a responder durante o render
+            import drjit as dr
+            from core.heavy_limit import render_threads
+            dr.set_thread_count(render_threads())
+        except Exception:  # noqa: BLE001
+            pass
         _MI = mi
     return _MI
 
@@ -431,6 +437,12 @@ def _tonemap(img):
 
 def render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96, orcamento_s: float | None = None) -> list[tuple[str, bytes]]:
     """→ [(nome da vista, PNG)] — vista principal, vista do terraço, vista aérea."""
+    from core.heavy_limit import render_slot
+    with render_slot():     # um render pesado de cada vez por processo (picos de CPU/RAM)
+        return _render(m, opcoes, largura, altura, spp, orcamento_s)
+
+
+def _render(m: dict, opcoes: dict | None = None, largura=1600, altura=900, spp=96, orcamento_s: float | None = None) -> list[tuple[str, bytes]]:
     import os
     import tempfile
     mi = _mi()

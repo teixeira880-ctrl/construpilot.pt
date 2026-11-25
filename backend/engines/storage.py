@@ -39,6 +39,9 @@ def init_storage() -> str | None:
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
+    from engines import object_storage as _obj   # STORAGE_BACKEND=s3 / s3+emergent → R2/S3 (ver object_storage)
+    if _obj.BACKEND.startswith("s3"):
+        return _obj.put_object(path, data, content_type)
     key = init_storage()
     if not key:
         raise RuntimeError("Object storage not initialized")
@@ -50,6 +53,9 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
 
 
 def get_object(path: str) -> tuple[bytes, str]:
+    from engines import object_storage as _obj
+    if _obj.BACKEND.startswith("s3"):
+        return _obj.get_object(path)
     key = init_storage()
     if not key:
         raise RuntimeError("Object storage not initialized")

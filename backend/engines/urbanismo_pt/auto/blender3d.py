@@ -393,11 +393,12 @@ def renderizar(processo: Dict[str, Any], vizinhos: Optional[List[Dict[str, Any]]
             json.dump(spec, f)
         backend = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         env = {**os.environ, "PYTHONPATH": backend + os.pathsep + os.environ.get("PYTHONPATH", "")}
-        threads = os.environ.get("BLENDER_THREADS")
-        if threads:
-            env["CP_BLENDER_THREADS"] = threads
-        p = subprocess.run([sys.executable, "-m", "engines.urbanismo_pt.auto.blender_run", os.path.join(pasta, "spec.json"), pasta],
-                           cwd=backend, env=env, capture_output=True, text=True, timeout=prazo_s)
+        # Núcleos limitados (metade por defeito) e um render de cada vez: a API continua a responder.
+        from core.heavy_limit import render_slot, render_threads
+        env["CP_BLENDER_THREADS"] = str(render_threads())
+        with render_slot():
+            p = subprocess.run([sys.executable, "-m", "engines.urbanismo_pt.auto.blender_run", os.path.join(pasta, "spec.json"), pasta],
+                               cwd=backend, env=env, capture_output=True, text=True, timeout=prazo_s)
         manifesto = os.path.join(pasta, "manifesto.json")
         if p.returncode != 0 or not os.path.exists(manifesto):
             return {"ok": False, "motivo": "O Blender terminou com erro.", "log": (p.stderr or p.stdout or "")[-2000:]}

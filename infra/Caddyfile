@@ -1,0 +1,49 @@
+# HTTPS automático (Let's Encrypt). Mesmo domínio para o site e para /api — como na Emergent —
+# para os cookies de sessão (SameSite=lax) e o CORS continuarem exatamente iguais.
+# Domínios em infra/.env: PT_DOMAIN (ex.: staging.construpilot.pt) e FR_DOMAIN.
+{
+	email {$ACME_EMAIL}
+}
+
+(site_comum) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	# Ficheiros com hash (JS/CSS): cache longa. index.html: sempre revalidado.
+	@static path /static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+	@html path / /index.html
+	header @html Cache-Control "no-cache"
+}
+
+{$PT_DOMAIN} {
+	import site_comum
+	handle /api/* {
+		reverse_proxy backend_pt:8001 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv/pt
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+{$FR_DOMAIN} {
+	import site_comum
+	handle /api/* {
+		reverse_proxy backend_fr:8001 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv/fr
+		try_files {path} /index.html
+		file_server
+	}
+}

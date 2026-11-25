@@ -4,8 +4,10 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { startSmartPoll } from "@/lib/smartPoll";
 
-const POLL_MS = 2500;
+const POLL_MS = 2500;          // enquanto há uma tarefa ativa (como antes)
+const IDLE_POLL_MS = 20000;    // sem tarefa ativa; lançar uma tarefa provoca uma sondagem imediata
 
 // Indicateur global : les agents tournent côté serveur et survivent au changement
 // de page. On sonde /agents/active ; dès qu'un run quitte la liste active, on
@@ -45,9 +47,9 @@ export function AgentsRunning() {
       } catch { /* silencieux */ }
       finally { polling = false; }
     };
-    poll();
-    timer.current = setInterval(poll, POLL_MS);
-    return () => { stopped = true; clearInterval(timer.current); };
+    const stop = startSmartPoll(poll, () => (prev.current.size ? POLL_MS : IDLE_POLL_MS));
+    timer.current = stop;
+    return () => { stopped = true; stop(); };
   }, [user, navigate]);
 
   if (!user || active.length === 0) return null;

@@ -1034,9 +1034,12 @@ async def _seed_impl():
             logger.warning("websummit demo reset job failed: %s", _e)
     scheduler.add_job(_websummit_demo_reset_job, CronTrigger(hour=4, minute=0),
                       id="websummit_demo_reset_daily", max_instances=1, coalesce=True)
-    scheduler.start()
+    # Uma única instância executa as tarefas agendadas (lease no MongoDB) — evita e-mails/ações em duplicado
+    # com vários processos; SCHEDULER_ENABLED=false desliga tudo (staging).
+    from core import scheduler_lock
+    scheduler_lock.start(scheduler, app)
     app.state.scheduler = scheduler
-    logger.info("Scheduler started (daily price alerts @ 08:00 UTC)")
+    logger.info("Scheduler configurado (arranque só no processo líder)")
 
     logger.info("ConstruPilot backend prêt")
 

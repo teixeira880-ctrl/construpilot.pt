@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from pymongo import ReturnDocument
 
 from core.db import db
+from core.job_wake import idle_wait, wake
 from core.security import current_user, pro_required
 from core.permissions import require_feature
 from engines.platform_supervisor import authorize, can_check_quotes, run_supervisor, undo_correction
@@ -412,6 +413,7 @@ async def launch_run(run_id: str, body: ExecIn, user=Depends(current_user)) -> d
                   "result": None, "error": None}})
     if not changed.matched_count:
         raise HTTPException(409, "Esta tarefa já foi lançada ou concluída; consulte o seu resultado")
+    wake("agents")
     return {"queued": True, "run_id": run_id}
 
 
@@ -658,10 +660,12 @@ async def _claim_agent_run(worker: str) -> dict | None:
 
 async def _agent_worker_loop() -> None:
     worker = secrets.token_hex(8)
+    idle = None
     while True:
         try:
             run = await _claim_agent_run(worker)
             if run:
+                idle = None
                 try:
                     await _run_agent_job(run)
                 except asyncio.CancelledError:
@@ -669,7 +673,7 @@ async def _agent_worker_loop() -> None:
                     if asyncio.current_task().cancelling():
                         raise
             else:
-                await asyncio.sleep(1.5)
+                idle = await idle_wait("agents", idle)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

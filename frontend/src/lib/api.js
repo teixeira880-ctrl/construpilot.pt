@@ -16,6 +16,17 @@ export const api = axios.create({ baseURL: API, withCredentials: true });
 import { installDemoInterceptor } from "@/lib/demoInterceptor";
 installDemoInterceptor(api);
 
+// Lançar / cancelar um agente ou um estudo → os indicadores globais sondam de imediato (ver lib/smartPoll.js).
+import { notifyJobsChanged } from "@/lib/smartPoll";
+api.interceptors.response.use((res) => {
+  try {
+    const m = (res?.config?.method || "").toLowerCase();
+    const u = res?.config?.url || "";
+    if (m === "post" && /^\/?(agents|pc)\//.test(u)) notifyJobsChanged();
+  } catch { /* nunca bloquear a resposta */ }
+  return res;
+});
+
 export const eur = (v) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
     .format(Number(v || 0));

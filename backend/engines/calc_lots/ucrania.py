@@ -600,17 +600,19 @@ def _render_isolado(modelo, opcoes, largura, altura, spp, budget, hard):
     if os.environ.get("CP_RENDER_INLINE") == "1":            # testes / depuração
         from . import render3d
         return render3d.render(modelo, opcoes, largura, altura, spp, orcamento_s=budget)
+    from core.heavy_limit import render_slot
     fd, destino = tempfile.mkstemp(suffix=".pkl")
     os.close(fd)
     try:
-        pr = mp.get_context("spawn").Process(target=_render_proc, args=((modelo, opcoes, largura, altura, spp, budget), destino), daemon=True)
-        pr.start()
-        pr.join(hard)
-        if pr.is_alive():
-            pr.terminate()
-            pr.join(5)
+        with render_slot():   # um processo de render de cada vez (picos de CPU/RAM com vários estudos em paralelo)
+            pr = mp.get_context("spawn").Process(target=_render_proc, args=((modelo, opcoes, largura, altura, spp, budget), destino), daemon=True)
+            pr.start()
+            pr.join(hard)
             if pr.is_alive():
-                pr.kill()
+                pr.terminate()
+                pr.join(5)
+                if pr.is_alive():
+                    pr.kill()
         try:
             with open(destino, "rb") as fh:
                 out = pickle.load(fh)
