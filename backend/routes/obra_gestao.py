@@ -36,7 +36,7 @@ portal_router = APIRouter(prefix="/portal", tags=["obra-gestao-portal"])
 webhooks_router = APIRouter(prefix="/webhooks-saida", tags=["webhooks-saida"], dependencies=[Depends(pro_required)])
 
 MAX_FOTOS = 30
-IMG_TYPES = ["image/png", "image/jpeg", "image/webp"]
+IMG_TYPES = colab.ALLOWED_IMAGE  # mesma política de ficheiros que a Obra colaborativa
 
 
 def _now() -> str:
@@ -705,7 +705,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
         if it.get("tipo") == "inspecao":
             it["resultado"] = og.inspecao_resultado(it.get("checklist") or [])
         it["acoes_em_atraso"] = len(og.acoes_em_atraso(it, _today()))
-        it["ref_label"] = f"{TX.QSE_REF.get(it.get('tipo'), '')} n.º {it.get('numero')}"
+        it["ref_label"] = f"{TX.QSE_REF.get(it.get('tipo'), '')} {TX.NUM} {it.get('numero')}"
         return it
 
     def _acao_doc(a: AcaoIn) -> dict:
@@ -754,7 +754,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
                "autor": {**ctx.who(), "empresa_id": ctx.empresa_id}, "origem": "manual",
                "created_at": _now(), "updated_at": _now()}
         await db.obra_qse.insert_one(dict(doc))
-        ref = f"{TX.QSE_REF.get(body.tipo)} n.º {numero}"
+        ref = f"{TX.QSE_REF.get(body.tipo)} {TX.NUM} {numero}"
         await _hist(ctx, "qse.criar", ref)
         await _webhook(ctx, "qse.criado", {"numero": numero, "tipo": body.tipo, "titulo": doc["titulo"], "gravidade": body.gravidade})
         if body.tipo == "incidente" or body.gravidade == "critica":
@@ -798,7 +798,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
             upd["participantes"] = [p.strip()[:120] for p in upd["participantes"] if p.strip()]
         upd["updated_at"] = _now()
         await db.obra_qse.update_one({"item_id": item_id}, {"$set": upd})
-        await _hist(ctx, "qse.editar", f"{TX.QSE_REF.get(it['tipo'])} n.º {it['numero']}")
+        await _hist(ctx, "qse.editar", f"{TX.QSE_REF.get(it['tipo'])} {TX.NUM} {it['numero']}")
         return _qse_pub(await _qse(ctx, item_id))
 
     @router.post(g + "/qse/{item_id}/fotos", status_code=201)
@@ -834,7 +834,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
         import base64
         from engines import ai
         try:
-            raw = await asyncio.wait_for(ai._complete(TX.ANALISE_FOTO_SISTEMA, "Fotografia de obra.", images=[base64.b64encode(data).decode()],
+            raw = await asyncio.wait_for(ai._complete(TX.ANALISE_FOTO_SISTEMA, TX.PROMPTS["foto"], images=[base64.b64encode(data).decode()],
                                                       feature="obra_qse_foto"), 90)
             res = ai._json(raw, {}) or {}
         except Exception as e:  # noqa: BLE001
@@ -856,7 +856,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
         if og.EMPRESA in ctx.roles and not _gestor(ctx):
             a["quem_empresa_id"] = ctx.empresa_id
         await db.obra_qse.update_one({"item_id": item_id}, {"$push": {"acoes": a}, "$set": {"estado": "em_tratamento", "updated_at": _now()}})
-        await _hist(ctx, "acao.criar", f"{TX.QSE_REF.get(it['tipo'])} n.º {it['numero']}")
+        await _hist(ctx, "acao.criar", f"{TX.QSE_REF.get(it['tipo'])} {TX.NUM} {it['numero']}")
         return _qse_pub(await _qse(ctx, item_id))
 
     @router.patch(g + "/qse/{item_id}/acoes/{acao_id}")
@@ -881,7 +881,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
         if body.estado == "verificada":
             a["verificado_por"] = ctx.who()
         await db.obra_qse.update_one({"item_id": item_id}, {"$set": {"acoes": acoes, "updated_at": _now()}})
-        await _hist(ctx, "acao.estado", f"{TX.QSE_REF.get(it['tipo'])} n.º {it['numero']}", estado=TX.ACAO_ESTADOS[body.estado])
+        await _hist(ctx, "acao.estado", f"{TX.QSE_REF.get(it['tipo'])} {TX.NUM} {it['numero']}", estado=TX.ACAO_ESTADOS[body.estado])
         return _qse_pub(await _qse(ctx, item_id))
 
     @router.post(g + "/qse/{item_id}/fechar")
@@ -892,7 +892,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
             raise HTTPException(409, TX.T["qse_fechar_acoes"])
         await db.obra_qse.update_one({"item_id": item_id}, {"$set": {"estado": "fechado", "fecho": {
             "por": ctx.who(), "at": _now(), "justificacao": body.justificacao.strip()}, "updated_at": _now()}})
-        await _hist(ctx, "qse.fechar", f"{TX.QSE_REF.get(it['tipo'])} n.º {it['numero']}")
+        await _hist(ctx, "qse.fechar", f"{TX.QSE_REF.get(it['tipo'])} {TX.NUM} {it['numero']}")
         await _webhook(ctx, "qse.fechado", {"numero": it["numero"], "tipo": it["tipo"], "titulo": it["titulo"]})
         return _qse_pub(await _qse(ctx, item_id))
 
@@ -902,7 +902,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
         it = await _qse(ctx, item_id)
         await db.obra_qse.update_one({"item_id": item_id}, {"$set": {"estado": "em_tratamento" if it.get("acoes") else "aberto",
                                                                     "updated_at": _now()}, "$unset": {"fecho": ""}})
-        await _hist(ctx, "qse.reabrir", f"{TX.QSE_REF.get(it['tipo'])} n.º {it['numero']}")
+        await _hist(ctx, "qse.reabrir", f"{TX.QSE_REF.get(it['tipo'])} {TX.NUM} {it['numero']}")
         return _qse_pub(await _qse(ctx, item_id))
 
     @router.post(g + "/qse/{item_id}/gerar-nc", status_code=201)
@@ -927,7 +927,7 @@ def _mount(router: APIRouter, b: str, dep) -> None:
             ja.add(c["item"])
         await db.obra_qse.update_one({"item_id": item_id}, {"$set": {"nc_geradas": sorted(ja)}})
         for n in criadas:
-            await _hist(ctx, "qse.criar", f"NC n.º {n}")
+            await _hist(ctx, "qse.criar", f"NC {TX.NUM} {n}")
         return {"criadas": criadas}
 
     # ---------------------------------------------------------- pedidos de esclarecimento (RFI)
@@ -1088,7 +1088,7 @@ async def qse_qualificar(note_id: str, body: QualificarIn, ctx: Ctx = Depends(_c
            "origem": "operario", "nota_operario_id": note_id, "created_at": _now(), "updated_at": _now()}
     await db.obra_qse.insert_one(dict(doc))
     await db.hr_notes.update_one({"note_id": note_id}, {"$set": {"qse_item_id": doc["item_id"], "status": "closed"}})
-    await _hist(ctx, "qse.criar", f"{TX.QSE_REF.get(body.tipo)} n.º {numero}")
+    await _hist(ctx, "qse.criar", f"{TX.QSE_REF.get(body.tipo)} {TX.NUM} {numero}")
     await _webhook(ctx, "qse.criado", {"numero": numero, "tipo": body.tipo, "titulo": doc["titulo"], "origem": "operario"})
     return {"item_id": doc["item_id"], "numero": numero}
 
@@ -1246,7 +1246,7 @@ async def copiloto_pergunta(body: PerguntaIn, ctx: Ctx = Depends(_ctx_gestor)):
         raise HTTPException(400, TX.T["pergunta_vazia"])
     dados = await _contexto_copiloto(ctx)
     from engines import ai
-    prompt = f"DADOS DA OBRA (JSON):\n{json.dumps(dados, ensure_ascii=False, default=str)[:60000]}\n\nPERGUNTA:\n{body.pergunta.strip()}"
+    prompt = TX.PROMPTS["pergunta"].format(dados=json.dumps(dados, ensure_ascii=False, default=str)[:60000], pergunta=body.pergunta.strip())
     try:
         resposta = await asyncio.wait_for(ai._complete(TX.COPILOTO_SISTEMA, prompt, feature="obra_copiloto"), 90)
         return {"resposta": resposta.strip(), "fonte": "ia", "dados_usados": list(dados)}

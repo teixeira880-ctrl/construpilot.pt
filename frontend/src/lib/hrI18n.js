@@ -35,7 +35,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_need_selfie": "Tire uma selfie primeiro", "hr.w_need_site": "Escolha uma obra",
     "hr.w_in_done": "Entrada registada ✓", "hr.w_out_done": "Saída registada ✓",
     "hr.w_my_hours": "As minhas horas", "hr.w_my_doubts": "As minhas dúvidas", "hr.w_new_doubt": "Reportar uma dúvida",
-    "hr.w_doubt_ph": "Descreva a sua dúvida / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Dúvida enviada",
+    "hr.w_doubt_ph": "Descreva a sua dúvida / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Dúvida enviada", "hr.w_incident": "Alertar perigo / incidente", "hr.w_incident_sent": "Alerta de segurança enviado",
     "hr.w_logout": "Terminar sessão", "hr.w_worker_only": "Esta área é apenas para contas de trabalhador.",
   },
   en: {
@@ -68,7 +68,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "Location acquired", "hr.w_gps_off": "GPS unavailable", "hr.w_need_selfie": "Take a selfie first",
     "hr.w_need_site": "Choose a site", "hr.w_in_done": "Clock-in saved ✓", "hr.w_out_done": "Clock-out saved ✓",
     "hr.w_my_hours": "My hours", "hr.w_my_doubts": "My questions", "hr.w_new_doubt": "Report a question",
-    "hr.w_doubt_ph": "Describe your question / issue…", "hr.w_send": "Send", "hr.w_doubt_sent": "Question sent",
+    "hr.w_doubt_ph": "Describe your question / issue…", "hr.w_send": "Send", "hr.w_doubt_sent": "Question sent", "hr.w_incident": "Report a hazard / incident", "hr.w_incident_sent": "Safety alert sent",
     "hr.w_logout": "Log out", "hr.w_worker_only": "This area is for worker accounts only.",
   },
   es: {
@@ -101,7 +101,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "Ubicación obtenida", "hr.w_gps_off": "GPS no disponible", "hr.w_need_selfie": "Haga un selfie primero",
     "hr.w_need_site": "Elija una obra", "hr.w_in_done": "Entrada registrada ✓", "hr.w_out_done": "Salida registrada ✓",
     "hr.w_my_hours": "Mis horas", "hr.w_my_doubts": "Mis dudas", "hr.w_new_doubt": "Reportar una duda",
-    "hr.w_doubt_ph": "Describa su duda / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Duda enviada",
+    "hr.w_doubt_ph": "Describa su duda / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Duda enviada", "hr.w_incident": "Avisar de un peligro / incidente", "hr.w_incident_sent": "Alerta de seguridad enviada",
     "hr.w_logout": "Cerrar sesión", "hr.w_worker_only": "Esta zona es solo para cuentas de operario.",
   },
   pt: {
@@ -134,7 +134,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "Localização obtida", "hr.w_gps_off": "GPS indisponível", "hr.w_need_selfie": "Tire uma selfie primeiro",
     "hr.w_need_site": "Escolha uma obra", "hr.w_in_done": "Entrada registada ✓", "hr.w_out_done": "Saída registada ✓",
     "hr.w_my_hours": "As minhas horas", "hr.w_my_doubts": "As minhas dúvidas", "hr.w_new_doubt": "Reportar uma dúvida",
-    "hr.w_doubt_ph": "Descreva a sua dúvida / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Dúvida enviada",
+    "hr.w_doubt_ph": "Descreva a sua dúvida / problema…", "hr.w_send": "Enviar", "hr.w_doubt_sent": "Dúvida enviada", "hr.w_incident": "Alertar perigo / incidente", "hr.w_incident_sent": "Alerta de segurança enviado",
     "hr.w_logout": "Terminar sessão", "hr.w_worker_only": "Esta área é apenas para contas de trabalhador.",
   },
   it: {
@@ -167,7 +167,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "Posizione acquisita", "hr.w_gps_off": "GPS non disponibile", "hr.w_need_selfie": "Scatta prima un selfie",
     "hr.w_need_site": "Scegli un cantiere", "hr.w_in_done": "Entrata registrata ✓", "hr.w_out_done": "Uscita registrata ✓",
     "hr.w_my_hours": "Le mie ore", "hr.w_my_doubts": "I miei dubbi", "hr.w_new_doubt": "Segnala un dubbio",
-    "hr.w_doubt_ph": "Descrivi il tuo dubbio / problema…", "hr.w_send": "Invia", "hr.w_doubt_sent": "Dubbio inviato",
+    "hr.w_doubt_ph": "Descrivi il tuo dubbio / problema…", "hr.w_send": "Invia", "hr.w_doubt_sent": "Dubbio inviato", "hr.w_incident": "Segnala un pericolo / incidente", "hr.w_incident_sent": "Avviso di sicurezza inviato",
     "hr.w_logout": "Esci", "hr.w_worker_only": "Quest'area è riservata agli account operaio.",
   },
   de: {
@@ -200,7 +200,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "Position erfasst", "hr.w_gps_off": "GPS nicht verfügbar", "hr.w_need_selfie": "Zuerst ein Selfie aufnehmen",
     "hr.w_need_site": "Baustelle wählen", "hr.w_in_done": "Kommen gespeichert ✓", "hr.w_out_done": "Gehen gespeichert ✓",
     "hr.w_my_hours": "Meine Stunden", "hr.w_my_doubts": "Meine Fragen", "hr.w_new_doubt": "Frage melden",
-    "hr.w_doubt_ph": "Beschreiben Sie Ihre Frage / Ihr Problem…", "hr.w_send": "Senden", "hr.w_doubt_sent": "Frage gesendet",
+    "hr.w_doubt_ph": "Beschreiben Sie Ihre Frage / Ihr Problem…", "hr.w_send": "Senden", "hr.w_doubt_sent": "Frage gesendet", "hr.w_incident": "Gefahr / Vorfall melden", "hr.w_incident_sent": "Sicherheitsmeldung gesendet",
     "hr.w_logout": "Abmelden", "hr.w_worker_only": "Dieser Bereich ist nur für Arbeiterkonten.",
   },
   ar: {
@@ -233,7 +233,7 @@ export const HR_TRANSLATIONS = {
     "hr.w_gps_ok": "تم تحديد الموقع", "hr.w_gps_off": "GPS غير متاح", "hr.w_need_selfie": "التقط صورة ذاتية أولًا",
     "hr.w_need_site": "اختر ورشة", "hr.w_in_done": "تم تسجيل الدخول ✓", "hr.w_out_done": "تم تسجيل الخروج ✓",
     "hr.w_my_hours": "ساعاتي", "hr.w_my_doubts": "أسئلتي", "hr.w_new_doubt": "الإبلاغ عن سؤال",
-    "hr.w_doubt_ph": "صف سؤالك / مشكلتك…", "hr.w_send": "إرسال", "hr.w_doubt_sent": "تم إرسال السؤال",
+    "hr.w_doubt_ph": "صف سؤالك / مشكلتك…", "hr.w_send": "إرسال", "hr.w_doubt_sent": "تم إرسال السؤال", "hr.w_incident": "الإبلاغ عن خطر / حادث", "hr.w_incident_sent": "تم إرسال تنبيه السلامة",
     "hr.w_logout": "تسجيل الخروج", "hr.w_worker_only": "هذه المساحة مخصصة لحسابات العمال فقط.",
   },
 };

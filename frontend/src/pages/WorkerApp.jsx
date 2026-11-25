@@ -81,6 +81,16 @@ export default function WorkerApp() {
     finally { setBusy(false); }
   };
 
+  const sendIncident = async () => {
+    if (!doubt.trim()) return toast.error(t("hr.w_doubt_ph"));
+    setBusy(true);
+    try {
+      await api.post("/hr/site-notes", { project_id: openTs?.project_id || projectId || null, type: "incident", message: doubt });
+      toast.success(t("hr.w_incident_sent")); setDoubt(""); refresh();
+    } catch { toast.error("Erreur"); }
+    finally { setBusy(false); }
+  };
+
   const onPhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -186,6 +196,7 @@ export default function WorkerApp() {
           <p className="text-sm font-semibold flex items-center gap-1.5"><MessageSquareWarning className="h-4 w-4 text-amber-500" /> {t("hr.w_new_doubt")}</p>
           <Textarea value={doubt} onChange={(e) => setDoubt(e.target.value)} rows={2} placeholder={t("hr.w_doubt_ph")} className="rounded-sm resize-none" data-testid="worker-doubt-input" />
           <Button variant="outline" className="rounded-sm gap-2" disabled={busy} onClick={sendDoubt} data-testid="worker-doubt-send"><Send className="h-4 w-4" /> {t("hr.w_send")}</Button>
+          <Button variant="outline" className="rounded-sm gap-2 border-red-300 text-red-700" disabled={busy} onClick={sendIncident} data-testid="worker-incident-send"><MessageSquareWarning className="h-4 w-4" /> {t("hr.w_incident")}</Button>
           {notes.slice(0, 4).map((n) => (
             <div key={n.note_id} className="text-xs border-t border-border pt-2">
               <p>{n.message}</p>

@@ -168,7 +168,7 @@ def relatorio_pdf(obra: dict, dados: dict, alertas: list[dict], curva: Optional[
     story.append(Paragraph(R["qse"], S["h2"]))
     story.append(Paragraph(R["nc_abertas"].format(n=dados["nc_abertas"], i=dados["acidentes"], q=dados["quase_acidentes"], d=dados["dds"]), S["body"]))
     if dados["qse_semana"]:
-        rows = [["N.º", "", "", ""]] + [[str(q["numero"]), q["tipo"], Paragraph(_p(q["titulo"]), S["body"]),
+        rows = [[TX.NUM, "", "", ""]] + [[str(q["numero"]), q["tipo"], Paragraph(_p(q["titulo"]), S["body"]),
                                          TX.QSE_ESTADOS.get(q["estado"], q["estado"])] for q in dados["qse_semana"]]
         story.append(_grid(P, rows, [14 * mm, 44 * mm, 88 * mm, 28 * mm]))
     story.append(Spacer(1, 6))
@@ -202,7 +202,7 @@ def qse_pdf(obra: dict, itens: list[dict], branding: Optional[dict]) -> bytes:
     if com_acoes:
         story.append(Spacer(1, 8))
         story.append(Paragraph(Q["acoes"], S["h2"]))
-        rows = [["N.º"] + Q["acoes_cab"]]
+        rows = [[TX.NUM] + Q["acoes_cab"]]
         for it in com_acoes:
             for a in it["acoes"]:
                 rows.append([str(it.get("numero")), Paragraph(_p(a.get("o_que")), S["body"]), Paragraph(_p(a.get("quem")), S["body"]),

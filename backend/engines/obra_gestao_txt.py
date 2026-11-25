@@ -252,3 +252,5 @@ HISTORICO = {
 
 QSE_REF = {"inspecao": "Inspeção", "nao_conformidade": "NC", "incidente": "Acidente", "quase_acidente": "Quase-acidente",
            "dialogo_seguranca": "DDS", "epi": "EPI", "ambiente": "Ambiente"}
+NUM = "n.º"
+PROMPTS = {"foto": "Fotografia de obra.", "pergunta": "DADOS DA OBRA (JSON):\n{dados}\n\nPERGUNTA:\n{pergunta}"}
