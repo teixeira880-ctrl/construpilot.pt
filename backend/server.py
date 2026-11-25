@@ -269,6 +269,10 @@ api_router.include_router(portal_chat_routes.router)
 from routes import obra_colab as obra_colab_routes  # noqa: E402
 api_router.include_router(obra_colab_routes.pro_router)
 api_router.include_router(obra_colab_routes.portal_router)
+from routes import obra_gestao as obra_gestao_routes  # noqa: E402  (diário, QSE, pedidos de esclarecimento, stock, curva S)
+api_router.include_router(obra_gestao_routes.pro_router)
+api_router.include_router(obra_gestao_routes.portal_router)
+api_router.include_router(obra_gestao_routes.webhooks_router)
 from routes import speech as speech_routes  # noqa: E402
 api_router.include_router(speech_routes.router)
 api_router.include_router(notifications_routes.router)
@@ -732,8 +736,12 @@ async def _seed_impl():
     await db.chantiers.create_index("chantier_id", unique=True)
     await db.chantiers.create_index("ref", unique=True, sparse=True)
     for _coll in ("obra_planos", "obra_subs", "obra_autos", "obra_contratos", "obra_cronogramas", "obra_atas",
-                  "obra_comparacoes", "obra_colab_settings"):
+                  "obra_comparacoes", "obra_colab_settings", "obra_diario", "obra_qse", "obra_rfi", "obra_stock",
+                  "obra_historico", "obra_avanco_snapshots", "obra_gestao_cfg", "obra_resumos", "obra_gestao_seq"):
         await db[_coll].create_index("chantier_id")
+    await db.obra_diario.create_index([("chantier_id", 1), ("data", 1)], unique=True)   # uma entrada por dia e por obra
+    await db.obra_gestao_seq.create_index([("chantier_id", 1), ("chave", 1)], unique=True)
+    await db.webhooks_saida.create_index("user_id")
     await db.chantier_participants.create_index("participant_id", unique=True)
     await db.chantier_participants.create_index([("chantier_ref", 1), ("email", 1)])
     await db.chantier_participants.create_index([("email", 1), ("status", 1)])

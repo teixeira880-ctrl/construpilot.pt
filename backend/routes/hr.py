@@ -376,7 +376,7 @@ async def hr_dashboard(user=Depends(current_user), date_from: str | None = None,
 
 class NoteIn(BaseModel):
     project_id: str | None = None
-    type: str = "comment"  # 'comment' | 'question'
+    type: str = "comment"  # 'comment' | 'question' | 'incident' (alerta de segurança → Gestão de obra)
     message: str
 
 
@@ -397,7 +397,7 @@ async def create_note(body: NoteIn, user=Depends(current_user)):
         "note_id": f"note_{uuid.uuid4().hex[:12]}", "employer_id": user.get("employer_id"),
         "worker_id": user["user_id"], "worker_name": user.get("name"),
         "project_id": body.project_id, "project_name": proj_name,
-        "type": body.type if body.type in ("comment", "question") else "comment",
+        "type": body.type if body.type in ("comment", "question", "incident") else "comment",
         "message": body.message.strip(), "status": "open", "reply": None,
         "created_at": _now(),
     }
