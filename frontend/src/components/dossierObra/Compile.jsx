@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { FileText, Eye, Check, ArrowLeft, AlertCircle, Info, Download, ShieldCheck, Layers, ChevronDown, ChevronUp, Image as ImageIcon, Coins, Link2, User, Home } from "lucide-react";
 import { api } from "@/lib/api";
 import { errMsg, useDossierContext, Loading, withPaths } from "./common";
-import { AREA_ICONS, AREA_SHORT, specIcon } from "./icons";
+import { AREA_SHORT, ModuleIcon } from "./icons";
 import { Crumbs, DossierHeader, ContextSelects, FormatIcon } from "./layout";
 import { AssistantPanel } from "./AssistantPanel";
 import { CompleteBudget } from "./BudgetPanel";
@@ -102,7 +102,6 @@ export function Compile({ ov, cat }) {
           {areas.length === 0 && <p className="text-sm text-muted-foreground">Ainda não há especialidades ativas. <Link className="underline" to={`${base}${qs()}`}>Escolha por onde começar</Link>.</p>}
           <div className="dob-tree-box">
             {areas.map((a) => {
-              const AI = AREA_ICONS[a.key] || Layers;
               const keys = a.specialties.map((s) => s.key);
               const all = keys.every((k) => chosen.has(k));
               const some = keys.some((k) => chosen.has(k));
@@ -111,14 +110,14 @@ export function Compile({ ov, cat }) {
                 <div key={a.key} className="dob-tree-group">
                   <div className="dob-tree-row dob-tree-head">
                     <Box checked={all} indeterminate={!all && some} onChange={() => toggleArea(a)} label={AREA_SHORT[a.key]} />
-                    <AI size={20} aria-hidden="true" /><span className="flex-1">{AREA_SHORT[a.key]}</span>
+                    <ModuleIcon area={a.key} size={14} tile={26} /><span className="flex-1">{AREA_SHORT[a.key]}</span>
                     <button type="button" aria-expanded={isOpen} aria-label={`${isOpen ? "Recolher" : "Expandir"} ${AREA_SHORT[a.key]}`} onClick={() => setOpenAreas({ ...openAreas, [a.key]: !isOpen })}>{isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
                   </div>
-                  {isOpen && <div className="dob-tree-children">{a.specialties.map((s) => { const SI = specIcon(s.key); return (
+                  {isOpen && <div className="dob-tree-children">{a.specialties.map((s) => (
                     <label key={s.key} className="dob-tree-row">
                       <Box checked={chosen.has(s.key)} onChange={() => toggle(chosen, setChosen, s.key)} label={s.label} test={`dob-compile-${s.key}`} />
-                      <SI size={17} aria-hidden="true" /><span>{s.short || s.label}</span>{s.counts.pending > 0 && <small className="text-muted-foreground">· {s.counts.pending} pend.</small>}
-                    </label>); })}</div>}
+                      <ModuleIcon k={s.key} area={s.area} size={12} tile={22} /><span>{s.short || s.label}</span>{s.counts.pending > 0 && <small className="text-muted-foreground">· {s.counts.pending} pend.</small>}
+                    </label>))}</div>}
                 </div>
               );
             })}

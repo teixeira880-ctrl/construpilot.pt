@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { useDossierSidebar } from "./sidebarStore";
-import { AREA_ICONS, AREA_SHORT, specIcon } from "./icons";
+import { AREA_SHORT, ModuleIcon } from "./icons";
 
 /** «ESPECIALIDADES» no menu lateral verde: só aparece com um dossier de obra aberto. */
 export function DossierSidebarSection() {
@@ -15,23 +15,21 @@ export function DossierSidebarSection() {
     <div className="workspace-nav-group cp-spec-tree" data-testid="sidebar-specialties">
       <p>Especialidades</p>
       {overview.areas.map((a) => {
-        const Icon = AREA_ICONS[a.key];
         const has = a.specialties.length > 0;
         const isOpen = open[a.key] ?? (a.key === activeArea || (!activeKey && has && a.key === "arquitetura"));
         return (
           <div key={a.key}>
             <button type="button" className="cp-spec-area" aria-expanded={isOpen} onClick={() => setOpen({ ...open, [a.key]: !isOpen })} data-testid={`sidebar-area-${a.key}`}>
-              <Icon size={19} aria-hidden="true" /><span>{AREA_SHORT[a.key]}</span>
+              <ModuleIcon area={a.key} size={15} tile={26} /><span>{AREA_SHORT[a.key]}</span>
               {isOpen ? <ChevronUp size={16} className="cp-chev" aria-hidden="true" /> : <ChevronDown size={16} className="cp-chev" aria-hidden="true" />}
             </button>
             {isOpen && (
               <div className="cp-spec-list">
                 {!has && <Link to={`${base}${qs({ vista: "especialidades" })}`} className="cp-spec-link"><span>Ativar especialidades…</span></Link>}
                 {a.specialties.map((s) => {
-                  const SIcon = specIcon(s.key);
                   return (
                     <Link key={s.key} to={`${base}/especialidade/${s.key}${qs()}`} className="cp-spec-link" aria-current={s.key === activeKey ? "page" : undefined} data-testid={`sidebar-spec-${s.key}`} title={s.label}>
-                      <SIcon size={16} aria-hidden="true" /><span>{s.short || s.label}</span>
+                      <ModuleIcon k={s.key} area={s.area} size={13} tile={22} copper={s.key === activeKey} /><span>{s.short || s.label}</span>
                       {s.counts?.pending > 0 && <span className="cp-spec-count" aria-label={`${s.counts.pending} pendentes`}>{s.counts.pending}</span>}
                     </Link>
                   );

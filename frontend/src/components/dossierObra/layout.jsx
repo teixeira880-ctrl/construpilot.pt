@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { Home, ChevronRight, ChevronDown, MapPin, HardHat } from "lucide-react";
+import { ModuleIcon } from "./icons";
 
 export function Crumbs({ items }) {
   return (
@@ -17,11 +18,12 @@ export function Crumbs({ items }) {
   );
 }
 
-export function DossierHeader({ icon: Icon, title, subtitle, extra, demo, action, testId, side }) {
+export function DossierHeader({ icon: Icon, moduleKey, moduleArea, title, subtitle, extra, demo, action, testId, side }) {
   return (
     <header className="dob-header">
       <div className="dob-title">
-        <span className="dob-title-icon"><Icon size={34} strokeWidth={1.7} aria-hidden="true" /></span>
+        {moduleKey ? <ModuleIcon k={moduleKey} area={moduleArea} size={32} tile={66} radius={18} className="dob-title-logo" />
+          : <span className="dob-title-icon"><Icon size={34} strokeWidth={1.7} aria-hidden="true" /></span>}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3"><h1 data-testid={testId}>{title}</h1>{demo && <span className="dob-demo">Exemplo demonstrativo</span>}</div>
           {subtitle && <p className="dob-sub">{subtitle}</p>}

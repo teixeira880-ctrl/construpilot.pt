@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { ModeToggle, Loading, ErrorBox, errMsg, useDossierContext, STATUS_TEXT } from "./common";
 import { AssistantPanel } from "./AssistantPanel";
 import { ImpactDialog, AddRecord, LayersBlock, Origin, QuantitiesTable, STAGE_ICONS, fmt } from "./parts";
-import { AREA_SHORT, specIcon } from "./icons";
+import { AREA_SHORT, specIcon, ModuleIcon } from "./icons";
 import { DossierHeader, ContextSelects, Crumbs, FormatChip } from "./layout";
 import { BudgetPanel } from "./BudgetPanel";
 
@@ -144,7 +144,7 @@ export function Specialty({ cat, mode, setMode, reloadTree }) {
     <div className="dob-page" data-testid="dob-specialty">
       <Crumbs items={[{ label: "Dossier de obra", to: `${base}${qs()}` }, { label: AREA_SHORT[s.area] || "Área", to: `${base}${qs({ vista: "especialidades" })}` },
         { label: s.short || s.label, to: secao ? `${base}/especialidade/${key}${qs()}` : null }]} />
-      <DossierHeader icon={Icon} title={s.short || s.label} testId="dob-specialty-name" demo={data.chantier.demo}
+      <DossierHeader icon={Icon} moduleKey={key} moduleArea={s.area} title={s.short || s.label} testId="dob-specialty-name" demo={data.chantier.demo}
         subtitle={secao ? `Projeto: ${clean(data.chantier.name)}` : kpiMode ? "Tudo o que precisa para preparar, executar e entregar." : clean(data.chantier.name)}
         action={<Link to={`${base}/compilar${qs()}`} className="dob-primary dob-lg" data-testid="dob-compile-btn"><FileText size={22} /> Compilar dossier</Link>} />
       <div className={`dob-columns ${assistant ? "" : "no-assistant"}`}>
@@ -194,8 +194,8 @@ export function Specialty({ cat, mode, setMode, reloadTree }) {
               {data.dependencies.length > 0 && (
                 <div className="dob-links-row" data-testid="dob-links">
                   <span className="dob-hint"><Link2 size={17} /> Ligações a outras especialidades</span>
-                  {data.dependencies.map((d) => { const DI = specIcon(d.other); return (
-                    <Link key={d.dep_id} to={`${base}/especialidade/${d.other}${qs()}`} className="dob-link-chip" title={`${d.relation_label}${d.status !== "confirmada" ? " (por confirmar)" : ""}`} data-testid={`dob-link-${d.other}`}><DI size={16} /> {d.other_label}</Link>); })}
+                  {data.dependencies.map((d) => { return (
+                    <Link key={d.dep_id} to={`${base}/especialidade/${d.other}${qs()}`} className="dob-link-chip" title={`${d.relation_label}${d.status !== "confirmada" ? " (por confirmar)" : ""}`} data-testid={`dob-link-${d.other}`}><ModuleIcon k={d.other} area={d.other_area} size={12} tile={22} /> {d.other_label}</Link>); })}
                 </div>
               )}
             </section>
@@ -233,12 +233,12 @@ export function Specialty({ cat, mode, setMode, reloadTree }) {
               <section className="dob-card dob-card-pad dob-gap" data-testid="dob-links">
                 <div className="dob-card-title"><span className="dob-tile"><Link2 size={24} /></span><h2>Este trabalho liga-se a…</h2></div>
                 <div className="dob-timeline">
-                  {data.dependencies.map((d) => { const DI = specIcon(d.other); return (
+                  {data.dependencies.map((d) => (
                     <Link key={d.dep_id} to={`${base}/especialidade/${d.other}${qs()}`} className="dob-tl-row" data-testid={`dob-link-${d.other}`}>
-                      <DI size={20} aria-hidden="true" /><span className="flex-1">{AREA_SHORT[d.other_area]} · {d.other_label}</span>
+                      <ModuleIcon k={d.other} area={d.other_area} size={15} tile={28} /><span className="flex-1">{AREA_SHORT[d.other_area]} · {d.other_label}</span>
                       {d.other_blocked > 0 ? <span className="dob-pill dob-pill-pendente"><Clock size={14} /> Aguarda validação</span>
                         : <span className="dob-pill dob-pill-rascunho"><Link2 size={14} /> {d.direction === "out" ? "Depende deste trabalho" : d.relation_label}</span>}
-                    </Link>); })}
+                    </Link>))}
                 </div>
               </section>
             )}
@@ -315,7 +315,7 @@ export function Specialty({ cat, mode, setMode, reloadTree }) {
               <div className="dob-gap"><div className="dob-card-title"><span className="dob-tile dob-tile-sm"><ClipboardCheck size={20} /></span><h2>Antes de começar</h2></div>
                 <div className="dob-plain-list" id="dob-pendencias">{checklist.map((i) => <div key={i.item_id} className="dob-row">{checkbox(i)}<p>{i.title}</p></div>)}
                   {checklist.length === 0 && <p className="text-sm text-muted-foreground">Sem pendências.</p>}</div></div>
-              {data.dependencies.length > 0 && <div className="dob-before-links">{data.dependencies.map((d) => { const DI = specIcon(d.other); return <Link key={d.dep_id} to={`${base}/especialidade/${d.other}${qs()}`} className="dob-link-chip" data-testid={`dob-link-${d.other}`}><DI size={16} /> Ligação a {d.other_label.toLowerCase()}</Link>; })}</div>}
+              {data.dependencies.length > 0 && <div className="dob-before-links">{data.dependencies.map((d) => { return <Link key={d.dep_id} to={`${base}/especialidade/${d.other}${qs()}`} className="dob-link-chip" data-testid={`dob-link-${d.other}`}><ModuleIcon k={d.other} area={d.other_area} size={12} tile={22} /> Ligação a {d.other_label.toLowerCase()}</Link>; })}</div>}
             </section>
           </>}
         </div>

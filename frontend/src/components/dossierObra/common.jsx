@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Building2, Cog, HardHat, CalendarRange, ShieldCheck, Layers, FileText, Search, ChevronDown, ChevronRight, Home, Menu } from "lucide-react";
 import { api } from "@/lib/api";
+import { ModuleIcon } from "./icons";
 
 export const AREA_ICONS = { arquitetura: Building2, engenharia: Cog, preparacao: HardHat, gestao: CalendarRange, entrega: ShieldCheck };
 
@@ -159,13 +160,12 @@ export function DossierTree({ overview, activeKey }) {
         <p className="dob-tree-title">Especialidades</p>
         <label className="dob-tree-search"><Search size={14} aria-hidden="true" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar (ex.: capoto, tomadas)" aria-label="Procurar especialidade" /></label>
         {overview.areas.map((a) => {
-          const Icon = AREA_ICONS[a.key] || Layers;
           const list = needle ? a.specialties.filter((s) => norm(`${s.label} ${s.terms || ""} ${s.description || ""}`).includes(norm(needle))) : a.specialties;
           const isOpen = needle ? list.length > 0 : (open[a.key] ?? (a.key === activeArea || (!activeKey && a.specialties.length > 0)));
           return (
             <div key={a.key} className="dob-tree-area">
               <button type="button" aria-expanded={isOpen} onClick={() => setOpen({ ...open, [a.key]: !isOpen })} data-testid={`dob-tree-area-${a.key}`}>
-                <Icon size={18} aria-hidden="true" /><span className="flex-1">{a.label.split(" e ")[0]}</span>
+                <ModuleIcon area={a.key} size={14} tile={26} /><span className="flex-1">{a.label.split(" e ")[0]}</span>
                 {isOpen ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
               </button>
               {isOpen && (
@@ -173,7 +173,7 @@ export function DossierTree({ overview, activeKey }) {
                   {list.length === 0 && <p className="dob-tree-empty">{needle ? "Sem resultados" : "Nenhuma ativa"}</p>}
                   {list.map((s) => (
                     <Link key={s.key} to={`${base}/especialidade/${s.key}${qs()}`} aria-current={s.key === activeKey ? "page" : undefined} data-testid={`dob-tree-${s.key}`}>
-                      <span className="truncate">{s.label}</span>
+                      <ModuleIcon k={s.key} area={s.area} size={12} tile={22} copper={s.key === activeKey} /><span className="truncate">{s.label}</span>
                       {s.counts?.pending > 0 && <span className="dob-tree-count" aria-label={`${s.counts.pending} pendentes`}>{s.counts.pending}</span>}
                     </Link>
                   ))}

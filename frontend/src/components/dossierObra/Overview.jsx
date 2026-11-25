@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { HardHat, FileText, Target, AlertTriangle, Inbox, Plus, Check, Link2, MapPin, Info, CalendarRange, ArrowRight, Layers } from "lucide-react";
 import { api } from "@/lib/api";
-import { AREA_ICONS, Pill, errMsg, useDossierContext } from "./common";
+import { Pill, errMsg, useDossierContext } from "./common";
+import { ModuleIcon } from "./icons";
 
 function Header({ ov, base, qs }) {
   const c = ov.chantier;
@@ -33,10 +34,9 @@ function GuidedStart({ ov, cat, onStart }) {
       </div>
       <div className="dob-area-grid">
         {cat.areas.map((a) => {
-          const Icon = AREA_ICONS[a.key] || Layers;
           return (
             <button key={a.key} type="button" className="dob-area-card" aria-pressed={area === a.key} onClick={() => setArea(a.key)} data-testid={`dob-start-area-${a.key}`}>
-              <span className="flex items-center gap-2 font-bold"><Icon size={20} aria-hidden="true" /> {a.label}</span>
+              <span className="flex items-center gap-3 font-bold"><ModuleIcon area={a.key} size={18} tile={36} /> {a.label}</span>
               <span className="text-sm text-muted-foreground">{a.description}</span>
             </button>
           );
@@ -48,7 +48,7 @@ function GuidedStart({ ov, cat, onStart }) {
           <div className="dob-area-grid">
             {areaObj.specialties.map((s) => (
               <button key={s.key} type="button" className="dob-area-card" onClick={() => onStart(s.key)} data-testid={`dob-start-${s.key}`}>
-                <span className="flex items-center justify-between gap-2 font-bold">{s.label}{enabled.has(s.key) && <Pill s="validado">Ativa</Pill>}</span>
+                <span className="flex items-center gap-3 font-bold"><ModuleIcon k={s.key} area={s.area} size={16} tile={32} /><span className="flex-1">{s.label}</span>{enabled.has(s.key) && <Pill s="validado">Ativa</Pill>}</span>
                 <span className="text-sm text-muted-foreground">{s.description}</span>
                 {s.examples?.length > 0 && <span className="text-xs text-muted-foreground">Exemplo: {s.examples.join(" · ")}</span>}
               </button>
@@ -253,7 +253,7 @@ export function Overview({ ov, cat, mode, reload }) {
               <div key={a.key} className="dob-area-card">
                 <p className="font-bold">{a.label}</p>
                 <ul className="grid gap-1">{a.specialties.map((s) => (
-                  <li key={s.key}><Link to={`${base}/especialidade/${s.key}${qs()}`} className="flex items-center gap-2 text-sm hover:underline">
+                  <li key={s.key}><Link to={`${base}/especialidade/${s.key}${qs()}`} className="flex items-center gap-2 text-sm hover:underline"><ModuleIcon k={s.key} area={s.area} size={11} tile={20} />
                     <span className="flex-1">{s.label}</span><Pill s={s.state?.status || "por_iniciar"} />{s.counts.pending > 0 && <Pill s="pendente">{s.counts.pending} pend.</Pill>}
                   </Link></li>))}</ul>
               </div>

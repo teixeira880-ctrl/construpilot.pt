@@ -1,6 +1,6 @@
 /* Navegação ConstruPilot — verde escuro (referência visual: ecrãs do Dossier de Obra).
    Carregado depois de workspace.css / workspace-design.css / workspace-ambient.css. Só estilos: nenhuma rota ou permissão muda. */
-:root { --cp-nav:#1f3a2a; --cp-nav-2:#183223; --cp-nav-active:#2d5a40; --cp-nav-text:#e9f0eb; --cp-nav-muted:#a3bcac; --cp-mint:#45d391; --cp-mint-ink:#0f2d1d; --cp-orange:#ef7d32; --cp-cream:#f7f1e8; }
+:root { --cp-copper:linear-gradient(135deg,#d99460 0%,#b06a3a 55%,#8f5131 100%); --cp-copper-solid:#a8623a; --cp-nav:#1f3a2a; --cp-nav-2:#183223; --cp-nav-active:#2d5a40; --cp-nav-text:#e9f0eb; --cp-nav-muted:#a3bcac; --cp-mint:#45d391; --cp-mint-ink:#0f2d1d; --cp-orange:#ef7d32; --cp-cream:#f7f1e8; }
 
 /* Cabeçalho */
 :root:root .workspace .workspace-header { background:#fbf8f3; border-bottom:1px solid #ece4d8; box-shadow:none; }
@@ -44,32 +44,49 @@
 :root:root .workspace .workspace-sidebar-account:hover { color:#fff; }
 :root:root .workspace .workspace-locked { opacity:.6; }
 
-/* ícones simples (contorno branco), como nos ecrãs de referência */
-:root:root .workspace .workspace-sidebar .workspace-nav-link > svg:first-child { padding:0; background:none !important; width:20px; height:20px; color:#cfe0d5; border-radius:0; }
-:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] > svg:first-child { color:#fff; }
-:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] { background:var(--cp-nav-active); box-shadow:none; }
+/* Logótipos coloridos dos módulos; o módulo selecionado fica a cobre */
+:root:root .workspace .workspace-sidebar .workspace-nav-link > svg:first-child { box-sizing:content-box; padding:5px; border-radius:8px; width:16px; height:16px; color:#fff; box-shadow:0 4px 10px -6px rgb(0 0 0 / .6); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link > svg:first-child { background:linear-gradient(135deg,#94a3b8,#475569); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="dashboard"] > svg:first-child { background:linear-gradient(135deg,#86efac,#1f7a4d); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="chantiers"] > svg:first-child { background:linear-gradient(135deg,#5eead4,#0f766e); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="estud"] > svg:first-child { background:linear-gradient(135deg,#7dd3fc,#0369a1); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="licenc"] > svg:first-child { background:linear-gradient(135deg,#d8b4fe,#7e22ce); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="plan"] > svg:first-child { background:linear-gradient(135deg,#bef264,#4d7c0f); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="agents"] > svg:first-child { background:linear-gradient(135deg,#a5b4fc,#4f46e5); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="devis"] > svg:first-child { background:linear-gradient(135deg,#fdba74,#c2410c); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="orcament"] > svg:first-child { background:linear-gradient(135deg,#fdba74,#c2410c); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="factur"] > svg:first-child { background:linear-gradient(135deg,#f9a8d4,#be185d); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="clients"] > svg:first-child { background:linear-gradient(135deg,#fcd34d,#b45309); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="assistant"] > svg:first-child { background:linear-gradient(135deg,#c4b5fd,#6d28d9); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="appro"] > svg:first-child { background:linear-gradient(135deg,#67e8f9,#0e7490); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[data-testid*="precos"] > svg:first-child { background:linear-gradient(135deg,#fcd34d,#b45309); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] { background:var(--cp-copper); color:#fff; font-weight:700; box-shadow:0 8px 18px -10px rgb(168 98 58 / .9), inset 0 1px 0 rgb(255 255 255 / .25); }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"]::after { background:#fff; opacity:.85; }
+:root:root .workspace .workspace-sidebar .workspace-nav-link[aria-current="page"] > svg:first-child { box-shadow:0 0 0 1.5px rgb(255 255 255 / .7); }
 :root:root .workspace .workspace-sidebar { background:linear-gradient(180deg,var(--cp-nav) 0%,var(--cp-nav-2) 100%); color:var(--cp-nav-text); }
 :root:root .workspace .workspace-sidebar .workspace-create { background:var(--cp-mint); }
+.cp-module-icon { display:inline-grid; place-items:center; flex-shrink:0; box-shadow:0 4px 10px -6px rgb(0 0 0 / .55), inset 0 1px 0 rgb(255 255 255 / .28); }
 
 /* Árvore de especialidades no menu lateral (dossier aberto) */
 .cp-spec-tree > p { display:flex; align-items:center; justify-content:space-between; }
-.cp-spec-area { display:flex; align-items:center; gap:10px; width:100%; padding:7px 12px; border-radius:10px; color:#fff; font-weight:650; font-size:14.5px; text-align:start; }
+.cp-spec-area { display:flex; align-items:center; gap:10px; width:100%; padding:6px 10px; border-radius:10px; color:#fff; font-weight:650; font-size:14.5px; text-align:start; }
 .cp-spec-area:hover { background:rgb(255 255 255 / .07); }
 .cp-spec-area svg { color:#cfe0d5; flex-shrink:0; }
 .cp-spec-area > span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .cp-spec-area .cp-chev { margin-inline-start:auto; color:var(--cp-nav-muted); }
 .cp-spec-list { margin:2px 0 6px 22px; padding-inline-start:10px; border-inline-start:1.5px dashed rgb(255 255 255 / .28); display:grid; gap:1px; }
-.cp-spec-link { display:flex; align-items:center; gap:9px; padding:5px 10px; border-radius:9px; color:#dbe7df; font-size:13.5px; min-width:0; }
+.cp-spec-link { display:flex; align-items:center; gap:9px; padding:4px 8px; border-radius:9px; color:#dbe7df; font-size:13.5px; min-width:0; }
 .cp-spec-link span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cp-spec-link svg { flex-shrink:0; color:#c3d6c9; }
 .cp-spec-link:hover { background:rgb(255 255 255 / .07); color:#fff; }
-.cp-spec-link[aria-current="page"] { background:#3a7a52; color:#fff; font-weight:650; }
+.cp-spec-link[aria-current="page"] { background:var(--cp-copper); color:#fff; font-weight:700; box-shadow:0 8px 18px -10px rgb(168 98 58 / .9); }
+.cp-spec-link[aria-current="page"] .cp-module-icon { box-shadow:0 0 0 1.5px rgb(255 255 255 / .75); }
 .cp-spec-link[aria-current="page"] svg { color:#fff; }
-.cp-spec-count { margin-inline-start:auto; font-size:10.5px; background:rgb(255 255 255 / .16); border-radius:999px; padding:0 7px; }
+.cp-spec-count { flex-shrink:0; margin-inline-start:auto; font-size:10.5px; background:rgb(255 255 255 / .16); border-radius:999px; padding:0 7px; }
 .cp-doc-final { display:flex; align-items:center; gap:12px; width:100%; margin-top:12px; border:1.5px solid rgb(255 255 255 / .75); border-radius:12px; padding:12px 16px; color:#fff; font-weight:650; font-size:15.5px; }
 .cp-doc-final:hover { background:rgb(255 255 255 / .07); }
-.cp-doc-final[aria-current="page"] { background:var(--cp-nav-active); border-color:var(--cp-mint); }
-.cp-doc-final[aria-current="page"]::after { content:""; width:4px; height:22px; border-radius:3px; background:var(--cp-orange); margin-inline-start:auto; }
+.cp-doc-final[aria-current="page"] { background:var(--cp-copper); border-color:transparent; }
+.cp-doc-final[aria-current="page"]::after { content:""; width:4px; height:22px; border-radius:3px; background:#fff; opacity:.85; margin-inline-start:auto; }
 
 /* Fundo do conteúdo: creme com tons quentes discretos */
 :root:root .workspace .workspace-content { background:radial-gradient(1200px 600px at 85% -10%, rgb(239 125 50 / .05), transparent 60%), var(--cp-cream); }
