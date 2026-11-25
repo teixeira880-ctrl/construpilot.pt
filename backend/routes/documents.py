@@ -823,6 +823,8 @@ async def create_document(body: DocIn, user=Depends(current_user)) -> dict:
     try:
         from routes.library import auto_save_from_lines
         await auto_save_from_lines(user["user_id"], doc.get("lines"))
+        from engines.usage_learning import record_document, schedule
+        schedule(record_document(user, dict(doc)))
     except Exception:
         pass
     return doc
@@ -1578,6 +1580,8 @@ async def document_from_text(body: FromTextIn, user=Depends(current_user)) -> di
     """Crée un devis à partir d'une description (texte relu/corrigé) + photos optionnelles."""
     imgs = [(i.split(",", 1)[-1] if i.startswith("data:") else i)
             for i in (body.images or []) if i][:6]
+    from engines.usage_learning import record_request
+    await record_request(user, body.text, source="quote_from_text")
     doc = await _quote_doc_from_text(user, body.text, body.client_id, source="video", images=imgs)
     doc["transcript"] = body.text.strip()
     return doc
@@ -1721,6 +1725,8 @@ async def update_document(doc_id: str, body: DocIn,
     try:
         from routes.library import auto_save_from_lines
         await auto_save_from_lines(user["user_id"], upd.get("lines"))
+        from engines.usage_learning import record_document_id, schedule
+        schedule(record_document_id(user, doc_id))
     except Exception:
         pass
     return await _get_owned(doc_id, user)
@@ -1769,6 +1775,9 @@ async def set_status(doc_id: str, body: StatusIn, user=Depends(current_user)) ->
                 await create_from_document(signed, user["user_id"])
         except Exception:  # noqa: BLE001 — l'apprentissage ne doit jamais bloquer la signature
             pass
+    # Aprendizagem automática : assinado / recusado / faturado → preços reais do cliente.
+    from engines.usage_learning import record_document_id, schedule
+    schedule(record_document_id(user, doc_id))
     return await _get_owned(doc_id, user)
 
 
@@ -1836,6 +1845,8 @@ async def issue_document(doc_id: str, user=Depends(current_user)) -> dict:
     from engines import activity
     await activity.log(user, "invoice.issue" if doc.get("doc_type") == "invoice" else "quote.update",
                        "document", number, {"doc_id": doc_id})
+    from engines.usage_learning import record_document_id, schedule
+    schedule(record_document_id(user, doc_id))
     return await _get_owned(doc_id, user)
 
 

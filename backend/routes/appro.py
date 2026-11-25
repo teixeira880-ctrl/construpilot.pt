@@ -194,6 +194,9 @@ async def email_order(order_id: str, body: EmailIn, user=Depends(current_user)) 
         {"order_id": order_id, "user_id": user["user_id"]},
         {"$set": {"status": "envoyé", "sent_to": to, "sent_at": _now(),
                   "items": order["items"]}})
+    # Aprendizagem automática : custo real de compra dos materiais encomendados.
+    from engines.usage_learning import record_purchase, schedule
+    schedule(record_purchase(user, dict(order)))
     return {"ok": True, "to": to, "cc": user.get("email") if body.cc_self else None}
 
 
