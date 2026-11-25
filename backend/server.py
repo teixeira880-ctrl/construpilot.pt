@@ -286,6 +286,8 @@ from routes import lsf as lsf_routes  # noqa: E402  — estrutura em aço leve (
 api_router.include_router(lsf_routes.router)
 from routes import clt as clt_routes  # noqa: E402  — estrutura em CLT: painéis com geometria real, prensa, ligações, dossier, 3D
 api_router.include_router(clt_routes.router)
+from routes import tradicional as trad_routes  # noqa: E402  — construção tradicional: betão armado + alvenarias, elemento a elemento
+api_router.include_router(trad_routes.router)
 from routes import bim as bim_routes  # noqa: E402  — modelo BIM IFC 4.3 a partir das plantas
 api_router.include_router(bim_routes.router)
 from routes import assistant_dossiers as assistant_dossiers_routes  # noqa: E402  — processos completos / ZIP no Assistente

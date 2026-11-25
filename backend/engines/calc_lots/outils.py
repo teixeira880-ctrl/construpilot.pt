@@ -489,8 +489,30 @@ CLT_TOOL = _tool(
      "so_clt": {"type": ["boolean", "null"], "description": "true = calcular só o CLT e as suas ligações (sem isolamento, membranas…); os vãos são sempre medidos"},
      "titulo": _NS(), "lingua": _enum(["pt", "fr", "en", "uk"], "língua do dossier (null = pt)"), "pais": _enum(["PT", "FR"])})
 
+# --------------------------------------------------------------------------------------------------------------------------------
+# Construção tradicional (betão armado + alvenarias) — engines/tradicional
+TRAD_TOOL = _tool(
+    "calcul_tradicional",
+    "Estudo completo de uma construção TRADICIONAL (estrutura porticada de betão armado + alvenarias de tijolo / bloco) a partir da planta: "
+    "sapatas, vigas de fundação, pilares, vigas, lajes e cobertura dimensionados elemento a elemento (NP EN 1992-1-1 / 1997-1) com as cargas "
+    "descidas piso a piso; betão, cofragem e aço pelos varões e malhas calculados; alvenarias contadas fiada a fiada parede a parede, vergas, "
+    "pavimento térreo, ETICS, rebocos, telhas; mapa de quantidades POR PISO das fundações à cobertura (primeiro as quantidades, preços só da "
+    "biblioteca da empresa); dossier PDF com plantas estruturais e alçado de cada parede numerados, Excel, visualizador 3D e render fotorrealista. "
+    "Use plan_id quando a planta já foi lida no ConstruPilot; senão modelo_json; senão a implantação.",
+    {"plan_id": _NS("planta já lida no ConstruPilot (plans_takeoff) — preferir sempre que exista"),
+     "modelo_json": _NS("projeto completo em JSON (formato engines.tradicional), se fornecido"),
+     "implantacao": _obj({"comprimento_m": {"type": "number"}, "largura_m": {"type": "number"}, "pisos": _n("número de pisos"),
+                          "pe_direito_m": {"type": ["array", "null"], "items": {"type": "number"}}}, "moradia retangular sem planta"),
+     "vaos": _arr(_VAO_LSF, desc="vãos por fachada (só com implantacao)"),
+     "inclinacao_graus": _n("cobertura de duas águas; null = 30"), "beiral_mm": _n("null = 500"),
+     "cobertura": _enum(["auto", "duas_aguas", "plana"]),
+     "q_adm_kpa": _n("tensão admissível do terreno do estudo geotécnico (kPa); null = 200 kPa assinalado como hipótese"),
+     "alvenaria_exterior": _enum(["T30x20x22", "T30x20x15", "B50x20x20", "B50x20x15"], "unidade das paredes exteriores; null = tijolo 30×20×22"),
+     "alvenaria_interior": _enum(["T30x20x11", "T30x20x15", "B50x20x15"], "unidade das paredes interiores; null = tijolo 30×20×11"),
+     "titulo": _NS(), "pais": _enum(["PT", "FR"])})
+
 CALC_TOOLS = [REH_TOOL, INSTALACOES_TOOL, AQUECIMENTO_TOOL, ISOLAMENTO_TOOL, PV_TOOL, REDES_TOOL, COUVERTURE_TOOL, PMR_TOOL, STRUCTURE_TOOL, LOTES_TOOL, PISO_TOOL, SOLAR_TOOL,
-              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, LSF_TOOL, CLT_TOOL]
+              PATIO_TOOL, GROS_OEUVRE_TOOL, UCRANIA_TOOL, LSF_TOOL, CLT_TOOL, TRAD_TOOL]
 CALC_TOOL_NAMES = {t["name"] for t in CALC_TOOLS}
 
 PROGRESS_LABELS = {
@@ -511,6 +533,7 @@ PROGRESS_LABELS = {
     "calcul_ucrania": "Розрахунок за нормами України (ДБН / ДСТУ)… / Calculating to Ukrainian norms…",
     "calcul_lsf": "A calcular a estrutura em aço leve (LSF) perfil a perfil, as placas e os parafusos…",
     "calcul_clt": "A calcular a estrutura em CLT painel a painel, o plano de prensa e as ligações…",
+    "calcul_tradicional": "A dimensionar a estrutura de betão armado elemento a elemento e a contar as alvenarias fiada a fiada…",
 }
 
 PROTOCOL_PT = (
@@ -530,6 +553,8 @@ PROTOCOL_PT = (
     "; construção em CLT / madeira lamelada-colada cruzada / X-LAM (painéis, m³ de CLT, plano de prensa, esquadros, hold-downs, parafusos, "
     "alçados de fabrico): calcul_clt, com plan_id se a planta já foi lida — para estudos de estrutura / térmica / orçamento completo de um "
     "edifício em madeira maciça continua o estudo BET "
+    "; construção tradicional (betão armado + alvenaria de tijolo / bloco: medições e mapa de quantidades por piso das fundações à cobertura, "
+    "betão, aço, cofragem, tijolos, sapatas, pilares, vigas, lajes): calcul_tradicional, com plan_id se a planta já foi lida "
     "(os motores calculam, tu restituis).")
 
 FIM = "Restitui apenas estes valores e hipóteses (não completes com materiais ou equipamentos não fornecidos)."
@@ -893,5 +918,12 @@ def run(name: str, args: dict) -> dict:
         out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"]}
         if o.get("files_extra"):
             out_["files_extra"] = o["files_extra"]
+        return out_
+    if name == "calcul_tradicional":
+        from engines.tradicional import note as trad_note
+        args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}
+        o = trad_note.note({**a, **args_priv})
+        out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"],
+                "files_extra": o["files_extra"]}
         return out_
     raise ValueError(f"ferramenta de cálculo desconhecida: {name}")

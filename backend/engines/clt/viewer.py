@@ -36,7 +36,7 @@ def html_viewer(res: dict, titulo: str | None = None, lang: str = "pt", accent: 
     page = TEMPLATE.read_text(encoding="utf-8")
     rep = {"__LANG__": lang, "__TITLE__": html.escape(tit), "__SUB__": html.escape(sub), "__KPI__": html.escape(kpi),
            "__T_CAMADAS__": t("camadas", lang), "__T_ESTRUTURA__": t("estrutura", lang), "__T_PISO__": t("piso", lang), "__T_COB__": t("cob", lang),
-           "__T_CORTE__": t("corte", lang), "__T_FRENTE__": t("frente", lang), "__T_LADO__": t("lado", lang), "__T_TOPO__": t("topo", lang)}
+           "__T_CORTE__": t("corte", lang), "__T_VIGAS__": "GL", "__T_FRENTE__": t("frente", lang), "__T_LADO__": t("lado", lang), "__T_TOPO__": t("topo", lang)}
     for k, v in rep.items():
         page = page.replace(k, v)
     js = json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")

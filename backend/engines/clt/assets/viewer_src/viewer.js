@@ -51,12 +51,12 @@ for (const p of D.paineis) {
     sh.holes.push(h);
   }
   const g = new THREE.ExtrudeGeometry(sh, { depth: p.esp, bevelEnabled: false });
-  const mesh = new THREE.Mesh(g, mat(COR[p.tipo] || 0xc99a5b));
+  const mesh = new THREE.Mesh(g, mat(p.cor ?? COR[p.tipo] ?? 0xc99a5b));
   place(mesh, p.u, p.v, p.w, p.o);
   mesh.userData = { p, mat: mesh.material };
   const ln = new THREE.LineSegments(new THREE.EdgesGeometry(g, 20), edge);
   place(ln, p.u, p.v, p.w, p.o);
-  const grp = p.tipo === 'parede' ? L.paredes : p.tipo === 'laje' ? L.lajes : L.cobertura;
+  const grp = p.tipo === 'parede' ? L.paredes : p.tipo === 'laje' ? L.lajes : p.tipo === 'vigas' ? L.vigas : L.cobertura;
   grp.add(mesh); grp.add(ln);
   mesh.updateMatrixWorld(true);
   g.computeBoundingBox();

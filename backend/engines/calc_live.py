@@ -40,6 +40,7 @@ MOTORES = {
     "calcul_lsf": "Motor LSF — estrutura em aço leve perfil a perfil",
     "calcul_clt": "Motor CLT — painéis, plano de prensa e ligações",
     "calcul_gros_oeuvre": "Motor de estrutura e gros-œuvre (betão armado, alvenaria)",
+    "calcul_tradicional": "Motor de construção tradicional — betão armado e alvenarias elemento a elemento",
 }
 
 

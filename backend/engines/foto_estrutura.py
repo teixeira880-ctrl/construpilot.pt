@@ -42,6 +42,11 @@ def _render_base(sistema: str, args: dict) -> list:
         from engines.clt.engine import calcular
         from engines.clt.render import render
         return render(calcular(N.projeto(args)), largura=1600, altura=900, spp=64, vistas=[("estrutura", (-0.62, -0.78), 0.55)], orcamento_s=180)
+    if sistema == "tradicional":
+        from engines.tradicional import note as N
+        from engines.tradicional.engine import calcular
+        from engines.tradicional.render import render
+        return render(calcular(N.projeto(args)), largura=1600, altura=900, spp=64, vistas=[("estrutura", (-0.62, -0.78), 0.55)], orcamento_s=180)
     from engines.lsf import note as N
     from engines.lsf.engine import calcular
     from engines.lsf.render import render

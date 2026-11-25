@@ -78,11 +78,11 @@ async def execute_calc_tool(name: str, args: dict, user: dict, conv: dict, db) -
         if name == "calcul_ucrania":                        # Ucrânia: marca da conta que pede o estudo (logótipo, cor)
             args = await _lsf_contexto({k: v for k, v in dict(args or {}).items() if k != "plan_id"}, uid, db)
             args.pop("_biblioteca", None)
-        if name in ("calcul_lsf", "calcul_clt"):            # LSF / CLT: planta lida, marca e biblioteca de preços da empresa
+        if name in ("calcul_lsf", "calcul_clt", "calcul_tradicional"):   # planta lida, marca e biblioteca de preços da empresa
             args = await _lsf_contexto(dict(args or {}), uid, db)
             if (args or {}).get("render", True) is not False:   # render calculado + foto fotorrealista (todas as contas)
                 from engines.foto_estrutura import renders_assistente
-                args["_renders"] = await renders_assistente("clt" if name == "calcul_clt" else "lsf", args)
+                args["_renders"] = await renders_assistente({"calcul_clt": "clt", "calcul_lsf": "lsf"}.get(name, "tradicional"), args)
         out = await asyncio.to_thread(run, name, args)
     except (ValueError, KeyError, TypeError) as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}

@@ -85,6 +85,9 @@ def _o(name, *keys, **over):
 
 
 CASOS = {
+    "calcul_tradicional": lambda: _fill("calcul_tradicional", titulo="Moradia tradicional 9 × 7 m",
+                                        implantacao=_o("calcul_tradicional", "implantacao", comprimento_m=9, largura_m=7, pisos=2),
+                                        vaos=[_o("calcul_tradicional", "vaos", piso=0, fachada="frente", tipo="porta", x_m=4, largura_m=1)]),
     "calcul_clt": lambda: _fill("calcul_clt", titulo="Moradia CLT 9 × 7 m",
                                 implantacao=_o("calcul_clt", "implantacao", comprimento_m=9, largura_m=7, pisos=2),
                                 vaos=[_o("calcul_clt", "vaos", piso=0, fachada="frente", tipo="porta", x_m=4, largura_m=1),

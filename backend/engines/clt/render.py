@@ -75,11 +75,12 @@ def _materiais():
     }
 
 
-def render(res: dict, vistas=None, largura: int = 1600, altura: int = 900, spp: int = 96, orcamento_s: float | None = 240) -> list[tuple[str, bytes]]:
-    """→ [(nome, PNG)] — estrutura CLT montada (sem acabamentos)."""
+def render(res: dict, vistas=None, largura: int = 1600, altura: int = 900, spp: int = 96, orcamento_s: float | None = 240,
+           gm: dict | None = None, materiais: dict | None = None) -> list[tuple[str, bytes]]:
+    """→ [(nome, PNG)] — estrutura CLT montada (sem acabamentos). `gm` / `materiais`: outras estruturas (construção tradicional)."""
     from engines.calc_lots.render3d import _mi, _png, _ply, _tonemap
     mi = _mi()
-    gm = malhas(res)
+    gm = gm or malhas(res)
     allV = np.vstack([v for v, _ in gm.values()])
     (x0, y0, z0), (x1, y1, z1) = allV.min(0), allV.max(0)
     z0 = max(z0, -0.5)
@@ -96,7 +97,7 @@ def render(res: dict, vistas=None, largura: int = 1600, altura: int = 900, spp: 
             fn = os.path.join(tmp, f"{nm}.ply")
             _ply(fn, V, F)
             files[nm] = fn
-        mats = _materiais()
+        mats = {**_materiais(), **(materiais or {})}
         for nome, (dx, dy), elev in vistas:
             if out and orcamento_s and (time.time() - t0) * (len(out) + 1) / len(out) > orcamento_s:
                 break
