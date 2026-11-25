@@ -53,10 +53,6 @@ class TakeoffCorrectionIn(BaseModel):
     corrections: list[dict]
 
 
-class LearningSettingsIn(BaseModel):
-    share_anonymous_prices: bool
-
-
 @router.post("/feedback")
 async def feedback(body: FeedbackIn, user=Depends(current_user)) -> dict:
     if is_demo_user(user):
@@ -117,38 +113,6 @@ async def takeoff_correction(body: TakeoffCorrectionIn, user=Depends(current_use
     }
     await db.ai_feedback.insert_one(dict(doc))
     return {"ok": True}
-
-
-# ---------------------------------------------------------------- definições do cliente
-
-@router.get("/settings")
-async def get_learning_settings(user=Depends(current_user)) -> dict:
-    u = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "share_anonymous_prices": 1}) or {}
-    return {"share_anonymous_prices": u.get("share_anonymous_prices", True) is not False,
-            "k_anon": ul.K_ANON}
-
-
-@router.put("/settings")
-async def put_learning_settings(body: LearningSettingsIn, user=Depends(current_user)) -> dict:
-    await db.users.update_one({"user_id": user["user_id"]},
-                              {"$set": {"share_anonymous_prices": bool(body.share_anonymous_prices)}})
-    return await get_learning_settings(user)
-
-
-@router.get("/my-memory")
-async def my_memory(user=Depends(current_user)) -> dict:
-    """O que a ConstruPilot aprendeu com ESTE cliente (transparência)."""
-    org = ul.org_of(user)
-    items = await db.library_items.find(
-        {"user_id": user["user_id"], "price_stats.n": {"$gt": 0}},
-        {"_id": 0, "item_id": 1, "designation": 1, "unit": 1, "type": 1, "unit_price_ht": 1, "price_stats": 1}
-    ).sort([("price_stats.n_real", -1), ("price_stats.n", -1)]).to_list(200)
-    return {
-        "items": items,
-        "observations": await db[ul.OBS].count_documents({"org_id": org, "weight": {"$gt": 0}}),
-        "purchases": await db[ul.OBS].count_documents({"org_id": org, "source": "purchase", "weight": {"$gt": 0}}),
-        "requests": await db[ul.REQ].count_documents({"org_id": org}),
-    }
 
 
 # ---------------------------------------------------------------- admin
