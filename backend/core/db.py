@@ -7,3 +7,7 @@ load_dotenv(Path(__file__).parent.parent / '.env')
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
 db = client[os.environ['DB_NAME']]
+
+# Anexos e ficheiros gerados : leitura transparente dos bytes guardados no Tigris (core/armazem.py). Sem TIGRIS_* nada muda.
+from core.armazem import BaseDados as _BaseDados  # noqa: E402
+db = _BaseDados(db)

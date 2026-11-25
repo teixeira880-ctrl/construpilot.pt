@@ -17,7 +17,7 @@ PURGE_COLLECTIONS = [
     "evolution_runs", "evolution_compares", "pro_documents_files",
     "marketplace_pros", "chantiers", "chantier_messages", "chantier_issues",
     "chantier_participants", "chantier_milestones", "assistant_convs",
-    "assistant_msgs", "assistant_docs", "assistant_doc_chunks", "assistant_prefs",
+    "assistant_msgs", "assistant_docs", "assistant_doc_chunks", "assistant_artifacts", "assistant_prefs",
     "support_tickets", "journey_events",
 ]
 
@@ -28,6 +28,13 @@ OWNER_KEYS = ("user_id", "owner_user_id", "created_by", "pro_user_id",
 async def purge_user_data(user_id: str) -> dict[str, int]:
     """Supprime tous les documents appartenant à l'utilisateur. Ne touche pas `users`."""
     purged: dict[str, int] = {}
+    try:                                   # ficheiros do utilizador no Tigris (anexos e ficheiros gerados)
+        from core.armazem_offload import apagar_utilizador
+        n = await apagar_utilizador(user_id)
+        if n:
+            purged["tigris_objects"] = n
+    except Exception:  # noqa: BLE001 — a purga da base continua
+        pass
     owner_filter = {"$or": [{k: user_id} for k in OWNER_KEYS]}
     for coll in dict.fromkeys(PURGE_COLLECTIONS):
         try:

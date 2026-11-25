@@ -1595,9 +1595,16 @@ async def list_docs(user=Depends(current_user)) -> list:
 
 @router.delete("/documents/{doc_id}")
 async def delete_doc(doc_id: str, user=Depends(current_user)) -> dict:
+    d = await db.assistant_docs.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0, "tigris_key": 1})
     r = await db.assistant_docs.delete_one({"doc_id": doc_id, "user_id": user["user_id"]})
     if not r.deleted_count:
         raise HTTPException(404, "Documento não encontrado")
+    if d and d.get("tigris_key"):
+        try:
+            from core import armazem
+            await asyncio.to_thread(armazem.apagar, d["tigris_key"])
+        except Exception:  # noqa: BLE001
+            logger.warning("tigris: ficheiro não apagado", exc_info=True)
     await db.assistant_doc_chunks.delete_many({"doc_id": doc_id, "user_id": user['user_id']})
     return {"deleted": 1}
 

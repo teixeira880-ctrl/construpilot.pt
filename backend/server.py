@@ -475,6 +475,12 @@ async def seed():
     ultrapassar o prazo do rollout e o deploy era rejeitado (a versão anterior ficava em produção)."""
     import asyncio as _asyncio
 
+    try:                                   # ficheiros pesados → Tigris (de hora a hora, só com TIGRIS_* configurado)
+        from core.armazem_offload import ciclo as _armazem_ciclo
+        _asyncio.get_event_loop().create_task(_armazem_ciclo())
+    except Exception:  # noqa: BLE001
+        pass
+
     async def _run():
         from engines.assistant_jobs import STARTUP
         try:
