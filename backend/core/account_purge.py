@@ -19,6 +19,7 @@ PURGE_COLLECTIONS = [
     "chantier_participants", "chantier_milestones", "assistant_convs",
     "assistant_msgs", "assistant_docs", "assistant_doc_chunks", "assistant_prefs",
     "support_tickets", "journey_events",
+    "price_observations", "client_requests", "ai_feedback", "ai_reference_cases",
 ]
 
 OWNER_KEYS = ("user_id", "owner_user_id", "created_by", "pro_user_id",

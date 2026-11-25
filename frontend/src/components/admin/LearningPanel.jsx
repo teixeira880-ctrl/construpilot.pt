@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import AutoLearningPanel from "@/components/admin/AutoLearningPanel";
 
 const SCOPE_LABELS = {
   global: "Todos os módulos (global)",
@@ -162,6 +163,7 @@ export default function LearningPanel() {
 
   return (
     <div className="space-y-5" data-testid="admin-learning-panel">
+      <AutoLearningPanel />
       <div className="flex items-start gap-3">
         <GraduationCap className="h-6 w-6 text-primary mt-0.5" />
         <div className="flex-1">

@@ -39,7 +39,7 @@ export const ConversationJobs = ({ conversation, onCorrect, onCancel, onResume }
     const pending = job && (job.status !== "completed" || !completed.has(job.request_id));
     const live = pending && !completed.has(job.request_id) && job.live && ["running", "completed", "interrupted", "failed", "cancelled"].includes(job.status);
     return <Fragment key={message.message_id || index}>
-      <MessageBubble m={message} testId={`assistant-msg-${message.role}-${index}`} onCorrect={onCorrect} />
+      <MessageBubble m={message} testId={`assistant-msg-${message.role}-${index}`} onCorrect={onCorrect} question={message.role === "assistant" ? (messages.slice(0, index).reverse().find((x) => x.role === "user")?.content || null) : null} />
       {live && <MessageBubble m={job.live} live={job.status === "running"} testId={`assistant-job-reply-${job.job_id}`} />}
       {pending && job.status !== "completed" && <div className="border-l-2 border-primary/40 ps-3 py-2 space-y-2 text-xs" data-testid={`assistant-job-${job.job_id}`} data-job-status={job.status}>
         <p role={job.status === "failed" ? "alert" : "status"} className="flex gap-2 items-center" data-testid={`assistant-job-status-${job.job_id}`}>

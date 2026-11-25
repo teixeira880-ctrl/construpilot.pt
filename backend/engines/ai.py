@@ -365,9 +365,18 @@ async def _learning_suffix(feature: str) -> str:
     """Bloc d'exemples de référence validés (few-shot admin) à ajouter au system prompt."""
     try:
         from engines import learning
-        return await learning.learning_block(feature)
+        block = await learning.learning_block(feature)
     except Exception:  # noqa: BLE001
-        return ""
+        block = ""
+    # Memória privada do cliente que fez o pedido (obras, preços reais, pedidos habituais).
+    try:
+        if learning._group_for(feature) in ("devis", "analyse"):
+            from engines.expenses.context import actor
+            from engines.usage_learning import client_memory_block
+            block += await client_memory_block(actor().get("user_id"))
+    except Exception:  # noqa: BLE001
+        pass
+    return block
 
 
 async def _complete(system: str, text: str, images: list[str] | None = None,

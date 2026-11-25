@@ -35,6 +35,16 @@ async def price_sources(user):
         sources.append((f"shared_library_{level}", shared))
     if mode == "shared_first":
         sources.reverse()
+    if mode != "company_only":
+        # Último recurso : preços gerais aprendidos anonimamente (≥ K empresas, k-anonimato).
+        try:
+            from engines.usage_learning import global_published
+            learned = [{"item_id": "global:" + r["gkey"], "designation": r["designation"], "unit": r.get("unit") or "u",
+                        "unit_price_ht": r["unit_price_ht"]} for r in await global_published() if r.get("designation")]
+            if learned:
+                sources.append(("construpilot_learned", learned))
+        except Exception:  # noqa: BLE001
+            pass
     result = [(name, _build_index(rows)) for name, rows in sources if rows]
     # A private quotation is not consent to share its text/prices with other accounts.
     # Only the owner's catalogue and the explicitly entitled shared catalogue are used.

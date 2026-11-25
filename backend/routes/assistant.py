@@ -1461,6 +1461,10 @@ async def _prepare(body: MsgIn, user: dict, turn_seq=None) -> tuple[dict, list, 
         instructions += await learning.learning_block("assistant")
     except Exception:
         pass
+    # Aprendizagem automática : pedido memorizado + memória privada deste cliente nos prompts.
+    from engines import usage_learning
+    await usage_learning.record_request(user, body.text, source="assistant", dedupe_id=conv["_quote_request_id"])
+    instructions += await usage_learning.client_memory_block(user["user_id"])
     return conv, plans, instructions + ("\n[[lang=pt]]" if lang == "pt" else ""), inputs
 
 
