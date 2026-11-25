@@ -704,7 +704,12 @@ async def analyze_site_plan(images: list[str]) -> dict:
         '  "accesses": [ { "point": [x,y], "label": string } ] (acessos de veículos a partir da via),\n'
         '  "obstacles": [ { "type": "ligne_electrique"|"arbre"|"batiment_existant"|"voisin"|"autre",\n'
         '                   "label": string, "bbox": [x1,y1,x2,y2] } ],\n'
+        '  "levels_below": integer|null (pisos enterrados / caves), "ground_floor_z": number|null (cota da soleira do R/C),\n'
+        '  "spot_heights": [ { "point": [x,y], "z": number } ] (cotas altimétricas do terreno lidas na planta),\n'
         '  "streets": [string], "notes": string }\n'
+        "«spot_heights»: todas as cotas altimétricas legíveis do terreno natural ou da via (ex. 178.50), na "
+        "posição do respetivo ponto; nunca curvas de nível estimadas nem valores inventados; [] se nenhuma "
+        "for legível. «ground_floor_z» só se a cota da soleira estiver escrita. "
         "Tipos de obstáculo: ligne_electrique = linha elétrica aérea, arbre = árvore, batiment_existant = "
         "edifício existente, voisin = construção vizinha, autre = outro. «reference» = uma cota legível "
         "na planta (comprimento escrito entre dois pontos), a mais longa possível; null se nenhuma cota "

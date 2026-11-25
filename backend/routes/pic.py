@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from core.security import current_user
-from engines import ai, pic, pic_pdf, pic_sheet, pic_vector
+from engines import ai, pic, pic_pdf, pic_relief, pic_sheet, pic_vector
 
 router = APIRouter(prefix="/pro/pic", tags=["pic"])
 
@@ -23,7 +23,7 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-LIGHT = {"_id": 0, "aerial.image_png_b64": 0, "snapshot_3d": 0, "render_ia": 0}
+LIGHT = {"_id": 0, "aerial.image_png_b64": 0, "snapshot_3d": 0, "snapshot_aerial": 0, "render_ia": 0}
 
 
 async def _doc(plan_id, uid, light=True):
@@ -144,6 +144,15 @@ async def aerial(body: AerialIn, user=Depends(current_user)) -> dict:
         plan_id = body.plan_id
     plan_id = plan_id or f"aerial-{uuid.uuid4().hex[:12]}"
     site = pic.aerial_site(frame, geometry)
+    # relevo: grelha 7 × 7 de altitudes oficiais/satélite sobre o enquadramento (nada é inventado:
+    # sem resposta, o terreno fica plano e assinalado como hipótese)
+    try:
+        el = await geo.elevacoes(pic_relief.grid_points(frame, 7))
+    except Exception:  # noqa: BLE001
+        el = {"ok": False}
+    if el.get("ok"):
+        site["spot_heights"] = pic_relief.grid_spots((el.get("data") or {}).get("z") or [], 7)
+        site["spot_source"] = pic_relief.T["alt_note"].format(src=el.get("fonte") or "altimetria")
     notes = ("Limite do estaleiro = prédio cadastral. " if site["parcel"]
              else "Sem cadastro geométrico neste local: trace o limite do estaleiro. ") \
         + "Trace o edifício a construir e coloque o acesso."
@@ -154,7 +163,7 @@ async def aerial(body: AerialIn, user=Depends(current_user)) -> dict:
            "answers": {}, "result": None, "updated_at": _now()}
     await db.pic_plans.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"$set": {**doc, "aerial": {**frame, "image_png_b64": base64.b64encode(raw).decode()}, "snapshot_3d": None,
+        {"$set": {**doc, "aerial": {**frame, "image_png_b64": base64.b64encode(raw).decode()}, "snapshot_3d": None, "snapshot_aerial": None,
                   "render_ia": None},
          "$setOnInsert": {"created_at": _now()}}, upsert=True)
     return doc
@@ -176,6 +185,7 @@ async def base_image(plan_id: str, user=Depends(current_user)) -> dict:
 
 class SnapshotIn(BaseModel):
     image_b64: str = Field(min_length=100, max_length=6_000_000)
+    kind: str = Field(default="3d", pattern="^(3d|aerial)$")
 
 
 @router.post("/{plan_id}/snapshot")
@@ -183,7 +193,7 @@ async def snapshot(plan_id: str, body: SnapshotIn, user=Depends(current_user)) -
     """Capture de la vue 3D (prise dans le navigateur) pour la page 3D du PDF."""
     raw = base64.b64encode(_image_bytes(body.image_b64)).decode()
     r = await db.pic_plans.update_one({"plan_id": plan_id, "user_id": user["user_id"]},
-                                      {"$set": {"snapshot_3d": raw}})
+                                      {"$set": {"snapshot_3d" if body.kind == "3d" else "snapshot_aerial": raw}})
     if not getattr(r, "matched_count", 1):
         raise HTTPException(404, "Plano de estaleiro não encontrado")
     return {"ok": True}
@@ -244,6 +254,8 @@ class SiteIn(BaseModel):
     parcel: list[list[float]] = Field(default_factory=list)
     buildings: list[list[list[float]]] = Field(default_factory=list)
     accesses: list[list[float]] = Field(default_factory=list)
+    spot_heights: list[list[float]] = Field(default_factory=list)
+    spot_source: str | None = Field(default=None, max_length=200)
 
 
 class PlacedIn(BaseModel):
@@ -269,20 +281,29 @@ async def compute(plan_id: str, body: ComputeIn, user=Depends(current_user)) -> 
         raise HTTPException(404, "Faça primeiro a análise da planta de implantação ou a vista aérea")
     site = {**d["site"], "m_per_px": body.site.m_per_px, "parcel": pic.norm_points(body.site.parcel),
             "buildings": [pts for pts in (pic.norm_points(b) for b in body.site.buildings) if len(pts) >= 3],
-            "accesses": pic.norm_points(body.site.accesses)}
+            "accesses": pic.norm_points(body.site.accesses),
+            "spot_heights": pic_relief.norm_spots(body.site.spot_heights),
+            "spot_source": body.site.spot_source if body.site.spot_source is not None else d["site"].get("spot_source", "")}
     placed = [{k: v for k, v in e.model_dump().items() if v is not None} for e in body.placed]
     result = pic.compute(site, body.answers, placed or None)
     await db.pic_plans.update_one(
         {"plan_id": plan_id, "user_id": user["user_id"]},
-        {"$set": {"site": site, "answers": body.answers, "result": result, "snapshot_3d": None, "render_ia": None,
+        {"$set": {"site": site, "answers": body.answers, "result": result, "snapshot_3d": None, "snapshot_aerial": None, "render_ia": None,
                   "updated_at": _now()}})
     return {"site": site, "result": result}
+
+
+def _snap(d: dict, key: str) -> bytes | None:
+    try:
+        return base64.b64decode(d[key]) if d.get(key) else None
+    except (binascii.Error, ValueError):
+        return None
 
 
 @router.get("/{plan_id}/sheet")
 async def sheet(plan_id: str, user=Depends(current_user)):
     """Folha técnica: o plano de estaleiro desenhado sobre o PDF original, à escala da folha."""
-    d = await _doc(plan_id, user["user_id"])
+    d = await _doc(plan_id, user["user_id"], light=False)
     if not d or not (d.get("result") or {}).get("elements"):
         raise HTTPException(404, "Calcule primeiro o plano de estaleiro")
     if (d.get("site") or {}).get("base") != "plan":
@@ -295,7 +316,8 @@ async def sheet(plan_id: str, user=Depends(current_user)):
         branding = await get_branding(user)
     except Exception:  # noqa: BLE001
         branding = {}
-    data = pic_sheet.build(pdf_src, d, branding)
+    data = pic_sheet.build(pdf_src, d, branding, snapshot=_snap(d, "snapshot_3d"),
+                           snapshot_aerial=_snap(d, "snapshot_aerial"))
     raw = unicodedata.normalize("NFKD", (d.get("filename") or plan_id).rsplit(".", 1)[0])
     stem = re.sub(r"[^A-Za-z0-9_-]+", "-", raw.encode("ascii", "ignore").decode()).strip("-")
     return Response(data, media_type="application/pdf",
@@ -325,7 +347,8 @@ async def pdf(plan_id: str, user=Depends(current_user)):
             ia = base64.b64decode(d["render_ia"]["image_b64"])
         except (binascii.Error, ValueError):
             ia = None
-    data = pic_pdf.build(d, image, branding, snapshot=snap, render_ia=ia)
+    data = pic_pdf.build(d, image, branding, snapshot=snap, render_ia=ia,
+                         snapshot_aerial=_snap(d, "snapshot_aerial"))
     raw = unicodedata.normalize("NFKD", (d.get("filename") or plan_id).rsplit(".", 1)[0])
     stem = re.sub(r"[^A-Za-z0-9_-]+", "-", raw.encode("ascii", "ignore").decode()).strip("-")
     name = f"Plano-de-estaleiro-{stem or plan_id}.pdf"

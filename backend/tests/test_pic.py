@@ -167,7 +167,7 @@ def test_site_from_ai_reading_uses_the_written_dimension_only():
     assert s["m_per_px"] == pytest.approx(30 / 300)          # 0,5 × 600 px = 300 px pour 30 m
     assert s["parcel"] == [[0, 0], [1, 0], [1, 1.0]]         # point invalide écarté, borné à 0–1
     assert len(s["buildings"]) == 1 and s["accesses"] == [[0, .5]]
-    assert pic.hints(d) == {"levels": 3, "building_height_m": 9.5}
+    assert {k: v for k, v in pic.hints(d).items() if v is not None} == {"levels": 3, "building_height_m": 9.5}
     # pas de cote lisible → pas d'échelle inventée
     assert pic.site_from_analysis({"scale_detected": "1/200"}, 600, 400)["m_per_px"] is None
 
@@ -486,9 +486,148 @@ def test_folha_tecnica_mantem_formato_e_desenho_original():
     out = pic_sheet.build(data, {"site": site, "result": res, "filename": "folha"}, {"company_name": "Empresa Teste"})
     doc = pymupdf.open(stream=out, filetype="pdf")
     page = doc[0]
-    assert len(doc) == 1 and (round(page.rect.width), round(page.rect.height)) == (2384, 1684)   # A1, sem redução
+    assert len(doc) == 2 and (round(page.rect.width), round(page.rect.height)) == (2384, 1684)   # A1, sem redução
+    p2 = doc[1]                                                  # folha 2: corte A–A′ no mesmo formato
+    assert (round(p2.rect.width), round(p2.rect.height)) == (2384, 1684)
+    assert "Corte vertical" in p2.get_text() and "CORTE E VISTAS" in p2.get_text()
+    assert "A'" in page.get_text()                                # traço do corte na folha 1
     texto = page.get_text()
     assert "PLANO DE ESTALEIRO" in texto and "Escala 1:100" in texto and "Empresa Teste" in texto
     assert res["crane"]["label"] in texto and "R = " in texto
     tracos = sum(len(g["items"]) for g in page.get_drawings() if g.get("fill") == (1.0, 0.0, 0.0))
     assert tracos > 400                                          # o traçado vetorial original continua lá
+
+
+# ---------------------------------------------------------------------------
+# Relevo, edifício por pisos, altura real das gruas, corte vertical
+# ---------------------------------------------------------------------------
+from engines import pic_relief as relief  # noqa: E402
+
+
+def _plano_inclinado(z0=100.0, pct=10.0, n=6):
+    """Pontos cotados de um terreno com inclinação constante segundo x (SITE: 60 × 40 m)."""
+    return [[i / (n - 1), j / (n - 1), z0 + pct / 100 * 60 * i / (n - 1)] for i in range(n) for j in range(n)]
+
+
+def test_terreno_interpolado_passa_nos_pontos_cotados():
+    t = relief.Terrain([(0, 0, 100), (10, 0, 110), (0, 10, 100), (10, 10, 110)])
+    assert t.z(0, 0) == 100 and t.z(10, 10) == 110
+    assert 100 < t.z(5, 5) < 110 and t.z(5, 5) == pytest.approx(105, abs=0.01)
+    assert relief.terrain_from_site({**SITE, "spot_heights": [[0, 0, 1], [1, 1, 2]]}) is None   # < 3 pontos
+    site = {**SITE, "spot_heights": [[0.5, 0.5, 50], [2, 0, 1], [0, 0, "x"], [0.1, 0.1, 60], [0.9, 0.9, 70]]}
+    assert len(relief.terrain_from_site(site).pts) == 3                                      # pontos inválidos fora
+
+
+def test_modelo_do_edificio_por_pisos():
+    bm = relief.building_model({"levels_above": 4, "levels_below": 1, "floor_h_m": 3.0}, [], None)
+    assert (bm["height"], bm["z_top"], bm["z_bottom"]) == (12.0, 12.0, -3.0)
+    bm = relief.building_model({"hauteur_batiment_m": 9}, [], None)
+    assert bm["levels_above"] == 3 and bm["height"] == 9
+    bm = relief.building_model({"hauteur_batiment_m": 9, "ground_floor_z": 181.5}, [], None)
+    assert (bm["z_soleira"], bm["z_top"], bm["absolute"]) == (181.5, 190.5, True)
+
+
+def test_plano_nao_muda_a_altura_sob_o_gancho():
+    base = {**BASE, "charge_max_t": 2.0}
+    plano = pic.compute(SITE, base)
+    assert plano["crane"]["hsc_required_m"] == 15.0 and plano["crane"]["z_base_rel"] == 0
+    assert plano["terrain"] is None and any("plano" in h or "plat" in h for h in plano["hypotheses"])
+
+
+def test_desnivel_entre_base_da_grua_e_edificio_entra_na_altura_sob_o_gancho():
+    site = {**SITE, "spot_heights": _plano_inclinado()}            # sobe 6 m de oeste para leste
+    placed = [{"id": "grue", "x": 10, "y": 20}]
+    r = pic.compute(site, {**BASE, "charge_max_t": 1.0, "grue_modele": "potain_mdt_178"}, placed=placed)
+    c, bm = r["crane"], r["building_model"]
+    t = relief.terrain_from_site(site)
+    assert c["z_base"] == pytest.approx(t.z(10, 20), abs=0.01)
+    assert bm["z_soleira"] > c["z_base"] + 2                         # edifício mais alto do que a base da grua
+    # altura sob o gancho = topo do edifício + folga + carga − cota da base da grua
+    assert c["hsc_required_m"] == pytest.approx(bm["z_soleira"] + 9 + 2 + 4 - c["z_base"], abs=0.02)
+    assert c["hsc_required_m"] > 15.0 + 2
+    assert c["hook_z"] == pytest.approx(bm["z_top"] + 6, abs=0.01)
+    assert r["relief"]["dz"] == pytest.approx(6.0, abs=0.2)
+    assert r["terrain"]["n"] == 48 and len(r["terrain"]["z"]) == 48 * 48
+    assert r["terrain"]["z"][0] == pytest.approx(t.z(0, 0) - bm["z_soleira"], abs=0.01)
+
+
+def test_zonas_de_estaleiro_evitam_a_encosta():
+    # metade oeste plana, metade leste com 20 % de inclinação
+    spots = [[i / 10, j / 4, 100 + (max(0, i / 10 - 0.5) * 60 * 0.20)] for i in range(11) for j in range(5)]
+    site = {**SITE, "spot_heights": spots, "accesses": [[1.0, 0.5]]}    # acesso a leste, na encosta
+    r = pic.compute(site, {"grue": False, "aire_livraison": True, "stockage": True, "stockage_m2": 30})
+    liv = next(e for e in r["elements"] if e["type"] == "livraison")
+    assert liv["slope_pct"] <= relief.SLOPE_MAX_PCT + 0.5            # foi para a zona plana
+    r2 = pic.compute({**site, "parcel": [[0.55, 0], [1, 0], [1, 1], [0.55, 1]],
+                      "buildings": [[[0.7, 0.4], [0.8, 0.4], [0.8, 0.6], [0.7, 0.6]]]},
+                     {"grue": False, "aire_livraison": True})
+    assert any(("inclinação" in w or "pente" in w) for w in r2["warnings"])   # sem zona plana: é assinalado
+
+
+def test_obstaculo_vizinho_alto_e_altura_desconhecida():
+    site = {**SITE, "obstacles": [{"type": "voisin", "label": "Prédio vizinho", "bbox": [0.05, 0.1, 0.2, 0.3]}]}
+    placed = [{"id": "grue", "x": 20, "y": 20}]
+    sem = pic.compute(site, {**BASE, "charge_max_t": 1.0}, placed=placed)
+    assert any("Prédio vizinho" in w and ("altura" in w or "hauteur" in w) for w in sem["warnings"])
+    com = pic.compute(site, {**BASE, "charge_max_t": 1.0, "obstacle_h_m": 20}, placed=placed)
+    assert com["crane"]["hsc_required_m"] == pytest.approx(20 + 2 + 4, abs=0.01)   # o vizinho manda (20 m > 9 m)
+    assert sem["crane"]["hsc_required_m"] == 15.0
+
+
+def test_corte_vertical_dados_e_desenho():
+    import pymupdf
+    site = {**SITE, "spot_heights": _plano_inclinado()}
+    placed = [{"id": "grue", "x": 10, "y": 20}]
+    r = pic.compute(site, {**BASE, "charge_max_t": 1.0, "levels_above": 3, "levels_below": 1}, placed=placed)
+    sec = r["section"]
+    assert sec["cranes"][0]["s"] == pytest.approx(0, abs=0.01) and sec["cranes"][0]["off"] < 0.01
+    assert len(sec["limits"]) >= 1 and sec["buildings"] and sec["s0"] < 0 < sec["s1"]
+    zs = [z for _, z in sec["profile"]]
+    assert zs == sorted(zs) or zs == sorted(zs, reverse=True)          # terreno inclinado ao longo do corte
+    assert sec["bm"]["levels_below"] == 1 and sec["bm"]["z_bottom"] == pytest.approx(sec["bm"]["z_soleira"] - 3)
+    svg = sec["svg"]
+    assert svg.startswith("<svg") and ("Corte vertical" in svg or "Coupe verticale" in svg)
+    pdf = pymupdf.open("pdf", pymupdf.open(stream=svg.encode(), filetype="svg").convert_to_pdf())
+    texto = pdf[0].get_text()
+    assert "A′" in texto and r["crane"]["label"] in texto
+    assert len(pdf[0].get_drawings()) > 50                            # desenho vetorial
+    # sem grua: corte pelo eixo maior do edifício
+    r0 = pic.compute(SITE, {"grue": False, "hauteur_batiment_m": 6})
+    assert r0["section"]["cranes"] == [] and r0["section"]["buildings"]
+
+
+def test_duas_gruas_no_mesmo_corte():
+    r = pic.compute(BIG, {**BASE, "charge_max_t": 2.0, "nb_grues": "2"})
+    sec = r["section"]
+    assert len(sec["cranes"]) == 2 and {c["side"] for c in sec["cranes"]} == {1, -1}
+    d = math.hypot(r["cranes"][0]["x"] - r["cranes"][1]["x"], r["cranes"][0]["y"] - r["cranes"][1]["y"])
+    assert sec["cranes"][1]["s"] - sec["cranes"][0]["s"] == pytest.approx(d, abs=0.05)
+
+
+def test_grelha_de_altitudes_da_vista_aerea():
+    f = pic.aerial_frame(41.2, -8.5, 140, 1280)
+    pts = relief.grid_points(f, 7)
+    assert len(pts) == 49 and pts[0][0] > pts[-1][0] and pts[0][1] < pts[-1][1]   # de noroeste para sudeste
+    spots = relief.grid_spots([100 + k for k in range(49)], 7)
+    assert spots[0] == [round(0.5 / 7, 5), round(0.5 / 7, 5), 100] and spots[-1][2] == 148
+    assert len(relief.grid_spots([None, 1, 2], 7)) == 2
+
+
+def test_memoria_com_corte_vetorial_e_vista_aerea():
+    from engines import pic_pdf
+    import io
+    import pymupdf
+    from PIL import Image
+    site = {**SITE, "spot_heights": _plano_inclinado()}
+    r = pic.compute(site, {**BASE, "charge_max_t": 1.0, "levels_above": 3}, placed=[{"id": "grue", "x": 10, "y": 20}])
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 600), "white").save(buf, "PNG")
+    png = buf.getvalue()
+    sem = pymupdf.open(stream=pic_pdf.build({"site": site, "answers": {}, "result": r}, png, {}))
+    com = pymupdf.open(stream=pic_pdf.build({"site": site, "answers": {}, "result": r}, png, {},
+                                            snapshot=png, snapshot_aerial=png))
+    corte = [p for p in sem if "Corte vertical" in p.get_text() or "Coupe verticale" in p.get_text()]
+    assert len(corte) == 1 and len(corte[0].get_drawings()) > 50      # corte colado em vetorial
+    assert len(com) == len(sem) + 2                                    # + vista 3D + vista aérea
+    assert any(relief.T["pdf_aerial"] in p.get_text() for p in com)
+    assert "A'" in sem[0].get_text()                                   # traço do corte na planta

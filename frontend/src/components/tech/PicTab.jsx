@@ -16,6 +16,7 @@ const MODES = [
   ["parcel", "Traçar o limite do estaleiro"],
   ["building", "Traçar o edifício"],
   ["access", "Colocar o acesso"],
+  ["spot", "Cotas do terreno"],
 ];
 
 const rectPoints = (cx, cy, w, h, rot) => {
@@ -71,6 +72,7 @@ export default function PicTab({ plans }) {
   const [mode, setMode] = useState("move");
   const [draft, setDraft] = useState([]);
   const [calibLen, setCalibLen] = useState("");
+  const [spotZ, setSpotZ] = useState("");
   const [selected, setSelected] = useState(null);
   const [address, setAddress] = useState("");
   const [span, setSpan] = useState("");
@@ -146,7 +148,8 @@ export default function PicTab({ plans }) {
     setCalcBusy(true);
     try {
       const { data } = await api.post(`/pro/pic/${planId}/compute`, {
-        site: { m_per_px: nextSite.m_per_px, parcel: nextSite.parcel, buildings: nextSite.buildings, accesses: nextSite.accesses },
+        site: { m_per_px: nextSite.m_per_px, parcel: nextSite.parcel, buildings: nextSite.buildings, accesses: nextSite.accesses,
+          spot_heights: nextSite.spot_heights || [], spot_source: nextSite.spot_source ?? null },
         answers: nextAnswers, placed: placed || [],
       });
       setSite(data.site); setResult(data.result); setStale(false); setPhoto(null);
@@ -174,11 +177,20 @@ export default function PicTab({ plans }) {
   const placedOf = (els) => els.filter((e) => e.type !== "acces")
     .map((e) => ({ id: e.id, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot }));
 
+  // a vista 3D apresentada e a vista aérea são juntas ao PDF e à folha técnica
+  const sendSnapshots = async () => {
+    const a = api3d.current;
+    if (!a) return;
+    const shot = a.capture?.();
+    if (shot) await api.post(`/pro/pic/${planId}/snapshot`, { image_b64: shot, kind: "3d" }).catch(() => {});
+    const top = a.captureAerial?.();
+    if (top) await api.post(`/pro/pic/${planId}/snapshot`, { image_b64: top, kind: "aerial" }).catch(() => {});
+  };
+
   const downloadPdf = async () => {
     try {
       // la vue 3D affichée est jointe au PDF
-      const shot = api3d.current?.capture?.();
-      if (shot) await api.post(`/pro/pic/${planId}/snapshot`, { image_b64: shot }).catch(() => {});
+      await sendSnapshots();
       const res = await api.get(`/pro/pic/${planId}/pdf`, { responseType: "blob" });
       saveBlob(res.data, filenameFromResponse(res, "Plano-de-estaleiro.pdf"));
     } catch { toast.error("Não foi possível exportar o PDF — gere primeiro o plano"); }
@@ -186,6 +198,7 @@ export default function PicTab({ plans }) {
 
   const downloadSheet = async () => {
     try {
+      await sendSnapshots();
       const res = await api.get(`/pro/pic/${planId}/sheet`, { responseType: "blob" });
       saveBlob(res.data, filenameFromResponse(res, "Plano-de-estaleiro-folha.pdf"));
     } catch { toast.error("Folha técnica indisponível — é precisa uma planta importada em PDF"); }
@@ -201,6 +214,11 @@ export default function PicTab({ plans }) {
   };
   const norm = ([x, y]) => [x / W, y / H];
 
+  const removeSpot = (i) => {
+    setSite({ ...site, spot_heights: (site.spot_heights || []).filter((_, k) => k !== i), spot_source: "introduzidos pelo utilizador" });
+    setStale(true);
+  };
+
   const onClickPlan = (ev) => {
     if (mode === "move") { if (!ev.target.closest?.("[data-el]")) setSelected(null); return; }
     const p = pos(ev);
@@ -208,6 +226,13 @@ export default function PicTab({ plans }) {
       const s = { ...site, accesses: [norm(p)] };
       setSite(s); setMode("move");
       if (result) compute(placedOf(result.elements), s); else setStale(true);
+      return;
+    }
+    if (mode === "spot") {
+      const z = parseFloat(String(spotZ).replace(",", "."));
+      if (!Number.isFinite(z)) { toast.error("Introduza primeiro a cota (m) e clique no ponto da planta"); return; }
+      setSite({ ...site, spot_heights: [...(site.spot_heights || []), [...norm(p), z]], spot_source: "introduzidos pelo utilizador" });
+      setStale(true);
       return;
     }
     if (mode === "calib" && draft.length >= 2) { setDraft([p]); return; }
@@ -390,6 +415,15 @@ export default function PicTab({ plans }) {
                 {(mode === "parcel" || mode === "building") && (
                   <Button size="sm" onClick={finishDraft} className="h-7 rounded-sm gap-1" data-testid="pic-draft-finish"><Check className="h-3 w-3" />Concluir ({draft.length} pts)</Button>
                 )}
+                {mode === "spot" && (
+                  <span className="flex flex-wrap items-center gap-1">
+                    <Input value={spotZ} onChange={(e) => setSpotZ(e.target.value)} placeholder="cota (m)" className="h-7 w-28 text-xs" data-testid="pic-spot-z" />
+                    <span className="text-[11px] text-muted-foreground">{"{n} cotas".replace("{n}", (site.spot_heights || []).length)} · Clique para colocar · clique numa cota para a apagar</span>
+                    {(site.spot_heights || []).length > 0 && (
+                      <Button size="sm" variant="outline" onClick={() => { setSite({ ...site, spot_heights: [], spot_source: "" }); setStale(true); }} className="h-7 rounded-sm gap-1" data-testid="pic-spot-clear"><Trash2 className="h-3 w-3" />Apagar as cotas</Button>
+                    )}
+                  </span>
+                )}
                 {mode === "calib" && (
                   <span className="flex items-center gap-1">
                     <Input value={calibLen} onChange={(e) => setCalibLen(e.target.value)} placeholder="distância real (m)" className="h-7 w-36 text-xs" data-testid="pic-calib-len" />
@@ -446,6 +480,24 @@ export default function PicTab({ plans }) {
                   <circle key={`b${bi}-${i}`} cx={p[0] * W} cy={p[1] * H} r={u * 0.6} fill="#fff" stroke="#0A0D14" strokeWidth={u * 0.2}
                     onPointerDown={(ev) => startDrag(ev, { kind: "vertex", target: "building", b: bi, i })} style={{ cursor: "move" }} />
                 )))}
+                {result?.section?.axis_n?.length === 2 && !stale && (() => {
+                  const [[ax, ay], [bx, by]] = result.section.axis_n.map(([x, y]) => [x * W, y * H]);
+                  return (
+                    <g pointerEvents="none" data-testid="pic-section-axis">
+                      <line x1={ax} y1={ay} x2={bx} y2={by} stroke="#fff" strokeWidth={u * 0.6} />
+                      <line x1={ax} y1={ay} x2={bx} y2={by} stroke="#0F5257" strokeWidth={u * 0.35} strokeDasharray={`${u * 2} ${u * 0.6} ${u * 0.5} ${u * 0.6}`} />
+                      {[[ax, ay, "A"], [bx, by, "A′"]].map(([x, y, l]) => (
+                        <text key={l} x={x} y={y} dx={u * 0.8} dy={-u * 0.6} fontSize={u * 2} fontWeight="800" fill="#0F5257" stroke="#fff" strokeWidth={u * 0.3} paintOrder="stroke">{l}</text>
+                      ))}
+                    </g>
+                  );
+                })()}
+                {mode === "spot" && (site.spot_heights || []).map(([x, y, z], i) => (
+                  <g key={`z${i}`} data-el="1" onClick={(ev) => { ev.stopPropagation(); removeSpot(i); }} style={{ cursor: "pointer" }} data-testid={`pic-spot-${i}`}>
+                    <path d={`M${x * W - u * 0.6},${y * H} h${u * 1.2} M${x * W},${y * H - u * 0.6} v${u * 1.2}`} stroke="#6D4C41" strokeWidth={u * 0.25} />
+                    <text x={x * W + u * 0.5} y={y * H - u * 0.4} fontSize={u * 1.1} fontWeight="700" fill="#6D4C41" stroke="#fff" strokeWidth={u * 0.25} paintOrder="stroke">{fr(z, 2)}</text>
+                  </g>
+                ))}
                 {draft.length > 0 && <polyline points={draft.map((p) => p.join(",")).join(" ")} fill="none" stroke="#2563EB" strokeWidth={u * 0.3} />}
                 {draft.map((p, i) => <circle key={`d${i}`} cx={p[0]} cy={p[1]} r={u * 0.6} fill="#2563EB" />)}
               </svg>
@@ -476,6 +528,18 @@ export default function PicTab({ plans }) {
                     <figcaption className="text-[11px] text-muted-foreground mt-1">Imagem de ambiente gerada por IA a partir da vista 3D — não contratual: só a planta e a memória fazem fé.</figcaption>
                   </figure>
                 )}
+              </div>
+            )}
+
+            {result?.section?.svg && k && !stale && (
+              <div className="surface p-3" data-testid="pic-section">
+                <h3 className="font-bold text-sm flex items-center gap-2 mb-2"><Ruler className="h-4 w-4 text-primary" />Corte vertical A–A′ — gruas e diferenças de altura</h3>
+                <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(result.section.svg)}`} alt="Corte vertical A–A′ do estaleiro" className="w-full rounded-sm border border-border bg-white" />
+                <p className="text-[11px] text-muted-foreground mt-1" data-testid="pic-relief">
+                  {result.relief
+                    ? "Relevo: cotas {a} a {b} m — desnível {d} m ({n} pontos; {s}).".replace("{a}", fr(result.relief.z_min)).replace("{b}", fr(result.relief.z_max)).replace("{d}", fr(result.relief.dz)).replace("{n}", result.relief.points).replace("{s}", result.relief.source || "—")
+                    : "Terreno plano (sem cotas): introduza as cotas da planta em «Cotas do terreno» para ter o relevo."}
+                </p>
               </div>
             )}
 

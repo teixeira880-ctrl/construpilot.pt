@@ -20,6 +20,8 @@ from shapely.geometry import Point, Polygon, box
 from shapely.affinity import rotate as _rotate
 from shapely.ops import unary_union
 
+from engines import pic_relief as relief
+
 # ---------------------------------------------------------------------------
 # Catalogue de grues (données constructeur publiées)
 #   cmax_t     : charge maximale (t)
@@ -143,9 +145,19 @@ def questions(analysis: dict | None = None) -> list[dict]:
     models = [{"value": "auto", "label": "Escolha automática (a grua mais pequena que serve)"}]
     models += [{"value": k, "label": _fr_txt(f"{c['label']} — {c['cmax_t']:g} t / {c['jib_max_m']:g} m")}
                for k, c in CRANES.items()]
+    building_qs = [
+        {"key": "levels_above", "label": relief.T["q_up"], "type": "number", "proposed": levels,
+         "group": relief.T["g_building"]},
+        {"key": "levels_below", "label": relief.T["q_down"], "type": "number",
+         "proposed": a.get("levels_below") if a.get("levels_below") is not None else 0, "group": relief.T["g_building"]},
+        {"key": "floor_h_m", "label": relief.T["q_fh"], "type": "number", "proposed": 3.0, "group": relief.T["g_building"]},
+        {"key": "ground_floor_z", "label": relief.T["q_z0"], "type": "number", "proposed": a.get("ground_floor_z"),
+         "group": relief.T["g_building"]},
+        {"key": "obstacle_h_m", "label": relief.T["q_oh"], "type": "number", "group": relief.T["g_building"]},
+    ]
     models.append({"value": "autre", "label": "Outro modelo (dados da ficha da empresa de aluguer)"})
     g = {"key": "grue", "is": True}
-    return [
+    return building_qs + [
         {"key": "grue", "label": "O estaleiro tem grua-torre?", "type": "bool",
          "proposed": grue, "group": "Elevação"},
         {"key": "grue_modele", "label": "Modelo de grua", "type": "select", "options": models,
@@ -176,8 +188,8 @@ def questions(analysis: dict | None = None) -> list[dict]:
          "group": "Elevação", "if": g},
         {"key": "accessoires_kg", "label": "Lingas / balancim / acessórios (kg)",
          "type": "number", "proposed": 0, "group": "Elevação", "if": g},
-        {"key": "hauteur_batiment_m", "label": "Altura do edifício a sobrevoar (m)",
-         "type": "number", "proposed": height, "group": "Elevação", "if": g},
+        {"key": "hauteur_batiment_m", "label": relief.T["q_height"],
+         "type": "number", "proposed": height, "group": relief.T["g_building"]},
         {"key": "hauteur_charge_m", "label": "Altura da carga + lingagem sob o gancho (m)",
          "type": "number", "group": "Elevação", "if": g},
         {"key": "aire_livraison", "label": "É necessária uma zona de cargas e descargas?", "type": "bool",
@@ -552,7 +564,9 @@ def site_from_analysis(d: dict, img_w: int, img_h: int) -> dict:
             kind = o.get("type") if o.get("type") in OBSTACLES else "autre"
             obstacles.append({"type": kind, "label": str(o.get("label") or OBSTACLES[kind])[:60],
                               "bbox": [min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1])]})
+    spots = relief.spots_from_analysis(d)
     return {
+        "spot_heights": spots, "spot_source": relief.T["src_plan"] if spots else "",
         "obstacles": obstacles,
         "img_w": img_w, "img_h": img_h, "m_per_px": m_per_px, "reference": ref,
         "parcel": norm_points(d.get("parcel")),
@@ -571,7 +585,9 @@ def hints(d: dict) -> dict:
             levels = max(levels or 0, int(b["levels"]))
         if isinstance(b.get("height_m"), (int, float)):
             height = max(height or 0, float(b["height_m"]))
-    return {"levels": levels, "building_height_m": height}
+    below = d.get("levels_below") if isinstance(d.get("levels_below"), (int, float)) else None
+    z0 = d.get("ground_floor_z") if isinstance(d.get("ground_floor_z"), (int, float)) else None
+    return {"levels": levels, "building_height_m": height, "levels_below": below, "ground_floor_z": z0}
 
 
 # ---------------------------------------------------------------------------
@@ -727,6 +743,14 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
     if not buildings:
         return _empty("Contorno do edifício a construir")
     b_union = unary_union(buildings)
+    terrain = relief.terrain_from_site(site)
+    bm = relief.building_model(a, buildings, terrain)
+    hypotheses += bm["notes"]
+    if terrain is not None:
+        hypotheses.append(relief.T["hyp_terrain"].format(n=len(terrain.pts), src=terrain.source or relief.T["src_plan"]))
+        hypotheses.append(relief.T["hyp_slope"].format(p=f"{relief.SLOPE_MAX_PCT:g}"))
+    else:
+        hypotheses.append(relief.T["hyp_flat"])
     if not parcel.buffer(0.5).contains(b_union):
         warnings.append("O edifício ultrapassa o limite do estaleiro: verifique os contornos.")
 
@@ -801,6 +825,11 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                             "público com licença de ocupação da via pública.")
 
     # --- Éléments au sol ----------------------------------------------------
+    def slope_pen(r):
+        if terrain is None:
+            return 0.0
+        return max(0.0, relief.slope_pct(terrain, r)[0] - relief.SLOPE_MAX_PCT) * 3.0
+
     def add(kind, label, w, h, target, ident=None, **extra):
         ident = ident or kind
         if ident in fixed:
@@ -819,7 +848,7 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
             taken.append(r)
             elements.append(e)
             return e
-        best = _place(free, taken, w, h, target, angles, step)
+        best = _place(free, taken, w, h, target, angles, step, prefer=slope_pen)
         if best is None:
             warnings.append(f"Espaço insuficiente para «{label}» ({w:g} × {h:g} m): posicione "
                             "à mão ou fora do estaleiro (licença de ocupação da via pública).")
@@ -879,6 +908,14 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
         hypotheses.append("Quadro elétrico e ponto de água colocados junto ao acesso: ajuste aos "
                           "ramais reais (entidades gestoras).")
 
+    if terrain is not None:
+        for e in elements:
+            if e["type"] in ("acces", "grue", "branchement"):
+                continue
+            pct, dz = relief.slope_pct(terrain, _rect(e["x"], e["y"], e["w"], e["h"], e["rot"]))
+            e["slope_pct"] = round(pct, 1)
+            if pct > relief.SLOPE_MAX_PCT:
+                warnings.append(relief.T["slope"].format(label=e["label"], p=f"{pct:.0f}", dz=f"{dz:.1f}"))
     served = [(e["label"], _rect(e["x"], e["y"], e["w"], e["h"], e["rot"])) for e in elements
               if e["type"] in ("livraison", "stockage")]
     # 2e passe : les grues sont repositionnées pour desservir aussi livraison et stockage
@@ -893,7 +930,7 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
     if crane_pos:
         load = design_load(a)
         missing += load["missing"]
-        hb, hc, garde = _num(a["hauteur_batiment_m"]), _num(a["hauteur_charge_m"]), _num(a["garde_m"]) or 0.0
+        hb, hc, garde = bm["height"], _num(a["hauteur_charge_m"]), _num(a["garde_m"]) or 0.0
         hsc_req = None
         if hb is not None and hc is not None:
             hsc_req = round(hb + garde + hc, 2)
@@ -921,6 +958,17 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
             groups[i]["all"] = max(groups[i]["all"], _far_reach(crane_pos[i], [r]))
             groups[i]["labels"].append(label)
 
+        def _hsc(xy, radius):
+            """(altura sob o gancho necessária, cota do gancho, obstáculos de altura desconhecida)."""
+            if hsc_req is None:
+                return None, None, []
+            zt, unk = relief.top_to_clear(xy, radius, bm, buildings, obstacles, a, terrain)
+            if zt is None:
+                zt = bm["z_top"]
+            hook = zt + garde + hc
+            zb = terrain.z(*xy) if terrain is not None else bm["z_soleira"]
+            return round(hook - zb, 2), round(hook, 2), unk
+
         first_model = str(a["grue_modele"] or "auto")
         objs = []
         for i, xy in enumerate(crane_pos):
@@ -932,7 +980,9 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                 asked = _num(a["fleche2_m"])
                 if str(a["grue2_modele"]) != "identique":
                     model = str(a["grue2_modele"])
-            ranking = select_crane(reach, load["t"], hsc_req)
+            zb_i = round(terrain.z(*xy), 2) if terrain is not None else bm["z_soleira"]
+            hsc_i, hook_i, unk_i = _hsc(xy, reach)
+            ranking = select_crane(reach, load["t"], hsc_i)
             crane, key = None, None
             if model == "autre":
                 crane = _custom_crane(a)
@@ -953,7 +1003,8 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
             res = {"id": ident, "num": i + 1, "x": round(xy[0], 2), "y": round(xy[1], 2),
                    "n": to_norm(site, *xy), "reach_building_m": round(reach_bat, 2),
                    "reach_required_m": round(reach, 2), "covered": g["labels"], "load": load,
-                   "hsc_required_m": hsc_req, "ok": False, "checks": [],
+                   "hsc_required_m": hsc_i, "ok": False, "checks": [],
+                   "z_base": zb_i, "z_base_rel": round(zb_i - bm["z_soleira"], 2), "hook_z": hook_i,
                    "alternatives": [{k: r.get(k) for k in ("key", "label", "jib_m", "capacity_t", "ok", "reasons")}
                                     for r in ranking]}
             if not crane:
@@ -963,6 +1014,14 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                 continue
             jmax = float(crane["jib_max_m"])
             jib = asked or jib_for(crane, reach) or jmax
+            hsc_i, hook_i, unk_i = _hsc(xy, jib)        # verificação final com o raio real da lança
+            res.update({"hsc_required_m": hsc_i, "hook_z": hook_i})
+            for lab in unk_i:
+                warnings.append(relief.T["obst_unknown"].format(i=i + 1, label=lab))
+            if hsc_i is not None and terrain is not None and abs(bm["z_soleira"] - zb_i) >= 0.5:
+                hypotheses.append(relief.T["crane_base"].format(
+                    i=i + 1, zb=f"{zb_i:.2f}", z0=f"{bm['z_soleira']:.2f}", dz=f"{bm['z_soleira'] - zb_i:.2f}",
+                    h=f"{hsc_i:g}"))
             tip = capacity_at(crane, jib, jib)
             cap = capacity_at(crane, jib, min(reach, jib))
             checks = [{"label": "Lança disponível neste modelo", "ok": jib <= jmax + 1e-6,
@@ -980,15 +1039,15 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                                "ok": tip["t"] + 1e-9 >= load["t"], "info": True,
                                "detail": f"{tip['t']:g} t na ponta da lança ({jib:g} m) — carga a elevar "
                                          f"{load['t']:g} t ({tip['method']})"})
-            if hsc_req is not None:
+            if hsc_i is not None:
                 if crane.get("hsc_m") is not None:
                     checks.append({"label": "Altura sob o gancho (grua autoestável)",
-                                   "ok": crane["hsc_m"] + 1e-9 >= hsc_req,
-                                   "detail": f"{crane['hsc_m']:g} m publicados — {hsc_req:g} m necessários "
+                                   "ok": crane["hsc_m"] + 1e-9 >= hsc_i,
+                                   "detail": f"{crane['hsc_m']:g} m publicados — {hsc_i:g} m necessários "
                                              "(acima disso: mais torre / ancoragens a estudar com a empresa de aluguer)"})
                 else:
                     warnings.append(f"Grua {i + 1}: altura sob o gancho não publicada no catálogo — "
-                                    f"verifique {hsc_req:g} m na ficha da empresa de aluguer.")
+                                    f"verifique {hsc_i:g} m na ficha da empresa de aluguer.")
             if not crane.get("jibs") and model != "autre":
                 hypotheses.append(f"Grua {i + 1}: comprimentos de lança intermédios não publicados no "
                                   "catálogo — confirme o comprimento adotado com a empresa de aluguer.")
@@ -1136,6 +1195,18 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                   "Licença municipal de ocupação da via pública para qualquer ocupação, contentor ou descarga "
                   "no domínio público."]
 
+    sec = relief.section(site, parcel, buildings, bm, terrain, cranes, obstacles, a)
+    if sec:
+        sec["svg"] = relief.section_svg(sec)
+    relief_info = None
+    if terrain is not None:
+        zs = [terrain.z(x, y) for x, y in list(parcel.exterior.coords)[:-1]] + [terrain.z(b_union.centroid.x,
+                                                                                          b_union.centroid.y)]
+        zs += [p[2] for p in terrain.pts if parcel.buffer(1).contains(Point(p[0], p[1]))]
+        relief_info = {"z_min": round(min(zs), 2), "z_max": round(max(zs), 2), "dz": round(max(zs) - min(zs), 2),
+                       "points": len(terrain.pts), "source": terrain.source}
+        hypotheses.append(relief.T["relief"].format(d=f"{relief_info['dz']:.2f}", a=f"{relief_info['z_min']:.2f}",
+                                                    b=f"{relief_info['z_max']:.2f}"))
     warnings, missing, hypotheses = _fr_list(warnings), _fr_list(missing), _fr_list(hypotheses)
     for e in elements:
         e["label"] = _fr_txt(e["label"])
@@ -1165,6 +1236,8 @@ def compute(site: dict, answers: dict | None = None, placed: list | None = None,
                  "height_m": round(float(site["img_h"]) * float(site["m_per_px"]), 2)},
         "crane": cranes[0] if cranes else None, "cranes": cranes, "interference": interference,
         "coverage": coverage, "loads": loads_out,
+        "section": sec, "terrain": relief.terrain_grid(site, terrain, bm["z_soleira"]), "relief": relief_info,
+        "building_model": {k: v for k, v in bm.items() if k != "notes"},
         "elements": elements, "base_vie": base_vie, "materiel": materiel,
         "obstacles": [{k: o[k] for k in ("type", "label", "x", "y", "w", "h")} for o in obstacles],
         "cloture_ml": perim if a["cloture"] else None,

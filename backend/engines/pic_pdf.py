@@ -14,6 +14,7 @@ from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, KeepTogether,
                                 Table, TableStyle)
 
 from engines import pic
+from engines import pic_relief as relief
 
 GREEN = colors.HexColor("#0F5257")
 COPPER = colors.HexColor("#E07A5F")
@@ -286,6 +287,25 @@ def _draw_plan(c, d, image_bytes, x0, y0, bw, bh):
         c.drawCentredString(px, py - 1 * mm, str(n))
         dims = f" ({_fr(e['w'])} × {_fr(e['h'])} m)" if e["w"] and e["h"] else ""
         legend.append((str(n), e["label"] + dims, col))
+    sec = res.get("section")
+    if sec and sec.get("axis"):            # traço do corte A–A′
+        (ax, ay), (bx, by) = sec["axis"]
+        c.saveState()
+        c.setStrokeColor(colors.HexColor("#0F5257"))
+        c.setLineWidth(1.8)
+        c.setDash([14, 4, 3, 4], 0)
+        c.line(*P(ax, ay), *P(bx, by))
+        c.setDash()
+        c.setFillColor(colors.HexColor("#0F5257"))
+        c.setFont("Helvetica-Bold", 12)
+        (pax, pay), (pbx, pby) = P(ax, ay), P(bx, by)
+        ln = max(((pbx - pax) ** 2 + (pby - pay) ** 2) ** 0.5, 1e-6)
+        ux, uy = (pbx - pax) / ln, (pby - pay) / ln
+        ins = min(7 * mm, ln / 4)                 # marcas ligeiramente para dentro: nunca cortadas pelo quadro
+        for (px, py), lab in (((pax + ux * ins, pay + uy * ins), "A"), ((pbx - ux * ins, pby - uy * ins), "A'")):
+            c.circle(px, py, 2.2 * mm, stroke=0, fill=1)
+            c.drawString(px - uy * 5 * mm + 1 * mm, py + ux * 5 * mm - 1.5 * mm, lab)
+        c.restoreState()
     c.restoreState()
     c.setStrokeColor(LIGHT)
     c.rect(ox, oy, dw, dh, stroke=1, fill=0)
@@ -424,8 +444,36 @@ class Snapshot(Flowable):
         c.drawImage(self.img, (self.width - iw * k) / 2, bh - ih * k, width=iw * k, height=ih * k)
 
 
+class SectionSlot(Flowable):
+    """Lugar reservado ao corte vertical: o SVG vetorial é colocado aqui depois da paginação."""
+
+    def __init__(self, width, height, slots: list):
+        super().__init__()
+        self.width, self.height, self.slots = width, height, slots
+
+    def wrap(self, *_):
+        return self.width, self.height
+
+    def draw(self):
+        x, y = self.canv.absolutePosition(0, 0)
+        self.slots.append((self.canv.getPageNumber(), x, y, self.width, self.height))
+
+
+def _place_svg(pdf_bytes: bytes, svg: str, slots: list) -> bytes:
+    import pymupdf
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    src = pymupdf.open("pdf", pymupdf.open(stream=svg.encode("utf-8"), filetype="svg").convert_to_pdf())
+    for page_no, x, y, w, h in slots:
+        page = doc[page_no - 1]
+        ph = page.rect.height
+        page.show_pdf_page(pymupdf.Rect(x, ph - y - h, x + w, ph - y), src, 0, keep_proportion=True)
+    out = doc.tobytes(garbage=3, deflate=True)
+    doc.close()
+    return out
+
+
 def build(d: dict, image_bytes: bytes, branding: dict | None = None, snapshot: bytes | None = None,
-          render_ia: bytes | None = None) -> bytes:
+          render_ia: bytes | None = None, snapshot_aerial: bytes | None = None) -> bytes:
     res = d["result"]
     logo = _logo(branding)
     sub = (f"{d.get('filename') or ''} — estaleiro {_fr(res['site']['parcel_m2'], 0)} m², edifício "
@@ -445,8 +493,13 @@ def build(d: dict, image_bytes: bytes, branding: dict | None = None, snapshot: b
                                 Frame(M + COLW + GAP, BOTTOM, COLW, fh, **pad)], onPage=on_page),
     ])
     story = [PlanPage(d, image_bytes, W - 2 * M, fh - 1)]
+    slots: list = []
+    sec = (d.get("result") or {}).get("section")
+    if sec and sec.get("svg"):
+        story += [PageBreak(), SectionSlot(W - 2 * M, fh - 1, slots)]
     for data, title, note in (
             (snapshot, "Vista 3D do estaleiro", "Volumes à escala da planta; alturas das instalações indicativas."),
+            (snapshot_aerial, relief.T["pdf_aerial"], relief.T["pdf_aerial_note"]),
             (render_ia, "Imagem de ambiente fotorrealista",
              "Gerada por IA a partir da vista 3D — não contratual: só a planta e a memória fazem fé.")):
         if not data:
@@ -508,4 +561,6 @@ def build(d: dict, image_bytes: bytes, branding: dict | None = None, snapshot: b
     story += _bullets("Hipóteses adotadas", res.get("hypotheses"))
     story += _bullets("A fazer antes do arranque", res.get("checklist"))
     doc.build(story)
+    if slots:
+        return _place_svg(buf.getvalue(), sec["svg"], slots)
     return buf.getvalue()

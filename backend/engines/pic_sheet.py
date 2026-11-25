@@ -65,7 +65,54 @@ def _free_box(page, bw: float, bh: float, avoid: list, margin: float) -> tuple[f
     return (best[1], best[2]) if best else (margin, margin)
 
 
-def build(pdf_bytes: bytes, d: dict, branding: dict | None = None, page_index: int = 0) -> bytes:
+def _page2(doc, d: dict, snapshot: bytes | None, snapshot_aerial: bytes | None, W: float, H: float,
+           company: str) -> None:
+    """Folha 2: corte vertical A–A′ (vetorial) e vistas 3D / aérea, no mesmo formato da folha original."""
+    import pymupdf
+    from engines import pic_relief as relief
+    sec = (d.get("result") or {}).get("section")
+    if not (sec and sec.get("svg")) and not snapshot and not snapshot_aerial:
+        return
+    pg = doc.new_page(width=W, height=H)
+    m = max(12 * MM, W * 0.02)
+    tb = 16 * MM
+    sh = pg.new_shape()
+    sh.draw_rect(pymupdf.Rect(m, m, W - m, H - m))
+    sh.finish(color=(0, 0, 0), width=1.0)
+    sh.draw_line((m, H - m - tb), (W - m, H - m - tb))
+    sh.finish(color=(0, 0, 0), width=0.6)
+    sh.commit()
+    pg.insert_text((m + 4 * MM, H - m - tb + 7 * MM), _txt(relief.T["sheet_p2"]), fontname="hebo",
+                   fontsize=14, color=(0, 0, 0))
+    pg.insert_text((m + 4 * MM, H - m - tb + 12.5 * MM),
+                   _txt(f"{company} · {datetime.now(timezone.utc).strftime('%d/%m/%Y')}"),
+                   fontname="helv", fontsize=9, color=(0.2, 0.2, 0.2))
+    inner = pymupdf.Rect(m + 6 * MM, m + 6 * MM, W - m - 6 * MM, H - m - tb - 6 * MM)
+    imgs = [(b, t) for b, t in ((snapshot, relief.T["v3d"]), (snapshot_aerial, relief.T["vaer"])) if b]
+    top = inner
+    if sec and sec.get("svg"):
+        if imgs:
+            top = pymupdf.Rect(inner.x0, inner.y0, inner.x1, inner.y0 + inner.height * 0.56)
+        src = pymupdf.open("pdf", pymupdf.open(stream=sec["svg"].encode("utf-8"), filetype="svg").convert_to_pdf())
+        pg.show_pdf_page(top, src, 0, keep_proportion=True)
+        y_img = top.y1 + 6 * MM
+    else:
+        y_img = inner.y0
+    if imgs:
+        gap = 8 * MM
+        cw = (inner.width - gap * (len(imgs) - 1)) / len(imgs)
+        for i, (b, t) in enumerate(imgs):
+            x = inner.x0 + i * (cw + gap)
+            pg.insert_text((x, y_img + 5 * MM), _txt(t), fontname="hebo", fontsize=12, color=(0.06, 0.32, 0.34))
+            r = pymupdf.Rect(x, y_img + 8 * MM, x + cw, inner.y1)
+            try:
+                pg.insert_image(r, stream=b, keep_proportion=True)
+            except Exception:  # noqa: BLE001 — imagem ilegível: a folha sai sem ela
+                pass
+
+
+def build(pdf_bytes: bytes, d: dict, branding: dict | None = None, page_index: int = 0,
+          snapshot: bytes | None = None, snapshot_aerial: bytes | None = None) -> bytes:
     import pymupdf
     res, site = d["result"], d["site"]
     src = pymupdf.open(stream=pdf_bytes, filetype="pdf")
@@ -148,6 +195,23 @@ def build(pdf_bytes: bytes, d: dict, branding: dict | None = None, page_index: i
         dims = f" ({_fr(e['w'])} × {_fr(e['h'])} m)" if e["w"] and e["h"] else ""
         legend.append((str(n), e["label"] + dims, col))
 
+    # ---- traço do corte A–A′ ------------------------------------------------
+    sec = res.get("section")
+    if sec and sec.get("axis"):
+        from engines import pic_relief as relief
+        teal = _rgb("#0F5257")
+        a, b = (tuple(q) for q in sec["axis"])
+        sh = page.new_shape()
+        sh.draw_line(P(*a), P(*b))
+        sh.finish(color=teal, width=1.6, dashes="[14 4 3 4] 0")
+        for q in (a, b):
+            sh.draw_circle(P(*q), 2.4 * MM)
+            sh.finish(color=teal, fill=teal)
+        sh.commit()
+        for q, lab in ((a, "A"), (b, "A'")):
+            pq = P(*q)
+            page.insert_text((pq.x + 3.5 * MM, pq.y - 2 * MM), lab, fontname="hebo", fontsize=14, color=teal)
+
     # ---- legenda / carimbo do plano de estaleiro --------------------------
     cranes = [c for c in res.get("cranes") or [] if c.get("label")]
     rows = [(num, _txt(label), col) for num, label, col in legend]
@@ -168,7 +232,7 @@ def build(pdf_bytes: bytes, d: dict, branding: dict | None = None, page_index: i
     company = (branding or {}).get("company_name") or "ConstruPilot"
     lh, pad = 4.6 * MM, 3 * MM
     bw = 165 * MM
-    bh = 2 * pad + 13 * MM + lh * (len(rows) + len(extra)) + 9 * MM
+    bh = 2 * pad + 13 * MM + lh * (len(rows) + len(extra) + (1 if res.get('section') else 0)) + 9 * MM
     x0, y0 = _free_box(page, bw, bh, avoid, 22 * MM)
     sh = page.new_shape()
     sh.draw_rect(pymupdf.Rect(x0, y0, x0 + bw, y0 + bh))
@@ -192,6 +256,10 @@ def build(pdf_bytes: bytes, d: dict, branding: dict | None = None, page_index: i
                      _txt("Documento de preparação. Características da grua a confirmar com a ficha técnica da "
                           "empresa de aluguer. Hipóteses e verificações: ver memória."),
                      fontname="heit", fontsize=6.6, color=(0.3, 0.3, 0.3))
+    if sec and sec.get("axis"):
+        page.insert_text((x0 + pad, y0 + bh - pad - lh * 0.9), _txt(relief.T["sheet_axis"]), fontname="hebo",
+                         fontsize=7.6, color=_rgb("#0F5257"))
+    _page2(doc, d, snapshot, snapshot_aerial, W, H, company)
     out = doc.tobytes(garbage=3, deflate=True)
     doc.close()
     return out

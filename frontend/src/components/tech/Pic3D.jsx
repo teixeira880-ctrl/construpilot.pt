@@ -151,7 +151,7 @@ function wheel(r = 0.5, w = 0.35) {
 // ---------------------------------------------------------------------------
 // Grue à tour en treillis
 // ---------------------------------------------------------------------------
-function buildCrane(el, mastH, liftR, tex, annots) {
+function buildCrane(el, mastH, liftR, tex, annots, zAt = null, base = 0) {
   const g = new THREE.Group();
   g.position.set(el.x, 0, el.y);
   const YELLOW = 0xffc400;
@@ -195,11 +195,15 @@ function buildCrane(el, mastH, liftR, tex, annots) {
   const block = box(0.6, 0.7, 0.5, std(YELLOW, { metalness: 0.3 })); block.position.set(hookX, 0.3 - cableLen, 0); top.add(block);
   const bucket = mesh(new THREE.CylinderGeometry(0.75, 0.45, 1.5, 18), std(0xe53935, { metalness: 0.3, roughness: 0.5 })); bucket.position.set(hookX, -cableLen - 0.95, 0); top.add(bucket);
   // annotations au sol : zone balayée et limite de levage
+  // drapeadas sobre o terreno: o círculo segue o relevo
   const flat = (geo, color, opacity, y) => {
+    geo.rotateX(-Math.PI / 2);
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i += 1) pa.setY(i, (zAt ? zAt(el.x + pa.getX(i), el.y + pa.getZ(i)) : base) + y);
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(el.x, y, el.y); annots.add(m);
+    m.position.set(el.x, 0, el.y); annots.add(m);
   };
-  flat(new THREE.CircleGeometry(jib, 128), 0xff1744, 0.06, 0.1);
+  flat(new THREE.RingGeometry(0.01, jib, 128, 24), 0xff1744, 0.06, 0.1);
   flat(new THREE.RingGeometry(Math.max(jib - 0.5, 0.1), jib, 160), 0xff1744, 0.95, 0.14);
   if (liftR > 0 && liftR < jib - 0.05) flat(new THREE.RingGeometry(Math.max(liftR - 0.5, 0.1), liftR, 160), 0x00c853, 0.95, 0.16);
   return { group: g, top };
@@ -219,6 +223,17 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
     const Wm = result.site.width_m; const Hm = result.site.height_m;
     const S = Math.max(Wm, Hm);
     const toM = (p) => [p[0] * Wm, p[1] * Hm];
+    // relevo: grelha de cotas relativas à soleira (result.terrain), interpolação bilinear
+    const tg = result.terrain?.z?.length ? result.terrain : null;
+    const zAt = (x, z) => {
+      if (!tg) return 0;
+      const n = tg.n;
+      const fx = Math.min(Math.max(x / Wm, 0), 1) * (n - 1); const fz = Math.min(Math.max(z / Hm, 0), 1) * (n - 1);
+      const i = Math.min(Math.floor(fx), n - 2); const j = Math.min(Math.floor(fz), n - 2);
+      const u = fx - i; const v = fz - j; const g = (a, b) => tg.z[b * n + a];
+      return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v;
+    };
+    const zMin = tg ? Math.min(...tg.z) : 0;
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -258,7 +273,7 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
     // sol : herbe aux abords + plan / photo aérienne à l'échelle
     tex.grass.repeat.set(S * 6 / 8, S * 6 / 8);
     const around = mesh(new THREE.PlaneGeometry(S * 6, S * 6), std(0xffffff, { map: tex.grass, roughness: 1 }), { cast: false });
-    around.rotation.x = -Math.PI / 2; around.position.set(Wm / 2, -0.06, Hm / 2); scene.add(around);
+    around.rotation.x = -Math.PI / 2; around.position.set(Wm / 2, zMin - 0.25, Hm / 2); scene.add(around);
     const aerial = site.base === "aerial";
     const groundMat = std(aerial ? 0xffffff : 0xe7dfcc, { roughness: 1 });
     if (image) {
@@ -267,8 +282,29 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
       t.anisotropy = renderer.capabilities.getMaxAnisotropy();
       groundMat.map = t;
     } else { tex.gravel.repeat.set(Wm / 6, Hm / 6); groundMat.map = tex.gravel; }
-    const ground = mesh(new THREE.PlaneGeometry(Wm, Hm), groundMat, { cast: false });
-    ground.rotation.x = -Math.PI / 2; ground.position.set(Wm / 2, 0, Hm / 2); scene.add(ground);
+    const gseg = tg ? 120 : 1;
+    const groundGeo = new THREE.PlaneGeometry(Wm, Hm, gseg, gseg);
+    groundGeo.rotateX(-Math.PI / 2); groundGeo.translate(Wm / 2, 0, Hm / 2);
+    if (tg) {
+      const pa = groundGeo.attributes.position;
+      for (let i = 0; i < pa.count; i += 1) pa.setY(i, zAt(pa.getX(i), pa.getZ(i)));
+      groundGeo.computeVertexNormals();
+      // saia de terra nos bordos: o terreno não fica "a flutuar" sobre a relva
+      const soil = std(0x8d6e4f, { roughness: 1 });
+      [[[0, 0], [Wm, 0]], [[Wm, 0], [Wm, Hm]], [[Wm, Hm], [0, Hm]], [[0, Hm], [0, 0]]].forEach(([a, b]) => {
+        const N = 60; const pos = [];
+        for (let k = 0; k < N; k += 1) {
+          const p0 = [a[0] + (b[0] - a[0]) * k / N, a[1] + (b[1] - a[1]) * k / N];
+          const p1 = [a[0] + (b[0] - a[0]) * (k + 1) / N, a[1] + (b[1] - a[1]) * (k + 1) / N];
+          const y0 = zAt(...p0); const y1 = zAt(...p1); const yb = zMin - 0.25;
+          pos.push(p0[0], y0, p0[1], p1[0], y1, p1[1], p1[0], yb, p1[1], p0[0], y0, p0[1], p1[0], yb, p1[1], p0[0], yb, p0[1]);
+        }
+        const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); sg.computeVertexNormals();
+        const sk = new THREE.Mesh(sg, soil.clone()); sk.material.side = THREE.DoubleSide; scene.add(sk);
+      });
+    }
+    const ground = mesh(groundGeo, groundMat, { cast: false });
+    scene.add(ground);
 
     // clôture de chantier en panneaux grillagés + trait rouge de limite d'emprise
     const parcel = (site.parcel || []).map(toM);
@@ -278,16 +314,22 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
       if (len < 0.2) return;
       const map = tex.fence.clone(); map.needsUpdate = true; map.repeat.set(Math.max(1, Math.round(len / 3.5)), 1);
       const panel = mesh(new THREE.PlaneGeometry(len, H_INDIC.cloture), new THREE.MeshStandardMaterial({ map, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.5 }));
-      panel.position.set((a[0] + b[0]) / 2, H_INDIC.cloture / 2, (a[1] + b[1]) / 2);
+      const zf = zAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      panel.position.set((a[0] + b[0]) / 2, zf + H_INDIC.cloture / 2, (a[1] + b[1]) / 2);
       panel.rotation.y = -Math.atan2(b[1] - a[1], b[0] - a[0]);
       scene.add(panel);
       const line = box(len, 0.06, 0.45, new THREE.MeshBasicMaterial({ color: 0xff1744 }), { cast: false, receive: false });
-      line.position.set((a[0] + b[0]) / 2, 0.05, (a[1] + b[1]) / 2); line.rotation.y = panel.rotation.y; annots.add(line);
+      line.position.set((a[0] + b[0]) / 2, zf + 0.05, (a[1] + b[1]) / 2); line.rotation.y = panel.rotation.y; annots.add(line);
     });
 
     // bâtiment(s) en construction : façade béton à baies, dalle haute, échafaudage
-    const hb = Number(result.answers?.hauteur_batiment_m) > 0 ? Number(result.answers.hauteur_batiment_m) : 6;
-    tex.facade.repeat.set(1 / 4, 1 / H_INDIC.etage);
+    // modelo do edifício (motor): soleira = cota 0 da cena, pisos acima, caves abaixo
+    const bm = result.building_model || {};
+    const hb = Number(bm.height) > 0 ? Number(bm.height)
+      : Number(result.answers?.hauteur_batiment_m) > 0 ? Number(result.answers.hauteur_batiment_m) : 6;
+    const fh = Number(bm.floor_h) > 0 ? Number(bm.floor_h) : H_INDIC.etage;
+    const zBot = Number.isFinite(bm.z_bottom) && Number.isFinite(bm.z_soleira) ? bm.z_bottom - bm.z_soleira : 0;
+    tex.facade.repeat.set(1 / 4, 1 / fh);
     tex.concrete.repeat.set(1 / 5, 1 / 5);
     (site.buildings || []).forEach((b, i) => {
       const pts = b.map(toM);
@@ -300,6 +342,20 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
       // acrotère / attentes en tête
       const rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 40), new THREE.LineBasicMaterial({ color: 0x5f5b54 }));
       rim.position.y = hb; scene.add(rim);
+      // linhas de laje em cada piso
+      const loop = (y, color) => {
+        const lg = new THREE.BufferGeometry().setFromPoints([...pts, pts[0]].map(([x, z]) => new THREE.Vector3(x, y, z)));
+        scene.add(new THREE.Line(lg, new THREE.LineBasicMaterial({ color })));
+      };
+      for (let y = fh; y < hb - 0.3; y += fh) loop(y, 0x6d6a63);
+      // caves: volume enterrado (visível onde o terreno desce)
+      if (zBot < -0.1) {
+        const bg = new THREE.ExtrudeGeometry(shape, { depth: -zBot, bevelEnabled: false });
+        bg.rotateX(Math.PI / 2);
+        const base = mesh(bg, std(0xb0a79a, { map: tex.concrete, roughness: 1 }));
+        base.position.y = 0; scene.add(base);
+        loop(0, 0x3e3a33);
+      }
       // échafaudage sur chaque façade (décalé de 0,9 m vers l'extérieur)
       const area = pts.reduce((s, p, k) => { const q = pts[(k + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
       pts.forEach((p, k) => {
@@ -308,24 +364,28 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
         if (len < 2) return;
         const sgn = area > 0 ? 1 : -1;
         const nx = sgn * (q[1] - p[1]) / len; const nz = -sgn * (q[0] - p[0]) / len;
-        const map = tex.scaffold.clone(); map.needsUpdate = true; map.repeat.set(Math.max(1, Math.round(len / 2.5)), Math.max(1, Math.round((hb + 1) / 2)));
-        const sc = mesh(new THREE.PlaneGeometry(len, hb + 1), new THREE.MeshStandardMaterial({ map, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }));
-        sc.position.set((p[0] + q[0]) / 2 + nx * 0.9, (hb + 1) / 2, (p[1] + q[1]) / 2 + nz * 0.9);
+        const zs = Math.min(0, zAt((p[0] + q[0]) / 2 + nx * 0.9, (p[1] + q[1]) / 2 + nz * 0.9));   // andaime apoiado no terreno
+        const sh = hb + 1 - zs;
+        const map = tex.scaffold.clone(); map.needsUpdate = true; map.repeat.set(Math.max(1, Math.round(len / 2.5)), Math.max(1, Math.round(sh / 2)));
+        const sc = mesh(new THREE.PlaneGeometry(len, sh), new THREE.MeshStandardMaterial({ map, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 }));
+        sc.position.set((p[0] + q[0]) / 2 + nx * 0.9, zs + sh / 2, (p[1] + q[1]) / 2 + nz * 0.9);
         sc.rotation.y = -Math.atan2(q[1] - p[1], q[0] - p[0]);
         scene.add(sc);
       });
       const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length; const cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-      addLabel(`Edifício${site.buildings.length > 1 ? ` ${i + 1}` : ""} — ${hb.toLocaleString("pt-PT")} m`, cx, hb + S * 0.03, cz);
+      addLabel(`Edifício${site.buildings.length > 1 ? ` ${i + 1}` : ""} — ${hb.toLocaleString("pt-PT")} m${bm.levels_below ? ` + ${bm.levels_below} cave${bm.levels_below > 1 ? "s" : ""}` : ""}`, cx, hb + S * 0.03, cz);
     });
 
     // obstacles lus sur le plan
     (result.obstacles || []).forEach((o) => {
+      const og = new THREE.Group(); og.position.y = zAt(o.x, o.y); scene.add(og);
+      const oh = Number(result.answers?.obstacle_h_m) > 0 ? Number(result.answers.obstacle_h_m) : 6;
       if (o.type === "arbre") {
         const r = Math.max(Math.min(o.w, o.h) / 2, 1.5);
-        const trunk = mesh(new THREE.CylinderGeometry(0.3, 0.45, 4.5, 10), std(0x6d4c41, { roughness: 1 })); trunk.position.set(o.x, 2.25, o.y); scene.add(trunk);
+        const trunk = mesh(new THREE.CylinderGeometry(0.3, 0.45, 4.5, 10), std(0x6d4c41, { roughness: 1 })); trunk.position.set(o.x, 2.25, o.y); og.add(trunk);
         [[0, 0, 0, 1], [0.5, 0.5, 0.3, 0.75], [-0.45, 0.35, -0.3, 0.7], [0.1, 0.9, -0.2, 0.6]].forEach(([dx, dy, dz, k], n) => {
           const blob = mesh(new THREE.IcosahedronGeometry(r * k, 2), std([0x3f7d2f, 0x4f9438, 0x366c28, 0x5aa341][n], { roughness: 1, flatShading: true }));
-          blob.position.set(o.x + dx * r, 4.5 + r * 0.6 + dy * r, o.y + dz * r); scene.add(blob);
+          blob.position.set(o.x + dx * r, 4.5 + r * 0.6 + dy * r, o.y + dz * r); og.add(blob);
         });
       } else if (o.type === "ligne_electrique") {
         const along = o.w >= o.h;
@@ -333,17 +393,17 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
         [-0.9, 0, 0.9].forEach((off) => {
           const wire = mesh(new THREE.CylinderGeometry(0.04, 0.04, len, 5), std(0x2b2b2b, { metalness: 0.6 }), { cast: false });
           wire.rotation.z = Math.PI / 2; if (!along) wire.rotation.y = Math.PI / 2;
-          wire.position.set(o.x + (along ? 0 : off), 9, o.y + (along ? off : 0)); scene.add(wire);
+          wire.position.set(o.x + (along ? 0 : off), 9, o.y + (along ? off : 0)); og.add(wire);
         });
         [-1, 1].forEach((s) => {
           const px = o.x + (along ? s * len / 2 : 0); const pz = o.y + (along ? 0 : s * len / 2);
-          const pole = mesh(new THREE.CylinderGeometry(0.16, 0.22, 9.4, 10), std(0x5d4037, { roughness: 1 })); pole.position.set(px, 4.7, pz); scene.add(pole);
-          const arm = box(along ? 0.18 : 2.4, 0.18, along ? 2.4 : 0.18, std(0x4e342e)); arm.position.set(px, 9, pz); scene.add(arm);
+          const pole = mesh(new THREE.CylinderGeometry(0.16, 0.22, 9.4, 10), std(0x5d4037, { roughness: 1 })); pole.position.set(px, 4.7, pz); og.add(pole);
+          const arm = box(along ? 0.18 : 2.4, 0.18, along ? 2.4 : 0.18, std(0x4e342e)); arm.position.set(px, 9, pz); og.add(arm);
         });
-        addLabel(o.label, o.x, 11.2, o.y, "#B45309");
+        addLabel(o.label, o.x, og.position.y + 11.2, o.y, "#B45309");
       } else {
-        const m = box(o.w, 6, o.h, std(0xd8d2c6, { map: tex.concrete })); m.position.set(o.x, 3, o.y); scene.add(m);
-        const roof = box(o.w + 0.4, 0.3, o.h + 0.4, std(0x8d6e63)); roof.position.set(o.x, 6.15, o.y); scene.add(roof);
+        const m = box(o.w, oh, o.h, std(0xd8d2c6, { map: tex.concrete })); m.position.set(o.x, oh / 2, o.y); og.add(m);
+        const roof = box(o.w + 0.4, 0.3, o.h + 0.4, std(0x8d6e63)); roof.position.set(o.x, oh + 0.15, o.y); og.add(roof);
       }
     });
 
@@ -355,26 +415,29 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
       const rotY = -THREE.MathUtils.degToRad(e.rot || 0);
       if (e.type === "grue") {
         const cr = cranes.find((c) => c.id === e.id) || {};
-        const mastH = Math.max(cr.hsc_required_m || hb + 8, hb + 6) + 3;
-        const { group, top } = buildCrane(e, mastH, e.lift_radius_m, tex, annots);
+        const zc = Number.isFinite(cr.z_base_rel) ? cr.z_base_rel : zAt(e.x, e.y);
+        const mastH = Math.max(cr.hsc_required_m || hb + 8, hb - zc + 6) + 3;
+        const { group, top } = buildCrane(e, mastH, e.lift_radius_m, tex, annots, tg ? zAt : null, zc);
+        group.position.y = zc;
         scene.add(group); tops.push(top);
         top.rotation.y = tops.length * 1.9;
-        addLabel(e.label, e.x, mastH + S * 0.06, e.y, "#B00020");
+        addLabel(e.label, e.x, zc + mastH + S * 0.06, e.y, "#B00020");
         return;
       }
+      const ze = zAt(e.x, e.y);
       if (e.type === "acces") {
         // portail : deux poteaux, repère vert
-        [-2, 2].forEach((d) => { const post = box(0.2, 2.3, 0.2, std(0x455a64, { metalness: 0.5 })); post.position.set(e.x + d, 1.15, e.y); scene.add(post); });
+        [-2, 2].forEach((d) => { const post = box(0.2, 2.3, 0.2, std(0x455a64, { metalness: 0.5 })); post.position.set(e.x + d, zAt(e.x + d, e.y) + 1.15, e.y); scene.add(post); });
         const cone = mesh(new THREE.ConeGeometry(1.3, 3, 20), new THREE.MeshStandardMaterial({ color: 0x00c853, emissive: 0x00c853, emissiveIntensity: 0.4 }), { cast: false });
-        cone.position.set(e.x, 6, e.y); cone.rotation.x = Math.PI; annots.add(cone);
-        addLabel("Acesso ao estaleiro", e.x, 9, e.y, "#007E33");
+        cone.position.set(e.x, ze + 6, e.y); cone.rotation.x = Math.PI; annots.add(cone);
+        addLabel("Acesso ao estaleiro", e.x, ze + 9, e.y, "#007E33");
         return;
       }
-      const g = new THREE.Group(); g.position.set(e.x, 0, e.y); g.rotation.y = rotY; scene.add(g);
+      const g = new THREE.Group(); g.position.set(e.x, ze, e.y); g.rotation.y = rotY; scene.add(g);
       // liseré de couleur au sol : l'élément reste identifiable comme sur le plan
       const outline = (y) => {
         const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(e.w, 0.02, e.h)), new THREE.LineBasicMaterial({ color }));
-        edge.position.set(e.x, y, e.y); edge.rotation.y = rotY; annots.add(edge);
+        edge.position.set(e.x, ze + y, e.y); edge.rotation.y = rotY; annots.add(edge);
       };
       const slab = (map, tint = 0xffffff, h = 0.1) => {
         const m2 = map ? map.clone() : null;
@@ -440,6 +503,21 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
       }
     });
 
+    // traço do corte vertical A–A′ sobre o terreno
+    const ax = result.section?.axis;
+    if (ax?.length === 2) {
+      const [[x0, z0], [x1, z1]] = ax;
+      const pts = Array.from({ length: 81 }, (_, k) => {
+        const x = x0 + (x1 - x0) * k / 80; const z = z0 + (z1 - z0) * k / 80;
+        return new THREE.Vector3(x, zAt(x, z) + 0.25, z);
+      });
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineDashedMaterial({ color: 0x0f5257, dashSize: 2.2, gapSize: 0.9 }));
+      ln.computeLineDistances(); annots.add(ln);
+      addLabel("A", x0, zAt(x0, z0) + 3, z0, "#0F5257");
+      addLabel("A′", x1, zAt(x1, z1) + 3, z1, "#0F5257");
+    }
+
     // caméra et contrôles
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.5, S * 30);
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -481,6 +559,14 @@ export default function Pic3D({ image, site, result, height = 460, onReady }) {
 
     const api = {
       setView,
+      // vista aérea capturada sem alterar o ângulo escolhido pelo utilizador
+      captureAerial: () => {
+        const pos = camera.position.clone(); const tgt = controls.target.clone();
+        setView("aerial");
+        const url = api.capture();
+        camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+        return url;
+      },
       setAnnotations: (on) => { annots.visible = on; },
       // capture haute définition de la vue affichée ; clean = sans libellés ni zones (pour le rendu photo)
       capture: ({ clean = false } = {}) => {
