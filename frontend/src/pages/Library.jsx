@@ -18,7 +18,6 @@ import { useAuth } from "@/context/AuthContext";
 import LibraryImportDialog from "@/components/library/LibraryImportDialog";
 import LibraryDuplicatesDialog from "@/components/library/LibraryDuplicatesDialog";
 import LearnedPricesPanel from "@/components/library/LearnedPricesPanel";
-import RealPricesPanel from "@/components/library/RealPricesPanel";
 
 const UNITS = ["u", "m²", "ml", "m³", "forfait", "ens", "h", "j", "kg", "L"];
 const VAT_RATES = [6, 13, 23]; // Portugal continental (CIVA)
@@ -130,7 +129,6 @@ export default function Library() {
 
       <SharedLibraryPanel />
       <LearnedPricesPanel onValidated={() => load()} />
-      <RealPricesPanel />
       <LibraryImportDialog open={importOpen} onClose={() => setImportOpen(false)} onDone={() => load()} />
       <LibraryDuplicatesDialog open={dupOpen} onClose={() => setDupOpen(false)} onDone={() => load()} />
 
