@@ -67,7 +67,9 @@ export default function Blog() {
   const combined = [...hc.filter((a) => !staticSlugs.has(a.slug)),
     ...dyn.filter((a) => !staticSlugs.has(a.slug) && !hcSlugs.has(a.slug)), ...staticArticles]
     .map((a) => ({ ...a, publishedAt: a.publishedAt || a.published }))
-    .sort((x, y) => String(y.publishedAt || "").localeCompare(String(x.publishedAt || "")));
+    // artigos HeyCatch sempre no topo (mais recentes primeiro), depois os restantes por data
+    .sort((x, y) => ((y.source === "heycatch") - (x.source === "heycatch"))
+      || String(y.publishedAt || "").localeCompare(String(x.publishedAt || "")));
   const filtered = aud === "all" ? combined : combined.filter((a) => a.audience === aud);
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const cur = Math.min(page, pages);
