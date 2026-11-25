@@ -59,14 +59,14 @@ def layer_role(name: str) -> tuple[str, str]:
 SHEET_TYPES = [
     ("alcado", r"AL[ÇC]ADO|FACHADA|ELEVATION|FA[ÇC]ADE"),
     ("corte", r"\bCORTE\b|SEC[ÇC][ÃA]O|\bCOUPE\b"),
-    ("mapa_vaos", r"V[ÃA]OS (EXTERIORES|INTERIORES)|MAPA DE V[ÃA]OS|CAIXILHARIA"),
-    ("mapa_acabamentos", r"MAPA DE ACABAMENTOS"),
-    ("planta_pavimentos", r"PLANTA DE PAVIMENTOS|PAVIMENTOS E RODAP"),
-    ("planta_tetos", r"TETOS|TECTOS"),
+    ("mapa_vaos", r"V[ÃA]OS (EXTERIORES|INTERIORES)|MAPA DE V[ÃA]OS|CAIXILHARIA|NOMENCLATURE DES MENUISERIES|MENUISERIES (EXT|INT)"),
+    ("mapa_acabamentos", r"MAPA DE ACABAMENTOS|TABLEAU DES FINITIONS|CARNET DE FINITIONS"),
+    ("planta_pavimentos", r"PLANTA DE PAVIMENTOS|PAVIMENTOS E RODAP|PLAN DES SOLS|REV[ÊE]TEMENTS DE SOL"),
+    ("planta_tetos", r"TETOS|TECTOS|PLAFONDS"),
     ("planta_iluminacao", r"ILUMINA[ÇC][ÃA]O"),
-    ("planta_cobertura", r"PLANTA DE COBERTURA"),
-    ("planta_implantacao", r"IMPLANTA[ÇC][ÃA]O"),
-    ("planta", r"\bPLANTA\b"),
+    ("planta_cobertura", r"PLANTA DE COBERTURA|PLAN DE TOITURE|PLAN DES TOITURES"),
+    ("planta_implantacao", r"IMPLANTA[ÇC][ÃA]O|PLAN DE MASSE"),
+    ("planta", r"\bPLANTA\b|\bPLAN\b|\bNIVEAU\b|\bR\+\d|\bRDC\b"),
     ("pormenor", r"PORMENOR|DETALHE"),
     ("acabamentos_divisao", r"\bACABAMENTOS?\b|INSTALA[ÇC][ÃA]O SANIT"),
 ]
@@ -78,7 +78,7 @@ ROOM_RX = re.compile(r"^\s*(\d{1,3})\s*\.\s*([^\d\n][^\n]*?)\s*[-–]\s*(\d+(?:[
 HEIGHT_RX = re.compile(r"^\s*(\d[.,]\d{2})\s*m\s*$")
 UNI_RX = re.compile(r"^(.*?)\s*[-–]\s*(\d+)\s*Uni\.?\s*$", re.I)
 SPLIT_CODES_RX = re.compile(r"\s+(?=(?:PV|RV|TT|TO|RP|Pv|Rv|Tt|To)\s?\d{1,3}\s*[-–—])")
-SCALE_RX = re.compile(r"ESCALA\s*[:\n ]*\s*1\s*[:/]\s*(\d{1,4})", re.I)
+SCALE_RX = re.compile(r"(?:ESCALA|[EÉ]CHELLE|SCALE)\s*[:\n ]*\s*1\s*[:/]\s*(\d{1,4})", re.I)
 SCALE_ANY_RX = re.compile(r"(?<![\d.,])1\s*[:/]\s*(\d{2,4})(?![\d.,])")
 DIM_RX = re.compile(r"(\d{2,4})\s*[xX×]\s*(\d{2,4})\s*cm")
 
@@ -123,7 +123,7 @@ def sheet_title(lines: list[dict], full: str) -> tuple[str, str]:
     title = ""
     for ln in lines:
         t = ln["t"].strip()
-        if t.isupper() and 6 <= len(t) <= 80 and re.search(r"PLANTA|AL[ÇC]ADO|CORTE|MAPA|PORMENOR|ACABAMENTO|V[ÃA]OS|INSTALA", t):
+        if t.isupper() and 6 <= len(t) <= 80 and re.search(r"PLANTA|AL[ÇC]ADO|CORTE|MAPA|PORMENOR|ACABAMENTO|V[ÃA]OS|INSTALA|PLAN\b|FA[ÇC]ADE|COUPE|MENUISERIE|D[ÉE]TAIL", t):
             title = t
             break
     for kind, rx in SHEET_TYPES:
@@ -197,11 +197,11 @@ def parse_text(page, lines: list[dict]) -> dict:
 
 def parse_schedule(full: str) -> dict | None:
     """Folha de mapa de vãos / móveis: DESIGNAÇÃO Ve 1 | QUANTIDADES 01 | DIMENSÃO 295 x 244 cm | LOCALIZAÇÃO …"""
-    m = re.search(r"DESIGNA[ÇC][ÃA]O\s*\n\s*((?:Ve|Vi|MF|Gr)\s*\.?\s*\d+)", full)
+    m = re.search(r"(?:DESIGNA[ÇC][ÃA]O|D[ÉE]SIGNATION|REP[ÈE]RE)\s*\n\s*((?:Ve|Vi|MF|Gr)\s*\.?\s*\d+)", full)
     if not m:
         return None
     code = norm_code(m.group(1).replace(" ", ""))
-    q = re.search(r"QUANTIDADES?\s*\n\s*(\d+)", full)
+    q = re.search(r"(?:QUANTIDADES?|QUANTIT[ÉE]S?)\s*\n\s*(\d+)", full)
     d = DIM_RX.search(full.split("DIMENS")[-1]) if "DIMENS" in full else None
     func = re.search(r"FUNCIONAMENTO\s*\n\s*([^\n]+)", full)
     loc = re.search(r"LOCALIZA[ÇC][ÃA]O\s*\n\s*([^\n]+)", full)
