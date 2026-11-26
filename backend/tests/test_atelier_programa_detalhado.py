@@ -126,3 +126,15 @@ def test_verificacao_explica_circulacao_e_paredes():
 def test_sem_exteriores_no_prompt_nao_ha_objetos():
     r = G.generer(P.programme("Moradia T3 de 120 m² com garagem"))
     assert not r["modelo"].get("objetos")
+
+
+def test_planta_aberta_no_rc_reduz_o_corredor_sem_perder_acessos():
+    from engines import estudio_projeto as EP
+    r = G.generer(P.programme(PROMPT))
+    d = EP.derivar(r["modelo"])
+    assert d["ok"]
+    hall = [x for x in d["divisoes"] if x["piso"] == "p0" and x["nome"] == "Hall"]
+    assert not hall or hall[0]["area_m2"] < 12                     # antes: ~20 m² de corredor a todo o comprimento
+    assert not [a for a in r["avisos"] if "não colocados" in a]     # todas as portas couberam
+    sala = next(x for x in d["divisoes"] if x["nome"].startswith("Sala de estar"))
+    assert 30 <= sala["area_m2"] <= 45

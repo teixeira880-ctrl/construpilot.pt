@@ -58,6 +58,8 @@ def _largeur(p: Dict[str, Any], prof: float) -> float:
     """Largeur d'axe à axe pour obtenir la surface nette demandée dans une bande de profondeur `prof`.
     Pièces principales : dimension minimale selon la surface (RGEU art. 69.º : 2,10 / 2,40 / 2,70 m ; au-delà de 15 m²,
     longueur ≤ 2 × largeur) — règle de bonne proportion appliquée aussi en France."""
+    if p.get("ouvert"):                                  # séjour ouvert sur le hall : la bande du hall fait partie de la pièce
+        prof = prof + HALL
     net = max(1.0, prof - 0.20)
     w = max(LARG_MIN.get(p["cle"], 1.6), p["surface"] / net + 0.10)
     if p["cle"] in HABITABLES:
@@ -173,6 +175,11 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                 p.pop("w", None)
         bandes: Dict[Tuple[int, str], List[Dict[str, Any]]] = {}
         fins: Dict[Tuple[int, str], float] = {}
+        # Plan ouvert (open space) : maison à étage sans chambre au RDC → le séjour s'ouvre sur le hall, qui devient
+        # l'entrée du séjour ; seul un court dégagement (avec porte) dessert les pièces au-delà. Moins de couloir.
+        ouvert = deux and bool(jour_salle) and not de(0, "chambre", "suite") and plan["ouvert"]
+        for p in jour_salle:
+            p["ouvert"] = ouvert
         av0: List[Dict[str, Any]] = list(de(0, "entree"))
         wc0 = de(0, "wc")
         if wc0:
@@ -240,18 +247,21 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
     pas_av = (3.6, 3.9, 4.2, 4.5) if deux else (3.0, 3.3, 3.6, 3.9, 4.2)
     pas_ar = sorted({R(max(3.6, PB0 + d)) for d in (-0.4, 0.0, 0.4, 0.8, 1.2)})
     meilleur = None
-    for pa in pas_av:
+    plan = {"ouvert": True}
+    for ouv in (True, False):
+      for pa in pas_av:
         for pb in pas_ar:
+            plan["ouvert"] = ouv
             PA, PB = pa, pb
             D = R(PA + HALL + PB)
             y_hall0, y_hall1 = PA, R(PA + HALL)
             for p, n in zip(pcs, niv0):
                 p["niveau"] = n
             b_, f_, s_ = essai([])
-            cout = emprise(f_, s_) + 0.01 * (abs(pa - PROF_AVANT) + abs(pb - PB0))
+            cout = emprise(f_, s_) + 0.01 * (abs(pa - PROF_AVANT) + abs(pb - PB0)) + (0.0 if ouv else 0.5)
             if meilleur is None or cout < meilleur[0] - 1e-6:
-                meilleur = (cout, pa, pb)
-    _, PA, PB = meilleur
+                meilleur = (cout, pa, pb, ouv)
+    _, PA, PB, plan["ouvert"] = meilleur
     D = R(PA + HALL + PB)
     y_hall0, y_hall1 = PA, R(PA + HALL)
     for p, n in zip(pcs, niv0):
@@ -291,6 +301,7 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
     pisos, paredes, vaos, rotulos, escadas = [], [], [], [], []
     noms_niv = [_txt("Rez-de-chaussée", "Rés-do-chão"), _txt("Étage", "1.º andar")]
     W0 = W
+    portes_hall: List[Tuple[str, float, float]] = []
     for niv in range(niveaux):
         pid = f"p{niv}"
         W = Wn[niv]
@@ -306,7 +317,15 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             segs = [s for a_, b_ in segs for s in ((a_, min(b_, e0)), (max(a_, e1), b_)) if s[1] - s[0] > 0.05]
         for a_, b_ in segs:
             horiz.append((y_hall0, a_, b_))
-        horiz.append((y_hall1, 0.0, W))
+        sala_o = next((c for c in mine if c.get("ouvert") and c["bande"] == "ar"), None) if niv == 0 else None
+        xs1 = sala_o["x1"] if sala_o and sala_o["x0"] < 0.05 else None
+        if xs1 is not None:
+            if xs1 < W - 0.05:
+                horiz.append((y_hall1, xs1, W))
+                vert.append((xs1, y_hall0, y_hall1))
+                portes_hall.append((pid, xs1, R((y_hall0 + y_hall1) / 2)))
+        else:
+            horiz.append((y_hall1, 0.0, W))
         for c in mine:
             for xx in (c["x0"], c["x1"]):
                 if 0.05 < xx < W - 0.05:
@@ -322,11 +341,13 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             paredes.append({"id": f"{pid}_h{n}", "piso": pid, "a": [t0, yy], "b": [t1, yy], "tipo": "int_12"})
         # étiquettes
         occupe = sorted([(c["x0"] + c["x1"]) / 2 for c in mine if c["cle"] != "escalier"] + [x for e in esc_x for x in e])
-        bornes = [0.0] + [x for x in occupe if 0 < x < W] + [W]
+        x_deb = xs1 if xs1 is not None else 0.0
+        bornes = [x_deb] + [x for x in occupe if x_deb < x < W] + [W]
         gaps = [(a_, b_) for a_, b_ in zip(bornes, bornes[1:]) if not any(e0 - 1e-6 <= a_ and b_ <= e1 + 1e-6 for e0, e1 in esc_x)]
-        g0, g1 = max(gaps or [(0.0, W)], key=lambda ab: ab[1] - ab[0])
-        rotulos.append({"piso": pid, "x": R((g0 + g1) / 2), "y": R((y_hall0 + y_hall1) / 2),
-                        "nome": _txt("Dégagement" if niv else "Hall", "Corredor" if niv else "Hall")})
+        g0, g1 = max(gaps or [(x_deb, W)], key=lambda ab: ab[1] - ab[0])
+        if W - x_deb > 0.5:
+            rotulos.append({"piso": pid, "x": R((g0 + g1) / 2), "y": R((y_hall0 + y_hall1) / 2),
+                            "nome": _txt("Dégagement" if niv else "Hall", "Corredor" if niv else "Hall")})
         for c in mine:
             if c["cle"] == "escalier":
                 continue
@@ -452,7 +473,8 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             vao(pid, cx, y_porte, "porta", min(0.80, w - 0.3), quoi=c["nom"])
             continue
         larg_p = 1.40 if c["cle"] in ("sejour", "sejour_cuisine") else (0.80 if c["cle"] in ("wc", "sde", "dressing") else 0.90)
-        vao(pid, cx, y_porte, "porta", min(larg_p, w - 0.3), quoi=c["nom"])
+        if not (c.get("ouvert") and c["niveau"] == 0 and c["bande"] == "ar" and c["x0"] < 0.05):
+            vao(pid, cx, y_porte, "porta", min(larg_p, w - 0.3), quoi=c["nom"])
         if c["cle"] == "wc" and c["bande"] == "av" and c["niveau"] == 0:
             if y_hall0 - WC_PROF > 0.9:                # placard sous le WC, ouvert sur l'entrée
                 vao(pid, c["x0"], R((y_hall0 - WC_PROF) / 2), "porta", min(0.70, y_hall0 - WC_PROF - 0.3), quoi=_txt("placard", "arrumo"))
@@ -464,14 +486,15 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         f = FENETRE.get(c["cle"])
         if not f:
             continue
-        surf = w * (c["y1"] - c["y0"])                  # par excès (axes des murs) : la surface nette réelle est toujours couverte
+        surf = w * (c["y1"] - c["y0"] + (HALL if c.get("ouvert") and c["niveau"] == 0 else 0.0))  # par excès (axes des murs) : la surface nette réelle est toujours couverte
         besoin = max(RATIO_VITRAGE * surf, 1.08 if PAIS == "PT" else 0.0) if c["cle"] not in ("sdb", "sde", "buanderie", "wc", "dressing") else 0
         ouv: List[Tuple[str, float, float, float]] = []
         if c["cle"] in ("sejour", "sejour_cuisine") and c["bande"] == "ar" and c["niveau"] == 0:
             ouv.append(("portada", BAIE[0], BAIE[1], 0.0))
         fl, fh, fp = f
+        grande = c["cle"] in ("sejour", "sejour_cuisine") and c["niveau"] == 0 and c["bande"] == "ar"
         while sum(o[1] * o[2] for o in ouv) < besoin or not ouv:
-            ouv.append(("janela", fl, fh, fp))
+            ouv.append(("portada", BAIE[0], BAIE[1], 0.0) if grande else ("janela", fl, fh, fp))   # séjour : baies plutôt que fenêtres
             if len(ouv) > 6:
                 break
         # place disponible sur la façade de la pièce (30 cm aux extrémités, 40 cm entre ouvertures)
@@ -487,6 +510,12 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                 gagne = min(2.40 - lg, manque / ht / len(jan), max(0.0, dispo - sum(o[1] for o in ouv)))
                 if gagne > 0:
                     ouv[i] = (t, R(lg + gagne + 0.049), ht, pt)
+            vit = sum(o[1] * o[2] for o in ouv)
+        if besoin and vit < besoin and ouv and ouv[0][0] == "portada":   # grand séjour : baie coulissante plus large (≤ 4,80 m)
+            t, lg, ht, pt = ouv[0]
+            dispo = w - 0.6 - 0.4 * (len(ouv) - 1) - sum(o[1] for o in ouv[1:])
+            nl = R(min(4.80, max(lg, dispo), lg + (besoin - vit) / ht + 0.049))
+            ouv[0] = (t, nl, ht, pt)
             vit = sum(o[1] * o[2] for o in ouv)
         if sum(o[1] for o in ouv) > w - 0.6 and ouv:
             t, lg, ht, pt = ouv[0]
@@ -506,6 +535,8 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         portail = min(4.80 if gw > 5 else 2.40, gw - 0.6)
         vao("p0", R(-gw / 2), 0.0, "portao", portail, 2.10, 0.0, quoi=_txt("porte de garage", "portão da garagem"))
         vao("p0", 0.0, R(min(PA, PROF_GARAGE) / 2), "porta", 0.90, quoi=_txt("porte de service du garage", "porta de serviço da garagem"))
+    for pid_, xh, yh in portes_hall:
+        vao(pid_, xh, yh, "porta", 0.90, quoi=_txt("porte du dégagement", "porta do corredor"))
     if terrasse:
         vao("p1", Wn[1], R((y_hall0 + y_hall1) / 2), "porta", 0.90, quoi=_txt("porte-fenêtre de la terrasse", "porta do terraço"))
     if manques:
