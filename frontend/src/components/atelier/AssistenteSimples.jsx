@@ -93,7 +93,7 @@ export default function AssistenteSimples({ lang = "pt", onGerar, ocupado }) {
       <p className="text-xs text-muted-foreground">{t.nota}</p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button type="button" className="text-xs text-primary hover:underline" onClick={() => setVer(!ver)}>{t.ver}</button>
-        <Button size="lg" disabled={ocupado} onClick={() => onGerar(texto)} data-testid="atelier-simples-criar">
+        <Button size="lg" disabled={ocupado} onClick={() => onGerar(texto, o.area)} data-testid="atelier-simples-criar">
           {ocupado ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Home className="h-4 w-4 mr-1" />}{t.criar}
         </Button>
       </div>

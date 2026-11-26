@@ -27,7 +27,7 @@ const COPY = {
       "Petite maison T3 de 80 m², toiture 4 pans"],
     generer: "Générer l'esquisse", photoAide: "Photographiez le croquis bien à plat, en entier, avec les cotes lisibles. Les murs, ouvertures, noms de pièces et cotes sont relus puis redressés.",
     choisir: "Choisir ou prendre une photo", lire: "Lire le croquis",
-    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", verif: "Vérification avant validation", actualiser: "Actualiser", nOk: "conformes", nAviso: "à revoir", nFalha: "non conformes", voirTout: "Tout voir", masquer: "Masquer les points conformes", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
+    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", ajustar: "Ajuster les pièces pour {m2} m² construits", verif: "Vérification avant validation", actualiser: "Actualiser", nOk: "conformes", nAviso: "à revoir", nFalha: "non conformes", voirTout: "Tout voir", masquer: "Masquer les points conformes", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
     creer: "Créer le projet et ouvrir le Studio", nomProjet: "Nom du projet", adresse: "Adresse (facultatif)", moa: "Maître d'ouvrage (facultatif)",
     projets: "Mes projets d'architecture", aucun: "Aucun projet pour l'instant : commencez par une esquisse ci-dessus.", ouvrir: "Ouvrir",
     supprimer: "Supprimer", confirmerSup: "Supprimer définitivement ce projet ?", retour: "Mes projets",
@@ -46,7 +46,7 @@ const COPY = {
       "Pequena moradia T2 de 80 m², cobertura de quatro águas"],
     generer: "Gerar o esboço", photoAide: "Fotografe o esboço bem plano, inteiro, com as cotas legíveis. Paredes, vãos, nomes das divisões e cotas são lidos e endireitados.",
     choisir: "Escolher ou tirar uma fotografia", lire: "Ler o esboço",
-    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", verif: "Verificação antes de validar", actualiser: "Atualizar", nOk: "conformes", nAviso: "a rever", nFalha: "não conformes", voirTout: "Ver tudo", masquer: "Esconder os pontos conformes", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
+    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", ajustar: "Ajustar as divisões para {m2} m² de construção", verif: "Verificação antes de validar", actualiser: "Atualizar", nOk: "conformes", nAviso: "a rever", nFalha: "não conformes", voirTout: "Ver tudo", masquer: "Esconder os pontos conformes", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
     creer: "Criar o projeto e abrir o Estúdio", nomProjet: "Nome do projeto", adresse: "Morada (opcional)", moa: "Dono de obra (opcional)",
     projets: "Os meus projetos de arquitetura", aucun: "Ainda sem projetos: comece por um esboço acima.", ouvrir: "Abrir",
     supprimer: "Eliminar", confirmerSup: "Eliminar definitivamente este projeto?", retour: "Os meus projetos",
@@ -65,7 +65,7 @@ const COPY = {
       "Small 2-bedroom house of 80 m², hip roof"],
     generer: "Generate the sketch", photoAide: "Photograph the sketch flat, in full, with readable dimensions. Walls, openings, room names and dimensions are read then straightened.",
     choisir: "Choose or take a photo", lire: "Read the sketch",
-    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", verif: "Check before validation", actualiser: "Refresh", nOk: "compliant", nAviso: "to review", nFalha: "non-compliant", voirTout: "Show all", masquer: "Hide compliant items", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
+    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", ajustar: "Fit the rooms to {m2} m² gross area", verif: "Check before validation", actualiser: "Refresh", nOk: "compliant", nAviso: "to review", nFalha: "non-compliant", voirTout: "Show all", masquer: "Hide compliant items", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
     creer: "Create the project and open the Studio", nomProjet: "Project name", adresse: "Address (optional)", moa: "Client (optional)",
     projets: "My architecture projects", aucun: "No project yet: start with a sketch above.", ouvrir: "Open",
     supprimer: "Delete", confirmerSup: "Delete this project permanently?", retour: "My projects",
@@ -124,7 +124,7 @@ function PedidosPrompt({ pedidos, c }) {
   );
 }
 
-function Apercu({ data, c, onCreer, enCours }) {
+function Apercu({ data, c, onCreer, enCours, onAjustar }) {
   const [piso, setPiso] = useState(0);
   const [titre, setTitre] = useState("");
   const [adresse, setAdresse] = useState("");
@@ -161,6 +161,11 @@ function Apercu({ data, c, onCreer, enCours }) {
           )}
           {!!(data.pedidos || []).length && <PedidosPrompt pedidos={data.pedidos} c={c} />}
           <Verificacao dados={data.verificacao} c={c} />
+          {onAjustar && (
+            <Button size="sm" variant="outline" className="w-full" onClick={onAjustar} disabled={enCours} data-testid="atelier-ajustar">
+              {c.ajustar.replace("{m2}", String(data.programme.area_anunciada).replace(".", ","))}
+            </Button>
+          )}
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -413,7 +418,7 @@ export default function AtelierArchitecte() {
           </div>
         )}
         {mode === "simples" && (
-          <AssistenteSimples lang={lang} ocupado={busy} onGerar={(texto) => { setPrompt(texto); esquisser("/atelier-archi/esquisse/prompt", { prompt: texto }, "prompt"); }} />
+          <AssistenteSimples lang={lang} ocupado={busy} onGerar={(texto, area) => { setPrompt(texto); esquisser("/atelier-archi/esquisse/prompt", { prompt: texto, alvo_m2: area }, "prompt"); }} />
         )}
         {mode === "prompt" && (
           <div className="space-y-3">
@@ -433,7 +438,9 @@ export default function AtelierArchitecte() {
         )}
       </section>
 
-      {esquisse && <Apercu data={esquisse} c={c} onCreer={creer} enCours={busy} />}
+      {esquisse && <Apercu data={esquisse} c={c} onCreer={creer} enCours={busy}
+        onAjustar={esquisse.programme?.detalhado && esquisse.programme?.area_anunciada && !esquisse.programme?.ajustado && prompt.trim().length >= 3
+          ? () => esquisser("/atelier-archi/esquisse/prompt", { prompt, alvo_m2: esquisse.programme.area_anunciada }, "prompt") : null} />}
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold flex items-center gap-2"><FolderOpen className="h-5 w-5 text-primary" />{c.projets}</h2>

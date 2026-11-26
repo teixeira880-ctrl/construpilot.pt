@@ -186,6 +186,7 @@ def _now() -> str:
 class PromptIn(BaseModel):
     prompt: str = Field(min_length=3, max_length=20000)
     ia: bool = True
+    alvo_m2: Optional[float] = Field(default=None, ge=40, le=2000)   # modo simples: área de construção pretendida (sem garagem)
 
 
 class Trait(BaseModel):
@@ -303,11 +304,16 @@ async def esquisse_prompt(body: PromptIn, user=Depends(current_user)) -> dict:
         p2 = PROG.programme_depuis_ia(data)
         if p2:
             prog = p2
-    r = await run_in_threadpool(GEN.generer, prog)
+    if body.alvo_m2 and prog.get("detalhado"):
+        prog, r = await run_in_threadpool(GEN.ajustar_area, prog, float(body.alvo_m2))
+    else:
+        r = await run_in_threadpool(GEN.generer, prog)
     pieces = [{"nom": p["nom"], "surface": p["surface"], "niveau": p["niveau"]} for p in prog["pieces"]]
     return await run_in_threadpool(_apercu, r["modelo"], r["avisos"], {"programme": {"pieces": pieces, "niveaux": prog["niveaux"],
                                                                                      "garage": prog["garage"], "toiture": prog["toiture"],
-                                                                                     "detalhado": bool(prog.get("detalhado"))},
+                                                                                     "detalhado": bool(prog.get("detalhado")),
+                                                                                     "area_anunciada": (prog.get("lu") or {}).get("surface"),
+                                                                                     "ajustado": bool(body.alvo_m2 and prog.get("detalhado"))},
                                                                        "pedidos": prog.get("pedidos") or []}, prog)
 
 

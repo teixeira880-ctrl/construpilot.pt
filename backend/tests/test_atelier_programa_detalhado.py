@@ -138,3 +138,21 @@ def test_planta_aberta_no_rc_reduz_o_corredor_sem_perder_acessos():
     assert not [a for a in r["avisos"] if "não colocados" in a]     # todas as portas couberam
     sala = next(x for x in d["divisoes"] if x["nome"].startswith("Sala de estar"))
     assert 30 <= sala["area_m2"] <= 45
+
+
+def test_ajuste_a_area_pretendida():
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import verificacao as V
+    p = P.programme(PROMPT)
+    pg, r = G.ajustar_area(p, 200.0)
+    d = EP.derivar(r["modelo"])
+    b = d["medicoes"]["totais"]["area_bruta_construcao_m2"] - pg["garage"]["surface"]
+    assert abs(b - 200) / 200 <= 0.05
+    assert V.verificar(r["modelo"], d, pg)["resumo"]["falha"] == 0
+    assert any("ajustadas para 200" in a for a in r["avisos"])
+
+
+def test_ajuste_nunca_desce_dos_minimos():
+    pg, _ = G.ajustar_area(P.programme(PROMPT), 60.0)
+    por = {x["nom"]: x["surface"] for x in pg["pieces"]}
+    assert por["Suite principal"] >= 11.0 and por["Quarto 2"] >= 9.5 and por["Sala de estar e jantar em open space"] >= 16.0

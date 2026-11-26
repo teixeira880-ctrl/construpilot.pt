@@ -486,7 +486,10 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         f = FENETRE.get(c["cle"])
         if not f:
             continue
-        surf = w * (c["y1"] - c["y0"] + (HALL if c.get("ouvert") and c["niveau"] == 0 else 0.0))  # par excès (axes des murs) : la surface nette réelle est toujours couverte
+        surf = w * (c["y1"] - c["y0"] + (HALL if c.get("ouvert") and c["niveau"] == 0 else 0.0))  # par excès
+        if c.get("ouvert") and c["niveau"] == 0:        # séjour ouvert : l'escalier (ouvert sur le hall) fait partie de la pièce
+            surf += sum(max(0.0, min(e["x1"], c["x1"]) - max(e["x0"], c["x0"])) * PA
+                        for e in comps if e["niveau"] == 0 and e["cle"] == "escalier")
         besoin = max(RATIO_VITRAGE * surf, 1.08 if PAIS == "PT" else 0.0) if c["cle"] not in ("sdb", "sde", "buanderie", "wc", "dressing") else 0
         ouv: List[Tuple[str, float, float, float]] = []
         if c["cle"] in ("sejour", "sejour_cuisine") and c["bande"] == "ar" and c["niveau"] == 0:
@@ -576,3 +579,40 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                        "niveaux": niveaux, "surface_habitable_m2": habitable, "surface_utile_m2": tot["area_util_m2"], "surface_construite_m2": tot["area_bruta_construcao_m2"],
                        "pieces": [{"nom": d["nome"], "niveau": d["piso"], "surface_m2": d["area_m2"]} for d in der["medicoes"]["divisoes"]],
                        "erreurs": der.get("erros") or []}}
+
+
+# Surfaces minimales retenues quand on réduit un programme (au-dessus du RGEU art. 66.º / 68.º et du logement décent).
+MIN_AJUSTE = {"chambre": 9.5, "suite": 11.0, "sejour": 16.0, "sejour_cuisine": 20.0, "cuisine": 7.0, "bureau": 7.0, "sdb": 3.5,
+              "sde": 3.5, "wc": 1.8, "entree": 3.0, "buanderie": 2.5, "dressing": 2.5}
+
+
+def _construite_sans_garage(r: Dict[str, Any], prog: Dict[str, Any]) -> float:
+    der = EP.derivar(r["modelo"])
+    return der["medicoes"]["totais"]["area_bruta_construcao_m2"] - float((prog.get("garage") or {}).get("surface") or 0)
+
+
+def ajustar_area(prog: Dict[str, Any], alvo: float, iteracoes: int = 8, tolerancia: float = 0.03) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Ajuste à la surface construite voulue (hors garage) : toutes les pièces sont mises à l'échelle du même facteur,
+    sans descendre sous les minimums, et la maquette est régénérée jusqu'à ±3 % (le générateur est déterministe et rapide).
+    Renvoie (programme ajusté, résultat de `generer`)."""
+    base = [dict(p) for p in prog["pieces"]]
+    quartos = [p for p in base if p["cle"] in ("chambre", "suite")]
+    principal = id(max(quartos, key=lambda p: p["surface"])) if quartos else None   # quarto de casal : ≥ 10,5 m² (RGEU art. 66.º)
+    f = 1.0
+    meilleur = None
+    for _ in range(iteracoes):
+        pieces = [{**p, "surface": round(max(11.0 if id(p) == principal else MIN_AJUSTE.get(p["cle"], 1.5), p["surface"] * f), 1)
+                   if p["cle"] != "wc" else p["surface"]} for p in base]
+        pg = {**prog, "pieces": pieces}
+        r = generer(pg)
+        b = _construite_sans_garage(r, pg)
+        ecart = (b - alvo) / alvo
+        if meilleur is None or abs(ecart) < abs(meilleur[0]):
+            meilleur = (ecart, pg, r, b)
+        if abs(ecart) <= tolerancia:
+            break
+        f *= (alvo / b) ** 0.9
+    ecart, pg, r, b = meilleur
+    r["avisos"].append(_txt(f"Surfaces des pièces ajustées pour viser {alvo:.0f} m² construits hors garage : obtenu {b:.0f} m² ({ecart:+.0%}).",
+                            f"Áreas das divisões ajustadas para {alvo:.0f} m² de construção sem garagem: obtido {b:.0f} m² ({ecart:+.0%})."))
+    return pg, r
