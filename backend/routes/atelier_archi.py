@@ -463,6 +463,29 @@ async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) 
             "falhas": I.traduzir(falhas), **_sai(m, der), "updated_at": guardado}
 
 
+class RenderIn(BaseModel):
+    image_b64: str = Field(..., min_length=100, max_length=12_000_000)
+    prompt: str = Field("", max_length=4000)
+
+
+@router.post("/render", dependencies=[Depends(require_level("pro"))])
+async def render_fotorrealista(body: RenderIn, user=Depends(current_user)) -> dict:
+    """Render fotorrealista da vista 3D: OpenAI GPT Image primeiro, depois Nano Banana (chave Emergent), depois Runway."""
+    from engines.atelier_archi import edicao as ED
+    from engines.atelier_archi import render_ia as RI
+    try:
+        base = base64.b64decode(body.image_b64.split(",", 1)[-1])
+    except Exception:  # noqa: BLE001
+        raise HTTPException(422, ED._t("Image illisible.", "Imagem ilegível."))
+    res = await RI.render(base, body.prompt, sessao=f"atelier_render_{user['user_id']}")
+    if not res:
+        raise HTTPException(503, ED._t("Aucun moteur d'image n'a répondu. Réessayez dans un instant.",
+                                       "Nenhum motor de imagem respondeu. Tente de novo dentro de momentos."))
+    img, motor = res
+    mime = "image/png" if img[:4] == b"\x89PNG" else "image/jpeg"
+    return {"imagem": f"data:{mime};base64," + base64.b64encode(img).decode(), "motor": motor}
+
+
 @router.post("/projets/{pid}/operacoes")
 async def operacoes(pid: str, body: OperacoesIn, user=Depends(current_user)) -> dict:
     from engines.estudio_projeto import operacoes as OP

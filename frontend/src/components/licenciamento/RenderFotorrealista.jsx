@@ -6,7 +6,8 @@ import { errorText } from "@/lib/errorText";
 import { promptDoModelo } from "./promptRender";
 
 // Render fotorrealista com um clique: captura a vista 3D do Estúdio tal como está (geometria, enquadramento, sol) e
-// envia-a ao serviço de imagem do ConstruPilot (/api/runway/generate — Runway gen4_image, imagem de referência exata).
+// envia-a a /api/atelier-archi/render: OpenAI GPT Image (edição da própria vista, geometria mantida) primeiro, depois
+// Nano Banana pela chave Emergent e, por fim, Runway. Se o servidor ainda não tiver essa rota, usa /api/runway/generate.
 // O texto do pedido é escrito a partir do próprio modelo: materiais da fachada, cobertura, caixilharia, exteriores.
 
 const T = {
@@ -26,7 +27,7 @@ export default function RenderFotorrealista({ capturar, derivado, lang = "pt" })
   const vivo = useRef(true);
   useEffect(() => () => {
     vivo.current = false;
-    Object.values(urls).forEach((u) => u && URL.revokeObjectURL(u));
+    Object.values(urls).forEach((u) => u && u.startsWith("blob:") && URL.revokeObjectURL(u));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const gerar = async () => {
@@ -36,6 +37,16 @@ export default function RenderFotorrealista({ capturar, derivado, lang = "pt" })
       if (!blob) throw new Error(t.erro);
       const antes = URL.createObjectURL(blob);
       setUrls({ antes, depois: null });
+      const b64 = await new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = ko; fr.readAsDataURL(blob); });
+      try {
+        const { data } = await api.post("/atelier-archi/render", { image_b64: b64, prompt: promptDoModelo(derivado) });
+        if (!vivo.current) return;
+        setUrls({ antes, depois: data.imagem });
+        setEstado("pronto");
+        return;
+      } catch (e) {
+        if (e?.response?.status !== 404) throw e;      // rota ainda não instalada → serviço Runway
+      }
       const fd = new FormData();
       fd.append("file", blob, "vista-3d.jpg");
       fd.append("prompt", promptDoModelo(derivado));
