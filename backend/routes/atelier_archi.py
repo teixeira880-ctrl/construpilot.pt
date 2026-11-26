@@ -446,8 +446,10 @@ async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) 
         except Exception:  # noqa: BLE001 — sem IA: só as frases reconhecidas pelas regras
             acoes = []
     if not acoes:
-        return {"ok": False, "compreendido": False, "feitos": [], "falhas": [T("Je n'ai pas compris la demande. Exemples : « agrandis le séjour de 2 m », "
-                                                                            "« fenêtres plus grandes dans la chambre 2 », « piscine de 10 x 5 ».")]}
+        return {"ok": False, "compreendido": False, "feitos": [], "falhas": [ED._t("Je n'ai pas compris la demande. Exemples : « agrandis le séjour de 2 m », "
+                                                                                 "« fenêtres plus grandes dans la chambre 2 », « piscine de 10 x 5 ».",
+                                                                                 "Não percebi o pedido. Exemplos: «aumenta a sala 2 metros», "
+                                                                                 "«janelas maiores no quarto 2», «piscina de 10 x 5».")]}
 
     def go():
         m, feitos, falhas = ED.executar(m0, acoes)
