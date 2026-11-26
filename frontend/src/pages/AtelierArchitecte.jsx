@@ -26,7 +26,7 @@ const COPY = {
       "Petite maison T3 de 80 m², toiture 4 pans"],
     generer: "Générer l'esquisse", photoAide: "Photographiez le croquis bien à plat, en entier, avec les cotes lisibles. Les murs, ouvertures, noms de pièces et cotes sont relus puis redressés.",
     choisir: "Choisir ou prendre une photo", lire: "Lire le croquis",
-    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier",
+    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
     creer: "Créer le projet et ouvrir le Studio", nomProjet: "Nom du projet", adresse: "Adresse (facultatif)", moa: "Maître d'ouvrage (facultatif)",
     projets: "Mes projets d'architecture", aucun: "Aucun projet pour l'instant : commencez par une esquisse ci-dessus.", ouvrir: "Ouvrir",
     supprimer: "Supprimer", confirmerSup: "Supprimer définitivement ce projet ?", retour: "Mes projets",
@@ -45,7 +45,7 @@ const COPY = {
       "Pequena moradia T2 de 80 m², cobertura de quatro águas"],
     generer: "Gerar o esboço", photoAide: "Fotografe o esboço bem plano, inteiro, com as cotas legíveis. Paredes, vãos, nomes das divisões e cotas são lidos e endireitados.",
     choisir: "Escolher ou tirar uma fotografia", lire: "Ler o esboço",
-    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar",
+    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
     creer: "Criar o projeto e abrir o Estúdio", nomProjet: "Nome do projeto", adresse: "Morada (opcional)", moa: "Dono de obra (opcional)",
     projets: "Os meus projetos de arquitetura", aucun: "Ainda sem projetos: comece por um esboço acima.", ouvrir: "Abrir",
     supprimer: "Eliminar", confirmerSup: "Eliminar definitivamente este projeto?", retour: "Os meus projetos",
@@ -64,7 +64,7 @@ const COPY = {
       "Small 2-bedroom house of 80 m², hip roof"],
     generer: "Generate the sketch", photoAide: "Photograph the sketch flat, in full, with readable dimensions. Walls, openings, room names and dimensions are read then straightened.",
     choisir: "Choose or take a photo", lire: "Read the sketch",
-    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check",
+    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
     creer: "Create the project and open the Studio", nomProjet: "Project name", adresse: "Address (optional)", moa: "Client (optional)",
     projets: "My architecture projects", aucun: "No project yet: start with a sketch above.", ouvrir: "Open",
     supprimer: "Delete", confirmerSup: "Delete this project permanently?", retour: "My projects",
@@ -97,6 +97,30 @@ function PlanSvg({ modelo, piso }) {
   }, [modelo, piso]);
   if (!url) return <div className="h-72 grid place-items-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   return <img src={url} alt="" className="w-full rounded-lg border border-border bg-white" data-testid="atelier-plan-svg" />;
+}
+
+// Tudo o que o prompt pede fica visível: o que é gerado aqui, o que se completa no Estúdio
+// e o que continua noutra app — no mesmo processo de obra (fluxo entre apps).
+function PedidosPrompt({ pedidos, c }) {
+  const [sp] = useSearchParams();
+  const ch = sp.get("chantier");
+  return (
+    <div className="rounded-lg border border-border p-2.5 space-y-1.5" data-testid="atelier-pedidos">
+      <p className="font-medium flex items-center gap-1"><ScrollText className="h-4 w-4" />{c.pedidos}</p>
+      {pedidos.map((p, i) => (
+        <div key={i} className="flex items-start justify-between gap-2 text-xs">
+          <span className="flex items-start gap-1">
+            {p.estado === "gerado" ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-px" /> : <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-1.5" />}
+            <span>{p.titulo}{p.estado === "gerado" ? ` — ${c.gerado}` : p.estado === "estudio" ? ` — ${c.estudio}` : ""}</span>
+          </span>
+          {p.estado === "continuar" && (
+            <Link to={ch ? `${p.rota}?chantier=${encodeURIComponent(ch)}` : p.rota} className="shrink-0 text-primary font-semibold hover:underline"
+              data-testid={`atelier-pedido-${i}`}>{c.continuar} {p.app}</Link>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Apercu({ data, c, onCreer, enCours }) {
@@ -134,6 +158,7 @@ function Apercu({ data, c, onCreer, enCours }) {
               {data.avisos.map((a, i) => <p key={i} className="text-xs text-amber-900">• {a}</p>)}
             </div>
           )}
+          {!!(data.pedidos || []).length && <PedidosPrompt pedidos={data.pedidos} c={c} />}
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-3">

@@ -1,0 +1,92 @@
+Cria um projeto arquitetónico completo de uma moradia unifamiliar moderna de 200 m² de área bruta de construção, com um design contemporâneo, minimalista, elegante e de gama alta.
+1. Arquitetura exterior
+
+* Moradia de dois pisos, rés do chão e primeiro andar.
+* Volumes geométricos modernos, com linhas horizontais e verticais bem definidas.
+* Cobertura plana com platibandas.
+* Grandes superfícies envidraçadas do chão ao teto.
+* Fachadas em branco, pedra natural, madeira nobre e alumínio antracite.
+* Elementos arquitetónicos suspensos e varandas com guardas em vidro.
+* Iluminação LED arquitetónica integrada nas fachadas.
+* Garagem para dois automóveis.
+* Piscina exterior de 8 × 4 m.
+* Jardim paisagístico, terraço, pérgola e zona de refeições exterior.
+
+2. Rés do chão — 110 m²
+
+* Hall de entrada: 8 m².
+* Sala de estar e jantar em open space: 35 m².
+* Cozinha moderna com ilha central: 18 m².
+* Escritório ou quarto de hóspedes: 12 m².
+* Casa de banho completa: 5 m².
+* Lavandaria e zona técnica: 7 m².
+* Despensa: 3 m².
+* Escadas, circulação e paredes: 22 m².
+
+3. Primeiro andar — 90 m²
+
+* Suite principal: 20 m².
+* Closet privativo: 10 m².
+* Casa de banho da suite: 8 m².
+* Quarto 2: 15 m².
+* Quarto 3: 15 m².
+* Casa de banho comum: 7 m².
+* Circulação, escadas e paredes: 15 m².
+
+4. Design interior
+
+* Estilo contemporâneo de luxo, com espaços amplos e luminosos.
+* Pavimento em pedra natural ou cerâmica de grande formato.
+* Cozinha com ilha em pedra sinterizada.
+* Escadas suspensas em madeira com guardas em vidro.
+* Mobiliário integrado e personalizado.
+* Iluminação indireta LED.
+* Tons bege, branco quente, madeira natural, preto e apontamentos em cobre.
+* Ligação visual direta entre a sala, o jardim e a piscina.
+
+5. Engenharia e sustentabilidade
+
+* Estrutura em betão armado, dimensionada de acordo com o estudo estrutural e geotécnico.
+* Isolamento térmico e acústico de elevado desempenho.
+* Caixilharia com corte térmico e vidros de alto desempenho.
+* Bomba de calor reversível.
+* Pavimento radiante para aquecimento e arrefecimento.
+* Ventilação mecânica controlada de duplo fluxo.
+* Painéis solares fotovoltaicos.
+* Sistema de domótica inteligente.
+* Recuperação de águas pluviais.
+* Otimização da orientação solar e da eficiência energética.
+
+6. Geração automática do projeto BIM
+Produz automaticamente:
+
+* Planta de implantação.
+* Plantas arquitetónicas cotadas à escala 1:50.
+* Planta de cobertura.
+* Quatro alçados.
+* Cortes longitudinais e transversais.
+* Modelo estrutural BIM.
+* Plantas de fundações, pilares, vigas e lajes.
+* Redes de eletricidade, águas, esgotos e climatização.
+* Deteção de incompatibilidades entre especialidades.
+* Mapa de quantidades.
+* Orçamento detalhado por especialidade.
+* Planeamento de execução da obra.
+* Modelo BIM editável e exportável em IFC, DWG e PDF, conforme as capacidades do sistema.
+
+7. Renderização 3D fotorrealista
+Gera imagens de qualidade arquitetónica profissional em resolução 4K:
+
+* Vista exterior frontal.
+* Vista exterior traseira com piscina.
+* Vista aérea da propriedade.
+* Vista exterior noturna.
+* Sala de estar e cozinha.
+* Suite principal.
+* Casas de banho.
+* Vista 3D dos pisos sem cobertura.
+
+Aplica materiais realistas, iluminação natural, reflexos, sombras, vegetação e texturas de elevada qualidade.
+O projeto deverá respeitar as normas portuguesas e europeias aplicáveis, incluindo os Eurocódigos, os requisitos térmicos, acústicos, sísmicos e urbanísticos.
+Todos os elementos deverão ser paramétricos, editáveis manualmente, por comando de voz ou através de instruções em linguagem natural.
+Identifica os dados em falta, verifica a coerência das áreas, deteta erros e incompatibilidades e apresenta o projeto para validação antes de finalizar. Não assumes como validados os cálculos estruturais ou a conformidade regulamentar sem os estudos necessários e a revisão dos técnicos habilitados.

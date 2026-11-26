@@ -183,7 +183,7 @@ def _now() -> str:
 
 
 class PromptIn(BaseModel):
-    prompt: str = Field(min_length=3, max_length=2000)
+    prompt: str = Field(min_length=3, max_length=20000)
     ia: bool = True
 
 
@@ -223,7 +223,7 @@ class ProjetIn(BaseModel):
     origine: str = Field(default="manuel", max_length=40)
     adresse: str = Field(default="", max_length=300)
     maitre_ouvrage: str = Field(default="", max_length=200)
-    programme: str = Field(default="", max_length=2000)
+    programme: str = Field(default="", max_length=20000)
 
 
 class ModeloIn(BaseModel):
@@ -296,7 +296,9 @@ async def esquisse_prompt(body: PromptIn, user=Depends(current_user)) -> dict:
     r = await run_in_threadpool(GEN.generer, prog)
     pieces = [{"nom": p["nom"], "surface": p["surface"], "niveau": p["niveau"]} for p in prog["pieces"]]
     return await run_in_threadpool(_apercu, r["modelo"], r["avisos"], {"programme": {"pieces": pieces, "niveaux": prog["niveaux"],
-                                                                                     "garage": prog["garage"], "toiture": prog["toiture"]}})
+                                                                                     "garage": prog["garage"], "toiture": prog["toiture"],
+                                                                                     "detalhado": bool(prog.get("detalhado"))},
+                                                                       "pedidos": prog.get("pedidos") or []})
 
 
 @router.post("/esquisse/croquis")
