@@ -138,6 +138,9 @@ def assistant_summary(d: dict) -> dict:
         "comptes_rendus": [{"titre": r.get("title"), "date": (r.get("created_at") or "")[:10], "photos": len(r.get("photos") or []), "notes": (r.get("notes") or "")[:300]} for r in d["reports"][:15]],
         "reserves_ouvertes": [{"lot": r.get("lot"), "description": (r.get("description") or "")[:200], "entreprise": r.get("company"), "statut": r.get("status")}
                               for r in d["reserves"] if r.get("status") not in ("levee", "closed", "done")][:30],
+        # Fio do trabalho entre apps (Ateliê, BIM, medições, estudos, PIC…): o assistente sabe de onde vem cada resultado.
+        "percurso_apps": [{"app": p.get("app"), "titulo": p.get("titulo"), "resumo": p.get("resumo"), "abrir": p.get("url"),
+                           "atualizado": (p.get("atualizado_em") or "")[:16]} for p in (d.get("percurso") or [])[:25]],
         "indicateurs": d["kpis"],
     }
 
@@ -161,11 +164,13 @@ async def build_dossier(chantier_id: str, uid: str) -> dict:
               for r in reports for p in (r.get("photos") or [])]
     milestones = await db.chantier_milestones.find({"chantier_id": chantier_id}, {"_id": 0}).sort("order", 1).to_list(100)
     participants_n = await db.chantier_participants.count_documents({"chantier_id": chantier_id, "status": {"$ne": "revoked"}})
+    from routes.fluxo_obra import percurso_resumido
+    percurso = await percurso_resumido(chantier_id, uid, database=db)
     ttc = lambda ds: round(sum((d.get("totals") or {}).get("ttc", 0) for d in ds), 2)  # noqa: E731
     quotes = [d for d in documents if d.get("doc_type") == "quote"]
     invoices = [d for d in documents if d.get("doc_type") == "invoice"]
     return {**c, "client": client, "documents": documents, "plans": plans, "plans_pro": jobs, "diagnostics": problems,
-            "reports": reports, "reserves": reserves, "photos": photos, "milestones": milestones, "participants_count": participants_n,
+            "reports": reports, "reserves": reserves, "photos": photos, "milestones": milestones, "participants_count": participants_n, "percurso": percurso,
             "kpis": {"quotes": len(quotes), "signed_ttc": ttc([q for q in quotes if q.get("status") == "signed"]),
                      "invoiced_ttc": ttc(invoices), "paid": round(sum(i.get("paid", 0) for i in invoices), 2),
                      "open_reserves": len([r for r in reserves if r.get("status") not in ("levee", "lifted", "closed", "done")])}}

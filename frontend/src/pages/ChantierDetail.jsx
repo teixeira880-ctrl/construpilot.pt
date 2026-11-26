@@ -16,6 +16,7 @@ import { PhotoCompareDialog } from "@/components/chantiers/PhotoCompareDialog";
 import { ChantierPilot } from "@/components/chantiers/ChantierPilot";
 import { ChantierCostsPanel } from "@/components/chantiers/ChantierCostsPanel";
 import { ProjectFlow } from "@/components/chantiers/ProjectFlow";
+import { PercursoApps } from "@/components/chantiers/PercursoApps";
 
 const FILE = process.env.REACT_APP_BACKEND_URL + "/api/site/file?path=";
 const DOC_STATUS = { draft: "Rascunho", sent: "Enviado", signed: "Assinado", refused: "Recusado", paid: "Paga", overdue: "Em atraso", partial: "Parcial", cancelled: "Anulado" };
@@ -156,6 +157,7 @@ function ChantierDetailContent() {
       </header>
 
       <ProjectFlow c={c} chantierId={chantierId} onTab={selectTab} />
+      <PercursoApps c={c} chantierId={chantierId} onChanged={load} />
       <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 rounded-2xl bg-secondary/40 p-2 border border-border/70" aria-label="Secções do processo" data-testid="chantier-tabs">
         {tabs.map(([key, label]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => selectTab(key)} data-testid={`chantier-tab-${key}`} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${tab === key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-background"}`}>{label}{key === "exchanges" && inbox.new_issues > 0 ? ` (${inbox.new_issues})` : ""}</button>)}
       </nav>

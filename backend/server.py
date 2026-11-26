@@ -257,6 +257,8 @@ api_router.include_router(company_page_routes.router)
 api_router.include_router(today_routes.router)
 from routes import chantiers as chantiers_routes, onboarding as onboarding_routes  # noqa: E402
 api_router.include_router(chantiers_routes.router)
+from routes import fluxo_obra as fluxo_obra_routes  # noqa: E402  — percurso de um processo através de todas as apps
+api_router.include_router(fluxo_obra_routes.router)
 api_router.include_router(onboarding_routes.router)
 from routes import portal as portal_routes  # noqa: E402
 api_router.include_router(portal_routes.pro_router)
@@ -743,6 +745,8 @@ async def _seed_impl():
     await db.portal_email_log.create_index("sent_at", expireAfterSeconds=3600)
     await db.site_reports.create_index([("chantier_id", 1), ("published", 1)])
     await db.chantiers.create_index([("user_id", 1), ("updated_at", -1)])
+    await db.chantier_percurso.create_index([("chantier_id", 1), ("user_id", 1), ("chave", 1)], unique=True)
+    await db.chantier_percurso.create_index([("chantier_id", 1), ("user_id", 1), ("atualizado_em", -1)])
     for coll in (db.pro_documents, db.plans_takeoff, db.plans_pro_jobs, db.btp_problems, db.site_reports):
         await coll.create_index([("user_id", 1), ("chantier_id", 1)], sparse=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)

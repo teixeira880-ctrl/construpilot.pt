@@ -21,6 +21,7 @@ import AuthCallback from "@/components/AuthCallback";
 import { Nav, Footer } from "@/components/Nav";
 import HelpChatbot from "@/components/HelpChatbot";
 import { StudyRunning } from "@/components/StudyRunning";
+import { FluxoObra } from "@/components/fluxo/FluxoObra";
 import { AgentsRunning } from "@/components/AgentsRunning";
 import LandingPro from "@/pages/LandingPro";
 import LandingParticuliers from "@/pages/LandingParticuliers";
@@ -257,6 +258,7 @@ const Shell = ({ children }) => {
     {!assistant && <HelpChatbot />}
     <AgentsRunning />
     <StudyRunning />
+    <FluxoObra />
   </div>;
 };
 
