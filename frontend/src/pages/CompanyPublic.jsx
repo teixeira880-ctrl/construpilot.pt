@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import { Phone, Mail, Globe, MapPin, ShieldCheck, Star } from "lucide-react";
 import { QuoteRequestForm } from "@/components/company/QuoteRequestForm";
+import WhatsAppButton from "@/components/whatsapp/WhatsAppButton";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -24,6 +25,7 @@ export default function CompanyPublic() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900" data-testid="company-public-page" style={{ "--accent": accent }}>
+      <WhatsAppButton contactos={data.whatsapp} />
       <header className="border-b" style={{ borderColor: accent }}>
         <div className="max-w-5xl mx-auto px-5 py-8 flex flex-col md:flex-row md:items-center gap-6">
           {data.has_logo && <img src={`${BASE}/api/branding/${data.user_id}/logo`} alt={`Logótipo ${data.company_name}`} className="h-20 w-auto max-w-[260px] object-contain rounded-lg border bg-white p-2" />}

@@ -153,6 +153,8 @@ async def public_company(slug: str) -> dict:
         raise HTTPException(404, "Página não encontrada ou não publicada")
     payload = _public_payload(u)
     payload["user_id"] = u["user_id"]
+    from routes.whatsapp import contactos_para
+    payload["whatsapp"] = await contactos_para(u["user_id"], "pagina", payload.get("company_name") or "")
     if payload["show_reviews"]:
         try:
             from routes.reviews import get_reviews_for_user

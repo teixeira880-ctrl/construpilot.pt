@@ -303,6 +303,9 @@ async def consultar_orcamento_publico(request: Request, token: str) -> dict[str,
     except Exception:  # noqa: BLE001
         logger.exception("tracking de abertura falhou (não bloqueia a resposta)")
 
+    from routes.whatsapp import contactos_para
+    out["whatsapp"] = await contactos_para(link["created_by_user_id"], "orcamentos",
+                                           ((out.get("empresa") or {}).get("nome") or ""), str(out.get("numero") or ""))
     out["expires_at_iso"] = (
         expires_at.isoformat() if isinstance(expires_at, datetime) else ""
     )

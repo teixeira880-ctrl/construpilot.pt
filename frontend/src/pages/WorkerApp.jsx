@@ -7,11 +7,13 @@ import { useI18n } from "@/context/I18nContext";
 import { LangToggle } from "@/context/I18nContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import WhatsAppButton from "@/components/whatsapp/WhatsAppButton";
 
 export default function WorkerApp() {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const [projects, setProjects] = useState([]);
+  const [waEquipa, setWaEquipa] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [openTs, setOpenTs] = useState(null);
   const [selfie, setSelfie] = useState(null);
@@ -36,6 +38,7 @@ export default function WorkerApp() {
   useEffect(() => {
     if (!isWorker) return;
     api.get("/hr/me/projects").then(({ data }) => setProjects(data)).catch(() => {});
+    api.get("/company/whatsapp/equipa").then(({ data }) => setWaEquipa(data.itens)).catch(() => {});
     refresh();
   }, [isWorker]);
 
@@ -114,6 +117,7 @@ export default function WorkerApp() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="worker-app">
+      <WhatsAppButton contactos={waEquipa} />
       <header className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background/90 backdrop-blur z-10">
         <span className="font-display font-extrabold">{t("hr.w_hello")}, {user.name?.split(" ")[0]}</span>
         <div className="flex items-center gap-2">

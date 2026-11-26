@@ -9,6 +9,7 @@ import { PortalPlanning } from "@/components/portal/PortalPlanning";
 import { ObraColab } from "@/components/colab/ObraColab";
 import { GestaoObra } from "@/components/gestao/GestaoObra";
 import { HardHat, KeyRound, Mail, ArrowRight, LogOut, Phone, CheckCircle2, Clock, AlertTriangle, Circle, Camera, ChevronDown, MessageSquare, TrendingUp, FileText, ClipboardCheck, Users, BookOpen } from "lucide-react";
+import WhatsAppButton from "@/components/whatsapp/WhatsAppButton";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 export const portalApi = axios.create({ baseURL: `${BASE}/api/portal`, withCredentials: true });
@@ -117,6 +118,7 @@ export function PortalChantier() {
   const tab = tabs.some(t => t[0] === requestedTab) ? requestedTab : "progress";
   return (
     <Frame company={company}>
+      <WhatsAppButton contactos={data.whatsapp} />
       <div className="ms-auto flex flex-wrap justify-end items-center gap-2 min-w-0">
         {others.length > 1 && <div className="relative"><select value={me.participant.participant_id} onChange={(e) => switchTo(e.target.value)} className="text-xs rounded-md border px-2 py-1.5 pr-6 max-w-[160px] bg-[#fffaf3]" data-testid="portal-switch">{others.map((c) => <option key={c.participant_id} value={c.participant_id}>{`${c.name} · ${c.ref}`}</option>)}</select><ChevronDown className="h-3 w-3 absolute right-2 top-2.5 pointer-events-none" /></div>}
         <button type="button" onClick={logout} className="text-xs inline-flex items-center gap-1 text-slate-500 hover:text-slate-900" data-testid="portal-logout"><LogOut className="h-3.5 w-3.5" /> Sair</button>

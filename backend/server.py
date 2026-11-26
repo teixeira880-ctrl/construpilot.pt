@@ -276,6 +276,8 @@ api_router.include_router(obra_gestao_routes.webhooks_router)
 from routes import obra_execucao as obra_execucao_routes  # noqa: E402  (assessor de voz, mapa de avanço, tesouraria, câmaras)
 api_router.include_router(obra_execucao_routes.pro_router)
 api_router.include_router(obra_execucao_routes.portal_router)
+from routes import whatsapp as whatsapp_routes  # noqa: E402  (botão WhatsApp: gerente e colaboradores)
+api_router.include_router(whatsapp_routes.router)
 from routes import speech as speech_routes  # noqa: E402
 api_router.include_router(speech_routes.router)
 api_router.include_router(notifications_routes.router)
@@ -746,6 +748,7 @@ async def _seed_impl():
     await db.obra_diario.create_index([("chantier_id", 1), ("data", 1)], unique=True)   # uma entrada por dia e por obra
     await db.obra_gestao_seq.create_index([("chantier_id", 1), ("chave", 1)], unique=True)
     await db.obra_mapa.create_index("chantier_id", unique=True, name="obra_mapa_unico")
+    await db.whatsapp_contactos.create_index("owner_id", unique=True)
     await db.webhooks_saida.create_index("user_id")
     await db.obra_ia_quota.create_index([("chantier_id", 1), ("dia", 1), ("chave", 1)], unique=True)
     await db.obra_ia_quota.create_index("criado_em", expireAfterSeconds=40 * 86400)

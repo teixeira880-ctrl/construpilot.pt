@@ -403,7 +403,9 @@ async def overview_for(p: dict) -> dict:
             for r in reports:
                 r["photos"] = []
     progress = round(sum(m.get("progress_pct", 0) for m in milestones) / len(milestones)) if milestones else None
-    return {"chantier": {"ref": c.get("ref") or p["chantier_ref"], "name": c["name"], "status": c.get("status"), "address": " ".join(filter(None, [c.get("address"), c.get("postal_code"), c.get("city")]))},
+    from routes.whatsapp import contactos_para
+    whatsapp = await contactos_para(c["user_id"], "portal", b.get("company_name") or "", c.get("ref") or p["chantier_ref"])
+    return {"whatsapp": whatsapp, "chantier": {"ref": c.get("ref") or p["chantier_ref"], "name": c["name"], "status": c.get("status"), "address": " ".join(filter(None, [c.get("address"), c.get("postal_code"), c.get("city")]))},
             "company": {"name": b.get("company_name") or (pro or {}).get("name") or "", "logo": logo, "accent": (pro or {}).get("brand_accent_color"),
                         "phone": b.get("contact_line") or (pro or {}).get("brand_phone") or (pro or {}).get("phone"), "email": b.get("company_email") or (pro or {}).get("email")},
             "participant": {"role": p["role"], "name": p.get("name"), "lot": p.get("lot"), "permissions": perms},

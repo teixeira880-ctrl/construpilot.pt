@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, Copy, Trash2, Upload, Globe, FileText } from "lucide-react";
+import WhatsAppSettings from "@/components/whatsapp/WhatsAppSettings";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -91,6 +92,8 @@ export default function CompanyPage() {
         <h1 className="text-2xl md:text-3xl font-semibold">A minha página & documentos</h1>
         <p className="text-sm text-muted-foreground">Personalize os seus orçamentos e faturas e apresente a sua empresa aos seus clientes como um site.</p>
       </header>
+
+      <WhatsAppSettings />
 
       <section className="grid lg:grid-cols-2 gap-6">
         <div className="rounded-xl border p-5 space-y-3" data-testid="pdf-custom-form">

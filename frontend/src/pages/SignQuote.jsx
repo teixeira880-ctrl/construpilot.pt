@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CheckCircle2, PenLine, RotateCcw, Download, CreditCard, Loader2 } from "lucide-react";
 import axios from "axios";
+import WhatsAppButton from "@/components/whatsapp/WhatsAppButton";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const eur = (n) => (Number(n) || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
@@ -125,6 +126,7 @@ export default function SignQuote() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/30 via-background to-primary/5 p-6">
+      <WhatsAppButton contactos={data.whatsapp} />
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center py-8">
           <p className="text-xs uppercase tracking-widest text-primary font-bold">

@@ -1255,7 +1255,10 @@ async def get_signature_page_data(token: str) -> dict:
     pct = log.get("deposit_pct")
     pct = QUOTE_DEPOSIT_DEFAULT_PCT if pct is None else float(pct)
     deposit_amount = round(ttc * pct / 100.0, 2) if (ttc > 0 and pct > 0) else 0
+    from routes.whatsapp import contactos_para
+    whatsapp = await contactos_para(log["user_id"], "orcamentos", branding.get("company_name") or "", "")
     return {
+        "whatsapp": whatsapp,
         "log_id": log["log_id"], "plan_id": log.get("plan_id"),
         "client_email": log.get("client_email"), "client_name": log.get("client_name"),
         "total_ttc": log.get("total_ttc"),
