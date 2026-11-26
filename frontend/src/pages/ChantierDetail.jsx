@@ -164,6 +164,11 @@ function ChantierDetailContent() {
       {tab === "overview" && <>
       <ChantierPilot chantierId={chantierId} />
       <AlertasResumo client={api} base={`/chantiers/${chantierId}/gestao`} onOpen={() => selectTab("gestao")} />
+      <div className="flex flex-wrap gap-2" data-testid="chantier-execucao-atalhos">
+        {[["assessor", "🎙️ Assessor de voz"], ["mapa", "🗺️ Mapa da obra"], ["tesouraria", "💶 Tesouraria"], ["camaras", "📹 Câmaras"]].map(([k, l]) => (
+          <button key={k} type="button" className="surface px-3 py-2 text-sm font-semibold min-h-10 hover:border-primary/50 transition-colors"
+            onClick={() => { const next = new URLSearchParams(params); next.set("tab", "gestao"); next.set("sec", k); setParams(next); }} data-testid={`chantier-atalho-${k}`}>{l}</button>))}
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="chantier-kpis">
         {[["Orçamento", c.kpis.quotes, false], ["Assinado c/ IVA", c.kpis.signed_ttc, true], ["Faturado c/ IVA", c.kpis.invoiced_ttc, true], ["Recebido", c.kpis.paid, true], ["Reservas em aberto", c.kpis.open_reserves, false]].map(([l, v, money]) => (
@@ -212,7 +217,7 @@ function ChantierDetailContent() {
       </div>
 
       </>}
-      {tab === "budget" && <><ChantierCostsPanel chantierId={chantierId} /><GestaoObra client={api} base={`/chantiers/${chantierId}/gestao`} fileBase={`${API}/chantiers/${chantierId}/gestao`} only={["indicadores", "stock"]} /></>}
+      {tab === "budget" && <><ChantierCostsPanel chantierId={chantierId} /><GestaoObra client={api} base={`/chantiers/${chantierId}/gestao`} fileBase={`${API}/chantiers/${chantierId}/gestao`} only={["indicadores", "stock", "tesouraria"]} /></>}
       {tab === "reception" && <ReceptionPanel chantierId={chantierId} />}
       {tab === "colab" && <ObraColab client={api} base={`/chantiers/${chantierId}/colab`} fileBase={`${API}/chantiers/${chantierId}/colab`} />}
       {tab === "gestao" && <GestaoObra client={api} base={`/chantiers/${chantierId}/gestao`} fileBase={`${API}/chantiers/${chantierId}/gestao`} initial={params.get("sec")} />}

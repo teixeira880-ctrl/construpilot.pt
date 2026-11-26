@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { BookOpen, ShieldCheck, HelpCircle, TrendingUp, Boxes, Bot, History, Webhook, Plus, Download, Upload, Loader2, Check, X, PenLine, Eye, EyeOff, AlertTriangle, Sparkles, Send, RotateCcw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
 import { T, LOCALE, SEV_CLS } from "./txt";
+import { SECOES_EXECUCAO, ExecucaoSecao, useExecucao } from "@/components/execucao/ExecucaoObra";
 
 /**
  * Gestão de obra — diário, qualidade e segurança, pedidos de esclarecimento, curva S e alertas, stock, copiloto,
@@ -561,7 +562,15 @@ const SECOES = [
 
 export function GestaoObra({ client, base, fileBase, only, initial }) {
   const [info] = useGestao(client, base);
-  const disponiveis = info ? SECOES.filter(([k, , , ok]) => ok(info.capacidades) && (!only || only.includes(k))) : [];
+  // Execução de obra (assessor de voz, mapa de avanço, tesouraria, câmaras): mesma obra, API irmã /execucao
+  const execBase = base.replace(/\/gestao$/, "/execucao");
+  const execFileBase = fileBase ? fileBase.replace(/\/gestao$/, "/execucao") : null;
+  const exec = useExecucao(client, execBase);
+  const execCaps = exec ? exec.capacidades : {};
+  const execSecs = exec ? SECOES_EXECUCAO.filter(([k, , , ok]) => ok(execCaps) && (!only || only.includes(k))) : [];
+  const ordem = ["assessor", "diario", "qse", "rfi", "indicadores", "mapa", "stock", "tesouraria", "camaras", "copiloto", "historico", "webhooks"];
+  const disponiveis = info ? [...SECOES.filter(([k, , , ok]) => ok(info.capacidades) && (!only || only.includes(k))), ...execSecs]
+    .sort((a, b) => ordem.indexOf(a[0]) - ordem.indexOf(b[0])) : [];
   const [sec, setSec] = useState(initial || null);
   if (info === null) return <section className={card}><Empty>{T.carregar}</Empty></section>;
   if (info === false || disponiveis.length === 0) return null;
@@ -583,6 +592,7 @@ export function GestaoObra({ client, base, fileBase, only, initial }) {
       {atual === "copiloto" && <CopilotoPanel {...props} />}
       {atual === "historico" && <HistoricoPanel {...props} />}
       {atual === "webhooks" && <WebhooksPanel client={client} eventos={info.referenciais.webhook_eventos} />}
+      {execSecs.some(([k]) => k === atual) && <ExecucaoSecao sec={atual} client={client} execBase={execBase} gestaoBase={base} fileBase={execFileBase} caps={execCaps} />}
     </div>
   );
 }
