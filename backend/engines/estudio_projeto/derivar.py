@@ -636,6 +636,8 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         *_por_material(divisoes_out, "Paredes interiores (faces das divisões)", "parede_interior", "area_paredes_m2", mat),
         *_por_material(divisoes_out, "Tetos", "teto", "area_m2", mat),
         *[{"elemento": "Caixilharia (vãos exteriores)", "material": nm, "area_m2": R(a, 2)} for nm, a in caix_por.items()],
+        # exteriores (piscina, terraços, jardim): a mesma lista de materiais serve o 3D, as medições e o orçamento
+        *[{"elemento": e["categoria"], "material": e["nome"], "area_m2": e["area_m2"]} for e in _exteriores(objetos_out)],
     ]
     medicoes = {
         "convencao": ("Medições geométricas do modelo: comprimentos líquidos sem contar encontros duas vezes, áreas "

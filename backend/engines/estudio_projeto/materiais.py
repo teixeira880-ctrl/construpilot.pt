@@ -236,7 +236,9 @@ def _padrao(grupo: str, nome: str) -> str:
     g, n = grupo.lower(), nome.lower()
     if "telha" in g or "telha" in n:
         return "ardosia" if "ardósia" in n else "telha"
-    if g == "pedra" or any(k in n for k in ("granito", "xisto", "calcário", "pedra", "mármore", "lioz")):
+    if "mármore" in n or "marmore" in n:
+        return "marmore"
+    if g == "pedra" or any(k in n for k in ("granito", "xisto", "calcário", "pedra", "lioz")):
         return "pedra" if g in ("pedra", "combinações") else "ladrilho"
     if "tijolo" in n:
         return "tijolo"

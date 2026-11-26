@@ -223,7 +223,8 @@ function Medicoes({ md }) {
   );
 }
 
-export default function EstudioProjeto({ pid }) {
+export default function EstudioProjeto({ pid, base, apiEstudio = "/estudio-projeto", semProcesso = false, textoRepor = "" }) {
+  const raiz = base || `/estudio-projeto/${pid}`;           // Ateliê: /atelier-archi/projets/{id} ; licenciamento: /estudio-projeto/{processo}
   const [modelo, setModelo] = useState(null);
   const [derivado, setDerivado] = useState(null);
   const [info, setInfo] = useState(null);

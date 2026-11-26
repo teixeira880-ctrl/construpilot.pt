@@ -4,6 +4,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, Download, Footprints, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sol as posicaoSol, vetorSol, fmt } from "@/components/licenciamento/estudioGeo";
+import { texturasReais, corComTextura } from "@/components/licenciamento/texturasReais";
+import RenderFotorrealista from "@/components/licenciamento/RenderFotorrealista";
 
 /**
  * 3D do Estúdio de Projeto — desenhado só a partir do resultado do servidor (`derivado`): as mesmas paredes, vãos,
@@ -41,12 +43,22 @@ const PADROES = {
       c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(r() * n, r() * n, 2 + r() * 3, 2 + r() * 3); } c.fillStyle = "#c9c9c9"; c.fillRect(0, 0, n, 2); c.fillRect(0, 0, 2, n); } },
   reboco: { m: 1.5, f: (c, n, r) => { c.fillStyle = "#f6f6f6"; c.fillRect(0, 0, n, n); for (let k = 0; k < 1400; k += 1) { const v = 228 + Math.floor(r() * 27);
       c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(r() * n, r() * n, 1.5, 1.5); } } },
+  marmore: { m: 1.2, f: (c, n, r) => { c.fillStyle = "#f7f7f7"; c.fillRect(0, 0, n, n); c.strokeStyle = "rgba(150,150,150,0.45)";
+    for (let k = 0; k < 7; k += 1) { c.lineWidth = 0.6 + r() * 1.6; c.beginPath(); let x = r() * n, y = 0; c.moveTo(x, y);
+      while (y < n) { x += (r() - 0.5) * 40; y += 12 + r() * 20; c.lineTo(x, y); } c.stroke(); }
+    c.fillStyle = "#dedede"; c.fillRect(0, 0, n, 1.5); c.fillRect(0, 0, 1.5, n); } },
+  relva: { m: 1.0, f: (c, n, r) => { c.fillStyle = "#cfcfcf"; c.fillRect(0, 0, n, n); for (let k = 0; k < 2600; k += 1) { const v = 185 + Math.floor(r() * 70);
+      c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(r() * n, r() * n, 1.2, 3 + r() * 4); } } },
+  agua: { m: 3.0, f: (c, n, r) => { const g = c.createLinearGradient(0, 0, n, n); g.addColorStop(0, "#e9f4ff"); g.addColorStop(1, "#ffffff");
+    c.fillStyle = g; c.fillRect(0, 0, n, n); c.strokeStyle = "rgba(255,255,255,0.9)";
+    for (let k = 0; k < 40; k += 1) { c.lineWidth = 1 + r() * 2; c.beginPath(); const x = r() * n, y = r() * n; c.moveTo(x, y);
+      c.bezierCurveTo(x + 15, y - 6, x + 30, y + 6, x + 45, y); c.stroke(); } } },
   seixo: { m: 1.0, f: (c, n, r) => { c.fillStyle = "#c4c4c4"; c.fillRect(0, 0, n, n); for (let k = 0; k < 420; k += 1) { const v = 200 + Math.floor(r() * 55);
       c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(r() * n, r() * n, 3 + r() * 4, 0, 6.3); c.fill(); } } },
 };
 
 function texturaDe(padrao, cacheTex) {
-  const def = PADROES[padrao];
+  const def = padrao ? PADROES[padrao] : null;
   if (!def || typeof document === "undefined") return null;
   if (!cacheTex[padrao]) {
     const n = 256, cv = document.createElement("canvas");
@@ -116,7 +128,23 @@ function base(a, ux, uy, z0) {
   return b;
 }
 
-function construir(derivado, pisoVisivel, comTexturas = true) {
+// Peças de exterior: material e textura próprios (água da piscina, relva, pedra do terraço, madeira do deck…)
+const EXTERIOR = {
+  piscina: { cor: "#3fa4d8", padrao: "agua", extra: { roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88 } },
+  piscina_infinita: { cor: "#3fa4d8", padrao: "agua", extra: { roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88 } },
+  jacuzzi: { cor: "#4fb3e0", padrao: "agua", extra: { roughness: 0.1, transparent: true, opacity: 0.9 } },
+  terraco_pedra: { cor: "#d8cfc0", padrao: "pedra_exterior" },
+  deck_madeira: { cor: "#a47a52", padrao: "deck" },
+  deck_piscina: { cor: "#a47a52", padrao: "deck" },
+  caminho: { cor: "#c9c2b6", padrao: "pedra_exterior" },
+  acesso_viaturas: { cor: "#9c9890", padrao: "seixo" },
+  relvado: { cor: "#7fae5a", padrao: "relva", extra: { roughness: 1 } },
+  canteiro: { cor: "#7b5a3c", padrao: "seixo" },
+  muro_vedacao: { cor: "#e9e5dd", padrao: "reboco" },
+};
+const ALIAS = { deck: "soalho", pedra_exterior: "pedra" };   // sem fotografia própria, usa o desenho mais próximo
+
+function construir(derivado, pisoVisivel, comTexturas = true, reais = {}) {
   const grupo = new THREE.Group();
   const cores = { ...RESERVA, ...(derivado.cores || {}) };
   const padroes = derivado.padroes || {};
@@ -124,8 +152,14 @@ function construir(derivado, pisoVisivel, comTexturas = true) {
   const mat = (cor, extra = {}, padrao = null) => {       // um material por cor, variante e textura, partilhado entre peças
     const k = `${cor}|${JSON.stringify(extra)}|${padrao || ""}`;
     if (!cache[k]) {
-      const tex = comTexturas && padrao ? texturaDe(padrao, cacheTex) : null;
-      cache[k] = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, ...extra, ...(tex ? { map: tex } : {}) });
+      const real = comTexturas && padrao ? (reais[padrao] || reais[ALIAS[padrao]]) : null;
+      if (real) {                                         // fotografia CC0 com relevo (normal) e rugosidade reais
+        cache[k] = new THREE.MeshStandardMaterial({ color: corComTextura(cor, real), roughness: 0.9, ...extra, map: real.map,
+          ...(real.normalMap ? { normalMap: real.normalMap } : {}), ...(real.roughnessMap ? { roughnessMap: real.roughnessMap } : {}) });
+      } else {
+        const tex = comTexturas && padrao ? texturaDe(PADROES[padrao] ? padrao : ALIAS[padrao], cacheTex) : null;
+        cache[k] = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, ...extra, ...(tex ? { map: tex } : {}) });
+      }
     }
     return cache[k];
   };
@@ -240,11 +274,42 @@ function construir(derivado, pisoVisivel, comTexturas = true) {
   // mobiliário, sanitários e equipamentos: volume de ocupação de cada peça
   for (const o of derivado.objetos || []) {
     if (ordem[o.piso] > ate) continue;
-    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(o.pts.map((p) => new THREE.Vector2(p[0], p[1]))), { depth: Math.max(0.02, o.z1 - o.z0), bevelEnabled: false });
+    if (o.tipo === "arvore" || o.tipo === "arbusto") {      // árvore: tronco + copa ; arbusto: copa
+      const r = Math.max(0.3, Math.min(o.largura_m, o.prof_m) / 2), h = Math.max(0.5, o.z1 - o.z0);
+      const copa = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), mat("#5f8f45", { roughness: 1 }, comTexturas ? "relva" : null));
+      copa.position.set(o.x, o.z0 + (o.tipo === "arvore" ? h - r : r), -o.y);
+      copa.castShadow = true; junta(copa, { tipo: "objeto", id: o.id, piso: o.piso });
+      if (o.tipo === "arvore") {
+        const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, h - r, 10), mat("#6b4a2f", { roughness: 1 }));
+        tronco.position.set(o.x, o.z0 + (h - r) / 2, -o.y); tronco.castShadow = true;
+        junta(tronco, { tipo: "objeto", id: o.id, piso: o.piso });
+      }
+      continue;
+    }
+    if (o.tipo === "pergola") {                               // pérgola: 4 pilares + ripas
+      const h = Math.max(2.2, o.z1 - o.z0), mp = mat("#8a6a4a", { roughness: 0.8 }, comTexturas ? "ripado" : null);
+      for (const [px, py] of o.pts) {
+        const pil = new THREE.Mesh(new THREE.BoxGeometry(0.12, h, 0.12), mp);
+        pil.position.set(px + (o.x - px) * 0.04, o.z0 + h / 2, -(py + (o.y - py) * 0.04)); pil.castShadow = true;
+        junta(pil, { tipo: "objeto", id: o.id, piso: o.piso });
+      }
+      const n = Math.max(4, Math.round(o.largura_m / 0.4));
+      const ang = (o.rot || 0) * Math.PI / 180;
+      for (let i = 0; i < n; i += 1) {
+        const u = -o.largura_m / 2 + (i + 0.5) * (o.largura_m / n);
+        const rip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, o.prof_m), mp);
+        rip.position.set(o.x + u * Math.cos(ang), o.z0 + h, -(o.y + u * Math.sin(ang))); rip.rotation.y = ang;
+        rip.castShadow = true; junta(rip, { tipo: "objeto", id: o.id, piso: o.piso });
+      }
+      continue;
+    }
+    const ext = EXTERIOR[o.tipo];
+    const alt = ext ? Math.max(0.02, o.z1 - o.z0) : Math.max(0.02, o.z1 - o.z0);
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(o.pts.map((p) => new THREE.Vector2(p[0], p[1]))), { depth: alt, bevelEnabled: false });
     geo.rotateX(-Math.PI / 2);
-    const m = new THREE.Mesh(geo, mat(o.cor, { roughness: 0.75 }));
+    const m = new THREE.Mesh(geo, ext ? mat(ext.cor, { roughness: 0.85, ...(ext.extra || {}) }, comTexturas ? ext.padrao : null) : mat(o.cor, { roughness: 0.75 }));
     m.position.y = o.z0 + 0.014;
-    m.castShadow = true; m.receiveShadow = true;
+    m.castShadow = !ext; m.receiveShadow = true;
     junta(m, { tipo: "objeto", id: o.id, piso: o.piso });
   }
   return grupo;
@@ -270,6 +335,8 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
   const [mes, setMes] = useState(5);                   // junho
   const [hora, setHora] = useState(15);
   const [texturas, setTexturas] = useState(true);
+  const [reais, setReais] = useState({});             // fotografias CC0 (/texturas), carregadas uma vez; sem elas: texturas desenhadas
+  useEffect(() => { let vivo = true; texturasReais().then((t) => { if (vivo) setReais(t || {}); }); return () => { vivo = false; }; }, []);
   const [aExportar, setAExportar] = useState(false);
   const [visita, setVisita] = useState(false);         // visita virtual: câmara à altura dos olhos, dentro da casa
   const latitude = contexto?.latitude ?? 39.5;         // sem processo georreferenciado: centro de Portugal continental
@@ -367,7 +434,7 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     const s = st.current;
     if (!s.scene || !derivado) return;
     if (s.grupo) { s.scene.remove(s.grupo); libertar(s.grupo); }
-    s.grupo = construir(derivado, pisoVisivel, texturas);
+    s.grupo = construir(derivado, pisoVisivel, texturas, reais);
     s.scene.add(s.grupo);
     const lim = derivado.limites;
     s.centro = lim ? [(lim[0] + lim[2]) / 2, (lim[1] + lim[3]) / 2, Math.max(12, Math.hypot(lim[2] - lim[0], lim[3] - lim[1]) * 1.1)] : [5, 4, 14];
@@ -379,7 +446,7 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
       s.controls.update();
       s.enquadrado = true;
     }
-  }, [derivado, pisoVisivel, texturas, altura]);
+  }, [derivado, pisoVisivel, texturas, altura, reais]);
 
   // limite do lote do processo (mesmos eixos do modelo) e seta do norte
   useEffect(() => {
@@ -474,6 +541,12 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
     s.renderer.render(s.scene, s.camera);
     s.renderer.domElement.toBlob((b) => b && baixar(b, "estudio-vista-3d.png"), "image/png");
   };
+  const capturar = () => new Promise((ok) => {          // vista atual, tal como está no ecrã, para o render fotorrealista
+    const s = st.current;
+    if (!s.renderer) { ok(null); return; }
+    s.renderer.render(s.scene, s.camera);
+    s.renderer.domElement.toBlob((b) => ok(b), "image/jpeg", 0.92);
+  });
   const glb = async () => {
     const s = st.current;
     if (!s.grupo) return;
@@ -510,6 +583,7 @@ export default function Estudio3D({ derivado, contexto = null, altura = 420, pis
         <span className="ml-auto flex gap-1.5">
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={imagem} data-testid="estudio-3d-imagem"><Camera className="h-3.5 w-3.5 mr-1" />Imagem (PNG)</Button>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={glb} disabled={aExportar} data-testid="estudio-3d-glb"><Download className="h-3.5 w-3.5 mr-1" />Modelo 3D (GLB)</Button>
+          <RenderFotorrealista capturar={capturar} derivado={derivado} lang="pt" />
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="estudio-3d-sol">

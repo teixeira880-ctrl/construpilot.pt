@@ -422,6 +422,45 @@ async def supprimer(pid: str, user=Depends(current_user)) -> dict:
     return {"ok": True}
 
 
+class FraseIn(BaseModel):
+    frase: str = Field(min_length=2, max_length=1000)
+    ia: bool = True
+    guardar: bool = True
+
+
+@router.post("/projets/{pid}/frase")
+async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) -> dict:
+    """Edição por frase (escrita ou dita): «aumenta a sala 2 metros», «janelas maiores no quarto 2», «piscina de 10 x 5»."""
+    from engines.atelier_archi import edicao as ED
+    p = await _projet(pid, user["user_id"])
+    m0 = _modele(p)
+    acoes = await run_in_threadpool(ED.interpretar, body.frase, m0)
+    origem = "regras"
+    if not acoes and body.ia:
+        try:
+            from engines import ai
+            nomes = sorted({d["nome"] for d in (await run_in_threadpool(EP.derivar, m0))["divisoes"]})
+            brut = await ai._complete(ED.AJUDA_IA, f"Divisões do projeto: {nomes}\nPedido: {body.frase[:600]}", feature="atelier_frase")
+            acoes = [a for a in (ai._json(brut, {}) or {}).get("acoes") or [] if isinstance(a, dict)][:8]
+            origem = "ia"
+        except Exception:  # noqa: BLE001 — sem IA: só as frases reconhecidas pelas regras
+            acoes = []
+    if not acoes:
+        return {"ok": False, "compreendido": False, "feitos": [], "falhas": [T("Je n'ai pas compris la demande. Exemples : « agrandis le séjour de 2 m », "
+                                                                            "« fenêtres plus grandes dans la chambre 2 », « piscine de 10 x 5 ».")]}
+
+    def go():
+        m, feitos, falhas = ED.executar(m0, acoes)
+        return m, feitos, falhas, EP.derivar(m)
+    m, feitos, falhas, der = await run_in_threadpool(go)
+    guardado = None
+    if body.guardar and feitos:
+        guardado = _now()
+        await db.archi_projects.update_one({"projet_id": pid, "user_id": user["user_id"]}, {"$set": {"modelo": m, "updated_at": guardado}})
+    return {"ok": bool(feitos), "compreendido": True, "origem": origem, "acoes": acoes, "feitos": I.traduzir(feitos),
+            "falhas": I.traduzir(falhas), **_sai(m, der), "updated_at": guardado}
+
+
 @router.post("/projets/{pid}/operacoes")
 async def operacoes(pid: str, body: OperacoesIn, user=Depends(current_user)) -> dict:
     from engines.estudio_projeto import operacoes as OP

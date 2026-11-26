@@ -14,6 +14,7 @@ import { filenameFromResponse } from "@/lib/downloadName";
 import { useI18n } from "@/context/I18nContext";
 import CroquisCanvas from "@/components/atelier/CroquisCanvas";
 import AssistenteSimples from "@/components/atelier/AssistenteSimples";
+import EdicaoFrase from "@/components/atelier/EdicaoFrase";
 
 const Studio = lazy(() => import("@/components/licenciamento/EstudioProjeto"));      // three.js : carregado ao abrir um projeto
 
@@ -304,6 +305,7 @@ export default function AtelierArchitecte() {
   const [params, setParams] = useSearchParams();
   const pid = params.get("projet");
   const [mode, setMode] = useState("simples");
+  const [versao, setVersao] = useState(0);              // muda quando o projeto é editado por frase: o Estúdio relê o modelo
   const [prompt, setPrompt] = useState("");
   const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -368,13 +370,14 @@ export default function AtelierArchitecte() {
             ))}
           </span>
         </div>
+        <EdicaoFrase pid={pid} lang={lang} onAlterado={() => setVersao((v) => v + 1)} />
         <Suspense fallback={<div className="h-96 grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
-          <Studio pid={pid} base={`/atelier-archi/projets/${pid}`} apiEstudio="/atelier-archi" semProcesso
+          <Studio key={`studio-${versao}`} pid={pid} base={`/atelier-archi/projets/${pid}`} apiEstudio="/atelier-archi" semProcesso
             textoRepor={lang === "pt" ? "Voltar ao esboço inicial? As alterações feitas no Estúdio serão apagadas." : lang === "en"
               ? "Go back to the initial sketch? Changes made in the Studio will be lost." : "Revenir à l'esquisse de départ ? Les modifications faites dans le Studio seront effacées."} />
         </Suspense>
         <p className="text-xs text-muted-foreground">{c.enregistrez}</p>
-        <VerificacaoProjeto pid={pid} c={c} />
+        <VerificacaoProjeto key={`verif-${versao}`} pid={pid} c={c} />
         <DcePanel pid={pid} c={c} projet={projet} />
       </div>
     );

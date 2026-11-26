@@ -119,6 +119,22 @@ def selection(modelo: Dict[str, Any], lots: Optional[List[str]] = None) -> Dict[
                                 f"Périmètre {f['perimetro_m']:.2f} m, surface brute {f['area_bruta_m2']:.2f} m², baies {f['area_vaos_m2']:.2f} m²."),
           ouvrages=("enduit_facade",))
 
+    # ---- aménagements extérieurs posés dans le Studio (piscine, terrasses, allées, jardin) : quantités de la maquette
+    for e in md.get("exteriores") or []:
+        t, nom = e["tipo"], e["nome"]
+        if t in ("piscina", "piscina_infinita", "jacuzzi"):
+            L("vrd", _ligne(f"{nom} — terrassement, structure et étanchéité (suivant étude)", "m2", e["area_m2"], "Extérieurs",
+                            f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."),
+              _ligne(f"{nom} — margelles", "ml", e["perimetro_m"], "Extérieurs", "Périmètre du bassin mesuré sur la maquette."))
+        elif t in ("terraco_pedra", "deck_madeira", "deck_piscina", "caminho", "acesso_viaturas"):
+            L("vrd", _ligne(f"{nom}", "m2", e["area_m2"], "Extérieurs", f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."))
+        elif t in ("relvado", "canteiro"):
+            L("vrd", _ligne(f"{nom} — préparation du sol et engazonnement / plantation", "m2", e["area_m2"], "Extérieurs"))
+        elif t in ("arvore", "arbusto"):
+            L("vrd", _ligne(f"{nom} — fourniture et plantation", "u", e["quantidade"], "Extérieurs"))
+        elif t in ("pergola", "muro_vedacao", "cozinha_exterior", "casa_maquinas"):
+            L("vrd", _ligne(f"{nom}", "u", e["quantidade"], "Extérieurs", f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."))
+
     # ---- toiture
     cob = md["cobertura"]
     if not plana and cob.get("area_m2"):

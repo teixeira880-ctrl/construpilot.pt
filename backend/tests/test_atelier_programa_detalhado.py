@@ -156,3 +156,29 @@ def test_ajuste_nunca_desce_dos_minimos():
     pg, _ = G.ajustar_area(P.programme(PROMPT), 60.0)
     por = {x["nom"]: x["surface"] for x in pg["pieces"]}
     assert por["Suite principal"] >= 11.0 and por["Quarto 2"] >= 9.5 and por["Sala de estar e jantar em open space"] >= 16.0
+
+
+def test_edicao_por_frase():
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import edicao as ED
+    m = G.generer(P.programme(PROMPT))["modelo"]
+    a = ED.interpretar("aumenta a sala 2 metros; põe janelas maiores no quarto 2; piscina de 10 x 5", m)
+    assert [x["acao"] for x in a] == ["esticar", "vaos_maiores", "objeto_medidas"]
+    assert a[1]["metros"] == 0.4                                      # «quarto 2» não é lido como 2 m
+    m2, feitos, falhas = ED.executar(m, a)
+    assert len(feitos) == 3 and not falhas
+    d0, d2 = EP.derivar(m), EP.derivar(m2)
+    sala0 = next(x for x in d0["divisoes"] if x["nome"].startswith("Sala"))["area_m2"]
+    sala2 = next(x for x in d2["divisoes"] if x["nome"].startswith("Sala"))["area_m2"]
+    assert sala2 > sala0 + 3 and d2["ok"]
+    assert next(e for e in d2["medicoes"]["exteriores"] if e["tipo"] == "piscina")["area_m2"] == 50.0
+
+
+def test_edicao_reduzir_e_materiais_e_recusas():
+    from engines.atelier_archi import edicao as ED
+    m = G.generer(P.programme(PROMPT))["modelo"]
+    _, feitos, falhas = ED.executar(m, ED.interpretar("pavimento da suite em soalho de carvalho", m))
+    assert feitos and not falhas
+    _, feitos, falhas = ED.executar(m, ED.interpretar("diminui o escritório 20 metros", m))
+    assert not feitos and falhas                                       # nunca parte o modelo
+    assert ED.interpretar("olá, tudo bem?", m) == []
