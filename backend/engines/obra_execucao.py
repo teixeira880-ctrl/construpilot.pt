@@ -111,6 +111,8 @@ def _quantidades(frase_n: str) -> list[dict]:
         if q is None or q <= 0:
             continue
         uni_falada = (m.group(2) or "").strip()
+        if not uni_falada and q == 1 and not re.fullmatch(r"\d+(?:\.\d+)?", m.group(1)):
+            continue   # «uma laje», «une dalle»: artigo, não quantidade
         fim = heads[i + 1].start() if i + 1 < len(heads) else len(frase_n)
         mat = []
         for w in frase_n[m.end():fim].split():
@@ -124,6 +126,8 @@ def _quantidades(frase_n: str) -> list[dict]:
         material = " ".join(mat).strip()
         if uni_falada in TX.UNIDADE_E_MATERIAL:
             material = (TX.UNIDADE_E_MATERIAL[uni_falada] + (" " + material if material else "")).strip()
+        if norm(material) in TX.UNIDADE_E_MATERIAL:          # «3 paletes de tijolos», «3 palettes de parpaings»
+            material = TX.UNIDADE_E_MATERIAL[norm(material)]
         if not material or norm(material) in TX.UNIDADES or (not uni_falada and frase_n[m.end():m.end() + 1] == "%"):
             continue
         out.append({"quantidade": q, "unidade": TX.UNIDADES.get(uni_falada, "un" if uni_falada else ""), "material": material})
@@ -147,7 +151,7 @@ def _original(frase: str, alvo: str) -> str:
 
 def _efetivos(frase_n: str) -> list[dict]:
     out = []
-    rx = re.compile(_NUM_RX + r"\s+" + TX.PESSOAS + r"(?:\s+(?:da|de|do|du|des)\s+(?:equipa\s+(?:de\s+|do\s+|da\s+)?|equipe\s+(?:de\s+)?)?([a-z ]{2,40}))?")
+    rx = re.compile(_NUM_RX + r"\s+" + TX.PESSOAS + r"(?:\s+(?:da|de|do|du|des)\s+(?:l\s+|la\s+)?(?:(?:equipa|equipe)\s+(?:de\s+|do\s+|da\s+|du\s+)?(?:l\s+)?)?([a-z ]{2,40}))?")
     for m in rx.finditer(frase_n):
         n = _numero(m.group(1))
         if not n or n != int(n) or n > 500:
@@ -276,7 +280,7 @@ def normalizar(bruto: Any, materiais: Iterable[dict] = (), zonas: Iterable[dict]
         eq = _cap(e.get("equipa"), 120)
         if n and n == int(n) and 0 < n <= 500 and norm(eq) not in vistos:
             vistos.add(norm(eq))
-            efs.append({"equipa": eq or "Equipa", "n": int(n)})
+            efs.append({"equipa": eq or TX.EQUIPA_PADRAO, "n": int(n)})
     diario["efetivos"] = efs[:40]
     nomes_mat = [m.get("material") for m in materiais if m.get("material")]
     unid_mat = {norm(m.get("material")): m.get("unidade") or "" for m in materiais}
@@ -564,7 +568,7 @@ def tesouraria(faturas: Iterable[dict], encomendas: Iterable[dict], horas: Itera
 
 # ====================================================================== câmaras
 def camara_valida(c: dict) -> tuple[Optional[str], dict]:
-    nome = _cap(c.get("nome"), 80) or "Câmara"
+    nome = _cap(c.get("nome"), 80) or TX.CAMARA_PADRAO
     url = str(c.get("url") or "").strip()[:800]
     tipo = c.get("tipo") if c.get("tipo") in ("imagem", "video", "embed") else "imagem"
     u = urlparse(url)

@@ -114,7 +114,8 @@ VISITA_REGRAS = r"\bvisita|\besteve (ca|em obra|na obra)|\bveio (o|a) (fiscal|ar
 OCORRENCIA_REGRAS = r"\bchuva|\bchoveu|\bparad[oa]s?\b|\batras|\bavari|\bfalta de material|\bnao veio\b|\bnao vieram\b|\bfaltou\b|\bfaltaram\b|\bproblema|\bvento forte"
 CONCLUIDO = r"\b(conclu[ií]d[oa]s?|terminad[oa]s?|acabad[oa]s?|feit[oa]s? a 100|pront[oa]s?)\b"
 ZONA_LIGACAO = ("no", "na", "nos", "nas", "em", "do", "da")
-TRABALHOS_PREFIXO = "Trabalhos"
+EQUIPA_PADRAO = "Equipa"
+CAMARA_PADRAO = "Câmara"
 
 ASSESSOR_SISTEMA = (
     "É o assessor de obra do ConstruPilot. Recebe o relato falado de um encarregado ou diretor de obra em português de Portugal "
