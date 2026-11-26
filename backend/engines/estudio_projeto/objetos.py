@@ -68,7 +68,32 @@ _OBJ: List[Tuple[str, str, List[Tuple[str, str, float, float, float, float, str,
         ("mesa_exterior", "Mesa de exterior", 1.60, 0.90, 0.75, 0, "ret", "IfcFurniture"), ("espreguicadeira", "Espreguiçadeira", 0.65, 1.90, 0.35, 0, "ret", "IfcFurniture"),
         ("churrasqueira", "Churrasqueira", 1.20, 0.60, 1.00, 0, "ret", "IfcBuildingElementProxy"), ("vaso", "Vaso / floreira", 0.50, 0.50, 0.50, 0, "circ", "IfcBuildingElementProxy"),
     ]),
+    # Exteriores: plano de implantação. Mesmas regras que o mobiliário (posição, rotação, largura e profundidade editáveis);
+    # as áreas e perímetros saem nas medições («exteriores»).
+    ("Piscina", "#5aa9d6", [
+        ("piscina", "Piscina retangular (plano de água)", 8.00, 4.00, 0.10, 0, "cuba", "IfcBuildingElementProxy"),
+        ("piscina_infinita", "Piscina de transbordo (plano de água)", 10.00, 4.00, 0.10, 0, "cuba", "IfcBuildingElementProxy"),
+        ("jacuzzi", "Jacuzzi / spa", 2.20, 2.20, 0.90, 0, "cuba", "IfcBuildingElementProxy"),
+        ("casa_maquinas", "Casa das máquinas da piscina", 2.00, 1.50, 1.20, 0, "alto", "IfcBuildingElementProxy"),
+    ]),
+    ("Terraços e pavimentos exteriores", "#b48a5e", [
+        ("terraco_pedra", "Terraço em pedra natural", 6.00, 4.00, 0.05, 0, "ret", "IfcSlab"),
+        ("deck_madeira", "Deck de madeira", 4.00, 3.00, 0.08, 0, "ret", "IfcSlab"),
+        ("deck_piscina", "Deck de piscina", 12.00, 2.00, 0.08, 0, "ret", "IfcSlab"),
+        ("caminho", "Caminho pedonal", 1.20, 6.00, 0.03, 0, "ret", "IfcSlab"),
+        ("acesso_viaturas", "Acesso automóvel", 3.50, 8.00, 0.05, 0, "ret", "IfcSlab"),
+    ]),
+    ("Jardim e estruturas exteriores", "#6f9d4f", [
+        ("relvado", "Relvado", 8.00, 6.00, 0.02, 0, "ret", "IfcBuildingElementProxy"),
+        ("canteiro", "Canteiro", 3.00, 1.00, 0.40, 0, "ret", "IfcBuildingElementProxy"),
+        ("arvore", "Árvore", 3.00, 3.00, 5.00, 0, "circ", "IfcBuildingElementProxy"),
+        ("arbusto", "Arbusto", 1.00, 1.00, 1.20, 0, "circ", "IfcBuildingElementProxy"),
+        ("pergola", "Pérgola", 4.00, 3.00, 2.50, 0, "alto", "IfcBuildingElementProxy"),
+        ("cozinha_exterior", "Cozinha / zona de refeições exterior", 3.00, 0.70, 0.90, 0, "ret", "IfcFurniture"),
+        ("muro_vedacao", "Muro de vedação", 10.00, 0.20, 1.50, 0, "ret", "IfcWall"),
+    ]),
 ]
+CATEGORIAS_EXTERIORES = ("Piscina", "Terraços e pavimentos exteriores", "Jardim e estruturas exteriores")
 
 OBJETOS: Dict[str, Dict[str, Any]] = {}
 CATEGORIAS_OBJ: List[str] = []

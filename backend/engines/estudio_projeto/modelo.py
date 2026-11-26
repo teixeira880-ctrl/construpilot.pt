@@ -228,8 +228,8 @@ def normalizar(m: Any) -> Dict[str, Any]:
         base = OBJETOS[o["tipo"]]
         objetos.append({"id": oid, "piso": str(o["piso"]), "tipo": o["tipo"], "x": p[0], "y": p[1],
                         "rot": round(_f(o.get("rot"), "rotação do objeto", -360.0, 720.0, 0.0) % 360.0, 2),
-                        "largura_m": _f(o.get("largura_m"), "largura do objeto", 0.05, 12.0, base["largura_m"]),
-                        "prof_m": _f(o.get("prof_m"), "profundidade do objeto", 0.05, 12.0, base["prof_m"])})
+                        "largura_m": _f(o.get("largura_m"), "largura do objeto", 0.05, 40.0, base["largura_m"]),
+                        "prof_m": _f(o.get("prof_m"), "profundidade do objeto", 0.05, 40.0, base["prof_m"])})
 
     cot_in = m.get("cotas") or []
     if not isinstance(cot_in, list) or len(cot_in) > LIM["cotas"]:

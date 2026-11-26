@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { filenameFromResponse } from "@/lib/downloadName";
 import { useI18n } from "@/context/I18nContext";
 import CroquisCanvas from "@/components/atelier/CroquisCanvas";
+import AssistenteSimples from "@/components/atelier/AssistenteSimples";
 
 const Studio = lazy(() => import("@/components/licenciamento/EstudioProjeto"));      // three.js : carregado ao abrir um projeto
 
@@ -20,7 +21,7 @@ const COPY = {
   fr: {
     titre: "Atelier Architecte", sous: "Esquissez à la main, depuis une photo de croquis ou par une simple phrase : ConstruPilot en fait une maquette "
       + "(plans cotés, façades, coupes, 3D, métré, DXF, IFC) puis le DCE complet — CCTP par lot et DPGF — en français.",
-    main: "Dessin à main levée", photo: "Photo d'un croquis", prompt: "Décrire le projet",
+    simples: "Mode simple", main: "Dessin à main levée", photo: "Photo d'un croquis", prompt: "Décrire le projet",
     promptAide: "Décrivez la maison comme à un confrère : typologie, surface, niveaux, garage, toiture…",
     exemples: ["Maison T4 plain-pied 110 m² avec garage et cuisine ouverte", "Maison R+1 4 chambres dont une suite parentale, bureau, buanderie, double garage, toit plat",
       "Petite maison T3 de 80 m², toiture 4 pans"],
@@ -39,7 +40,7 @@ const COPY = {
   pt: {
     titre: "Atelier do Arquiteto", sous: "Esboce à mão, a partir de uma fotografia de um esboço ou com uma simples frase: o ConstruPilot faz o modelo "
       + "(plantas cotadas, alçados, cortes, 3D, medições, DXF, IFC) e depois o DCE completo — CCTP por lote e DPGF — em francês.",
-    main: "Desenho à mão levantada", photo: "Fotografia de um esboço", prompt: "Descrever o projeto",
+    simples: "Modo simples", main: "Desenho à mão levantada", photo: "Fotografia de um esboço", prompt: "Descrever o projeto",
     promptAide: "Descreva a moradia como a um colega: tipologia, área, pisos, garagem, cobertura…",
     exemples: ["Moradia T3 térrea 120 m² com garagem e cozinha aberta", "Moradia V4 de dois pisos com suite, escritório, lavandaria e garagem dupla, cobertura plana",
       "Pequena moradia T2 de 80 m², cobertura de quatro águas"],
@@ -58,7 +59,7 @@ const COPY = {
   en: {
     titre: "Architect Studio", sous: "Sketch by hand, from a photo of a sketch or with a single sentence: ConstruPilot turns it into a model "
       + "(dimensioned plans, elevations, sections, 3D, take-off, DXF, IFC) and then the full tender package — CCTP per lot and DPGF — in French.",
-    main: "Freehand drawing", photo: "Photo of a sketch", prompt: "Describe the project",
+    simples: "Simple mode", main: "Freehand drawing", photo: "Photo of a sketch", prompt: "Describe the project",
     promptAide: "Describe the house as you would to a colleague: type, area, storeys, garage, roof…",
     exemples: ["Single-storey 3-bedroom house, 110 m², garage, open kitchen", "Two-storey house, 4 bedrooms with master suite, office, laundry, double garage, flat roof",
       "Small 2-bedroom house of 80 m², hip roof"],
@@ -297,7 +298,7 @@ export default function AtelierArchitecte() {
   const c = COPY[lang] || COPY.pt;
   const [params, setParams] = useSearchParams();
   const pid = params.get("projet");
-  const [mode, setMode] = useState("main");
+  const [mode, setMode] = useState("simples");
   const [prompt, setPrompt] = useState("");
   const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -385,7 +386,7 @@ export default function AtelierArchitecte() {
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {[["main", PenTool, c.main], ["photo", Camera, c.photo], ["prompt", Sparkles, c.prompt]].map(([k, Icon, t]) => (
+        {[["simples", DraftingCompass, c.simples], ["main", PenTool, c.main], ["photo", Camera, c.photo], ["prompt", Sparkles, c.prompt]].map(([k, Icon, t]) => (
           <Button key={k} variant={mode === k ? "default" : "outline"} onClick={() => setMode(k)} data-testid={`atelier-mode-${k}`}>
             <Icon className="h-4 w-4 mr-1" />{t}
           </Button>
@@ -410,6 +411,9 @@ export default function AtelierArchitecte() {
               </Button>
             </div>
           </div>
+        )}
+        {mode === "simples" && (
+          <AssistenteSimples lang={lang} ocupado={busy} onGerar={(texto) => { setPrompt(texto); esquisser("/atelier-archi/esquisse/prompt", { prompt: texto }, "prompt"); }} />
         )}
         {mode === "prompt" && (
           <div className="space-y-3">

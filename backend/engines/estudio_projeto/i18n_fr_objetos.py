@@ -70,6 +70,9 @@ CATEGORIAS_OBJ = {
     "Casa de banho": "Salle de bains",
     "Equipamentos técnicos": "Équipements techniques",
     "Garagem e exterior": "Garage et extérieur",
+    "Piscina": "Piscine",
+    "Terraços e pavimentos exteriores": "Terrasses et sols extérieurs",
+    "Jardim e estruturas exteriores": "Jardin et structures extérieures",
 }
 
 OBJETOS = {
@@ -151,6 +154,22 @@ OBJETOS = {
     "Espreguiçadeira": "Bain de soleil",
     "Churrasqueira": "Barbecue",
     "Vaso / floreira": "Pot / jardinière",
+    "Piscina retangular (plano de água)": "Piscine rectangulaire (bassin)",
+    "Piscina de transbordo (plano de água)": "Piscine à débordement (bassin)",
+    "Jacuzzi / spa": "Jacuzzi / spa",
+    "Casa das máquinas da piscina": "Local technique de la piscine",
+    "Terraço em pedra natural": "Terrasse en pierre naturelle",
+    "Deck de madeira": "Terrasse en lames de bois",
+    "Deck de piscina": "Plage de piscine",
+    "Caminho pedonal": "Allée piétonne",
+    "Acesso automóvel": "Accès voiture",
+    "Relvado": "Pelouse",
+    "Canteiro": "Massif",
+    "Árvore": "Arbre",
+    "Arbusto": "Arbuste",
+    "Pérgola": "Pergola",
+    "Cozinha / zona de refeições exterior": "Cuisine / coin repas extérieur",
+    "Muro de vedação": "Mur de clôture",
 }
 
 MODELOS_VAO = {

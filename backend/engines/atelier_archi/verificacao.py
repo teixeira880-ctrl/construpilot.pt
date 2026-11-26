@@ -200,6 +200,26 @@ def verificar(modelo: Dict[str, Any], der: Dict[str, Any], programme: Optional[D
                        f"{q['piso']}: {bruta:.0f} m² de construção (sem garagem) para {alvo:g} m² indicados ({dif:+.0%})"),
                     q["piso"], _r(bruta, 1), alvo)
 
+        # circulações + paredes: o que o programa reserva vs o que a planta precisa
+        circ_ped = programme.get("circulacao_indicada") or {}
+        for niv, alvo in circ_ped.items():
+            k = int(niv)
+            if k >= len(quadro):
+                continue
+            pid = f"p{k}"
+            circ = sum(d["area"] for d in divs if d["piso"] == pid and _fold(d["nome"]).strip() in ("hall", "corredor", "degagement"))
+            paredes = float(quadro[k].get("paredes_e_vazios_m2") or 0)
+            tot = circ + paredes
+            ok = tot <= alvo * 1.10
+            nome = _nomes.get(pid, pid)
+            add("ok" if ok else "aviso", _t("Circulations et murs", "Circulações e paredes"), _t("Programme", "Programa"),
+                _t(f"{nome} : circulations {circ:.1f} m² + murs et trémies {paredes:.1f} m² = {tot:.1f} m² pour {alvo:g} m² prévus"
+                   + ("" if ok else " — le programme réserve trop peu de place aux murs et aux dégagements ; réduire les pièces "
+                      "ou accepter une surface construite plus grande."),
+                   f"{nome}: circulações {circ:.1f} m² + paredes e vazios {paredes:.1f} m² = {tot:.1f} m² para {alvo:g} m² previstos"
+                   + ("" if ok else " — o programa reserva pouco espaço para paredes e circulação; reduzir divisões "
+                      "ou aceitar uma área de construção maior.")), nome, _r(tot, 1), alvo)
+
     n = {k: sum(1 for r in res if r["estado"] == k) for k in ("ok", "aviso", "falha")}
     return {"pais": PAIS, "resultados": res, "resumo": n,
             "conforme": n["falha"] == 0,

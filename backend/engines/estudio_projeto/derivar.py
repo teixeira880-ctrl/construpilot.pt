@@ -283,6 +283,22 @@ def _por_material(divisoes, elemento: str, chave: str, campo: str, mat_casa: Dic
 
 
 # ---------------------------------------------------------------- derivação completa
+
+def _exteriores(objetos_out: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Medição dos exteriores (piscina, terraços, jardim): área em planta e perímetro de cada peça, por tipo."""
+    por: Dict[str, Dict[str, Any]] = {}
+    for o in objetos_out:
+        if o["categoria"] not in OBJ.CATEGORIAS_EXTERIORES:
+            continue
+        pg = Polygon(o["pts"])
+        c = por.setdefault(o["tipo"], {"tipo": o["tipo"], "nome": o["nome"], "categoria": o["categoria"], "quantidade": 0,
+                                       "area_m2": 0.0, "perimetro_m": 0.0, "medidas": []})
+        c["quantidade"] += 1
+        c["area_m2"] = R(c["area_m2"] + pg.area, 2)
+        c["perimetro_m"] = R(c["perimetro_m"] + pg.length, 2)
+        c["medidas"].append(f"{o['largura_m']:g} × {o['prof_m']:g} m")
+    return sorted(por.values(), key=lambda c: (OBJ.CATEGORIAS_OBJ.index(c["categoria"]), c["nome"]))
+
 def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
     erros: List[Dict[str, Any]] = []
     avisos: List[Dict[str, Any]] = []
@@ -609,6 +625,9 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
 
     xs = [c for w in m["paredes"] for c in (w["a"][0], w["b"][0])]
     ys = [c for w in m["paredes"] for c in (w["a"][1], w["b"][1])]
+    if xs:                                   # exteriores (piscina, terraços, jardim) entram no enquadramento das plantas
+        xs += [pt[0] for o in objetos_out if o["categoria"] in OBJ.CATEGORIAS_EXTERIORES for pt in o["pts"]]
+        ys += [pt[1] for o in objetos_out if o["categoria"] in OBJ.CATEGORIAS_EXTERIORES for pt in o["pts"]]
     mat = m.get("materiais") or {}
     acabamentos = [
         *[{"elemento": "Fachada exterior", "material": nm, "area_m2": R(a, 2)} for nm, a in fach_por.items()],
@@ -628,6 +647,7 @@ def derivar(m: Dict[str, Any]) -> Dict[str, Any]:
         "mapa_vaos": mapa_vaos, "quadro_areas": quadro_areas,
         "area_implantacao_m2": pisos_out[0]["area_bruta_m2"] if pisos_out else 0.0,
         "objetos": sorted(conta_obj.values(), key=lambda c: (OBJ.CATEGORIAS_OBJ.index(c["categoria"]), c["nome"])),
+        "exteriores": _exteriores(objetos_out),
         "escadas": [{kk: e[kk] for kk in ("id", "piso", "tipo", "n_espelhos", "n_cobertores", "espelho_m", "cobertor_m", "largura_m",
                                           "blondel_m", "altura_m", "desenvolvimento_m", "area_planta_m2", "vazio_m2")} for e in escadas_out],
         "regra_vazio_escada": f"Vazio aberto na laje onde o pé-direito livre sobre a escada seria inferior a {LIVRE_SOBRE_ESCADA:.2f} m.", "terracos": terracos, "fachada": fachada,

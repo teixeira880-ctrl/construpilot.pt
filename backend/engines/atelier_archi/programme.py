@@ -78,7 +78,7 @@ def lire(prompt: str) -> Dict[str, Any]:
         out["reconnu"] = True
     if re.search(r"plain[- ]?pied|rez[- ]de[- ]chaussee seul|terrea|piso unico|um piso|single[- ]stor|bungalow", t):
         out["niveaux"] = 1
-    if re.search(r"\br\s?\+\s?1\b|etage|deux niveaux|2 niveaux|duplex|dois pisos|2 pisos|andar|piso superior|r/c\s?\+\s?1|two[- ]stor|2[- ]stor", t):
+    if re.search(r"\br\s?\+\s?1\b|etage|deux niveaux|2 niveaux|duplex|dois pisos|2 pisos|\bandar\b|piso superior|r/c\s?\+\s?1|two[- ]stor|2[- ]stor", t):
         out["niveaux"] = 2
     if re.search(r"garage|garagem", t) and not re.search(r"sans garage|sem garagem|no garage", t):
         out["garage"] = True
@@ -136,7 +136,7 @@ _TIPOS = [
     (r"(cozinha|cuisine|kitchen).*(sala|sejour|living|estar)|(sala|sejour|living|estar).*(cozinha|cuisine|kitchen)", "sejour_cuisine"),
     (r"cozinha|cuisine|kitchen|kitchenette", "cuisine"),
     (r"\bsala\b|sejour|living|estar|jantar|salon|salle a manger", "sejour"),
-    (r"\bhall\b|entrada|entree|vestibulo|foyer", "entree"),
+    (r"\bhall\b|entrada|entree|entrance|vestibulo|foyer", "entree"),
     (r"lavandaria|buanderie|laundry|tecnica|technique|cellier|despensa|arrumos|storage|rangement|cellar", "buanderie"),
 ]
 # divisões que o gerador sabe colocar no piso superior
@@ -255,6 +255,28 @@ _PEDIDOS = [
 ]
 
 
+def exteriores(prompt: str) -> Dict[str, Any]:
+    """Exteriores pedidos (piscina com medidas, terraço, pérgola, zona de refeições, jardim) — colocados pelo gerador
+    como objetos editáveis do Estúdio."""
+    t = _fold(prompt)
+    out: Dict[str, Any] = {}
+    if re.search(r"piscina|piscine|swimming pool|\bpool\b", t):
+        dim = re.search(r"piscin\w*[^\n.]{0,40}?(\d{1,2}(?:[.,]\d+)?)\s*[x×]\s*(\d{1,2}(?:[.,]\d+)?)", _fold((prompt or "").replace("×", "x")))
+        a, b = (float(v.replace(",", ".")) for v in dim.groups()) if dim else (8.0, 4.0)
+        out["piscina"] = [max(a, b), min(a, b)]
+        out["piscina_medidas_dadas"] = bool(dim)
+        out["transbordo"] = bool(re.search(r"transbordo|debordement|infinity|infinita", t))
+    if re.search(r"terraco|terrasse|terrace|deck|esplanada", t) or "piscina" in out:
+        out["terraco"] = True
+    if re.search(r"pergola", t):
+        out["pergola"] = True
+    if re.search(r"zona de refeic|refeicoes exterior|cuisine d.ete|coin repas|churrasqueira|barbecue|outdoor kitchen|outdoor dining", t):
+        out["refeicoes"] = True
+    if re.search(r"jardim|jardin|garden|paisagis|paysag|relvado|pelouse", t):
+        out["jardim"] = True
+    return out
+
+
 def pedidos(prompt: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
     """Lista dos pedidos do prompt (fora das divisões) com a app onde cada um é tratado."""
     t = _fold(prompt)
@@ -266,7 +288,8 @@ def pedidos(prompt: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
             continue
         nome_app, rota = _APP[app]
         aqui = app == "atelier"
-        estado = ("gerado" if tema == "pecas" else "estudio") if aqui else "continuar"
+        modelado = tema == "pecas" or titulo_pt in ("Piscina", "Arranjos exteriores (jardim, terraço, pérgola, zona de refeições)")
+        estado = ("gerado" if modelado else "estudio") if aqui else "continuar"
         item: Dict[str, Any] = {"tema": tema, "titulo": titulo, "app": nome_app, "rota": rota, "aqui": aqui, "estado": estado}
         if tema == "exterior" and titulo_pt == "Piscina":
             dim = re.search(r"(\d{1,2}(?:[.,]\d+)?)\s*[x×]\s*(\d{1,2}(?:[.,]\d+)?)\s*m", prompt or "")
@@ -359,7 +382,7 @@ def programme(prompt: str, lang: Optional[str] = None) -> Dict[str, Any]:
     if "toiture" not in lu:
         H("Toiture deux pans retenue (non précisé).", "Cobertura de duas águas considerada (não indicado).")
     return {"pieces": pieces, "niveaux": niveaux, "garage": garage, "toiture": toiture, "surface_visee": cible,
-            "chambres": chambres, "reconnu": lu["reconnu"], "lu": lu, "hypotheses": hyp, "pedidos": pedidos(prompt, lang)}
+            "chambres": chambres, "reconnu": lu["reconnu"], "lu": lu, "hypotheses": hyp, "pedidos": pedidos(prompt, lang), "exteriores": exteriores(prompt)}
 
 
 def _programme_detalhado(prompt: str, lu: Dict[str, Any], det: Dict[str, Any], lang: Optional[str], hyp: List[str], H) -> Dict[str, Any]:
@@ -367,7 +390,7 @@ def _programme_detalhado(prompt: str, lu: Dict[str, Any], det: Dict[str, Any], l
     divs = [d for d in det["divisoes"] if d["cle"] != "_garage"]
     gar = next((d for d in det["divisoes"] if d["cle"] == "_garage"), None)
     niv_pedidos = sorted({d["niveau"] for d in divs})
-    niveaux = 2 if (max(niv_pedidos) >= 1 or lu.get("niveaux") == 2) else 1
+    niveaux = 2 if max(niv_pedidos) >= 1 else 1           # a lista por piso manda (« lavandaria » não é « andar »)
     pieces: List[Dict[str, Any]] = []
     for d in divs:
         niv = d["niveau"]
@@ -415,7 +438,7 @@ def _programme_detalhado(prompt: str, lu: Dict[str, Any], det: Dict[str, Any], l
     return {"pieces": pieces, "niveaux": niveaux, "garage": garage, "toiture": toiture, "surface_visee": None,
             "surface_pieces_m2": habitavel, "pisos_indicados": det["pisos"], "circulacao_indicada": det["circulacao"],
             "chambres": sum(1 for p in pieces if p["cle"] in ("chambre", "suite")), "reconnu": True, "lu": lu,
-            "hypotheses": hyp, "pedidos": pedidos(prompt, lang), "detalhado": True}
+            "hypotheses": hyp, "pedidos": pedidos(prompt, lang), "detalhado": True, "exteriores": exteriores(prompt)}
 
 
 def programme_depuis_ia(data: Any, lang: Optional[str] = None) -> Optional[Dict[str, Any]]:

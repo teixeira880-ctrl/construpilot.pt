@@ -79,3 +79,37 @@ def test_estagio_recuado_gera_terraco_sem_divisao_a_definir():
     assert not [x for x in d["divisoes"] if "definir" in x["nome"]]
     assert d["medicoes"]["terracos"]
     assert any("terraço" in a for a in r["avisos"])
+
+
+def test_exteriores_do_prompt_sao_objetos_editaveis_e_medidos():
+    from engines import estudio_projeto as EP
+    p = P.programme(PROMPT)
+    assert p["exteriores"]["piscina"] == [8.0, 4.0] and p["exteriores"]["piscina_medidas_dadas"]
+    r = G.generer(p)
+    tipos = {o["tipo"] for o in r["modelo"]["objetos"]}
+    assert {"piscina", "terraco_pedra", "pergola", "relvado"} <= tipos
+    d = EP.derivar(r["modelo"])
+    ext = {e["tipo"]: e for e in d["medicoes"]["exteriores"]}
+    assert ext["piscina"]["area_m2"] == 32.0 and ext["piscina"]["perimetro_m"] == 24.0
+    assert d["limites"][3] > 20                                   # a planta enquadra o jardim e a piscina
+    piscina = next(x for x in p["pedidos"] if x["titulo"].startswith("Piscina"))
+    assert piscina["estado"] == "gerado"
+    # editável: mudar as medidas da piscina no modelo muda a medição
+    m = dict(r["modelo"])
+    m["objetos"] = [dict(o, largura_m=10.0, prof_m=5.0) if o["tipo"] == "piscina" else o for o in m["objetos"]]
+    d2 = EP.derivar(EP.normalizar(m))
+    assert next(e for e in d2["medicoes"]["exteriores"] if e["tipo"] == "piscina")["area_m2"] == 50.0
+
+
+def test_verificacao_explica_circulacao_e_paredes():
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import verificacao as V
+    p = P.programme(PROMPT)
+    r = G.generer(p)
+    v = V.verificar(r["modelo"], EP.derivar(r["modelo"]), p)
+    assert any(x["regra"] == "Circulações e paredes" for x in v["resultados"])
+
+
+def test_sem_exteriores_no_prompt_nao_ha_objetos():
+    r = G.generer(P.programme("Moradia T3 de 120 m² com garagem"))
+    assert not r["modelo"].get("objetos")

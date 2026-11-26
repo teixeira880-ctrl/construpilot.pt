@@ -39,6 +39,10 @@ FENETRE = {  # largeur, hauteur, allège
 BAIE = (2.40, 2.15)             # baie coulissante du séjour (porte-fenêtre)
 
 
+def _n(x: float) -> str:
+    return f"{x:g}".replace(".", ",")
+
+
 def R(x: float) -> float:
     return round(round(x / G) * G, 3)
 
@@ -307,6 +311,50 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                     {"id": "g_arriere", "piso": "p0", "a": [0, gd], "b": [-gw, gd], "tipo": "garage_20"}]
         rotulos.append({"piso": "p0", "x": R(-gw / 2), "y": R(gd / 2), "nome": garage.get("nom") or nom_piece("garage")})
 
+    # ---- exteriores pedidos (objetos editáveis do Estúdio: posição, rotação e medidas)
+    objetos: List[Dict[str, Any]] = []
+    ext = prog.get("exteriores") or {}
+    if ext:
+        sala = next((c for c in comps if c["niveau"] == 0 and c["bande"] == "ar" and c["cle"] in ("sejour", "sejour_cuisine")), None)
+        cx = R((sala["x0"] + sala["x1"]) / 2) if sala else R(W / 2)
+        y = R(D + 0.15)                                  # face exterior da fachada de tardoz
+        no = [0]
+
+        def obj(tipo: str, x: float, yy: float, larg: float, prof: float, rot: float = 0.0) -> None:
+            no[0] += 1
+            objetos.append({"id": f"ext{no[0]}", "piso": "p0", "tipo": tipo, "x": R(x), "y": R(yy), "rot": rot,
+                            "largura_m": R(larg), "prof_m": R(prof)})
+        feitos = []
+        larg_t = R(min(max(W * 0.6, 6.0), 12.0))
+        if ext.get("terraco"):
+            obj("terraco_pedra", cx, y + 1.75, larg_t, 3.5)
+            feitos.append(_txt(f"terrasse {_n(larg_t)} × 3,5 m", f"terraço {_n(larg_t)} × 3,5 m"))
+            if ext.get("pergola"):
+                obj("pergola", cx - larg_t / 2 + 2.0, y + 1.75, 4.0, 3.0)
+                feitos.append(_txt("pergola 4 × 3 m", "pérgola 4 × 3 m"))
+            if ext.get("refeicoes"):
+                obj("mesa_exterior", cx - larg_t / 2 + 2.0, y + 1.75, 1.6, 0.9)
+                obj("cozinha_exterior", cx - larg_t / 2 + 2.0, y + 0.55, 3.0, 0.7)
+                feitos.append(_txt("coin repas extérieur", "zona de refeições exterior"))
+            y = R(y + 3.5)
+        if ext.get("piscina"):
+            a, b = ext["piscina"]
+            y_p = y + 1.5 + b / 2
+            obj("deck_piscina", cx, y + 0.75, a + 3.0, 1.5)
+            obj("piscina_infinita" if ext.get("transbordo") else "piscina", cx, y_p, a, b)
+            feitos.append(_txt(f"piscine {_n(a)} × {_n(b)} m", f"piscina {_n(a)} × {_n(b)} m")
+                          + ("" if ext.get("piscina_medidas_dadas") else _txt(" (dimensions types)", " (medidas tipo)")))
+            y = R(y_p + b / 2)
+        if ext.get("jardim"):
+            lw = R(max(W, 10.0))
+            obj("relvado", R(W / 2), y + 1.0 + 3.0, lw, 6.0)
+            obj("arvore", R(W / 2 - lw / 2 + 1.5), y + 1.0 + 4.5, 3.0, 3.0)
+            obj("arvore", R(W / 2 + lw / 2 - 1.5), y + 1.0 + 4.5, 3.0, 3.0)
+            feitos.append(_txt("pelouse et plantations", "relvado e árvores"))
+        if feitos:
+            avisos.append(_txt("Extérieurs posés comme objets modifiables du Studio (position, rotation, dimensions) : ",
+                               "Exteriores colocados como objetos editáveis do Estúdio (posição, rotação, medidas): ") + ", ".join(feitos) + ".")
+
     # ---- ouvertures
     def mur(piso: str, x: float, y: float, larg: float) -> Optional[Tuple[str, float]]:
         best = None
@@ -366,8 +414,8 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         f = FENETRE.get(c["cle"])
         if not f:
             continue
-        surf = (w - 0.2) * (c["y1"] - c["y0"] - 0.2)
-        besoin = RATIO_VITRAGE * surf if c["cle"] not in ("sdb", "sde", "buanderie", "wc", "dressing") else 0
+        surf = w * (c["y1"] - c["y0"])                  # par excès (axes des murs) : la surface nette réelle est toujours couverte
+        besoin = max(RATIO_VITRAGE * surf, 1.08 if PAIS == "PT" else 0.0) if c["cle"] not in ("sdb", "sde", "buanderie", "wc", "dressing") else 0
         ouv: List[Tuple[str, float, float, float]] = []
         if c["cle"] in ("sejour", "sejour_cuisine") and c["bande"] == "ar" and c["niveau"] == 0:
             ouv.append(("portada", BAIE[0], BAIE[1], 0.0))
@@ -414,7 +462,7 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         avisos.append(_txt("Ouvertures non posées (mur trop court) : ", "Vãos não colocados (parede curta): ") + ", ".join(sorted(set(manques))))
 
     modelo = M.normalizar({"pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos, "rotulos": rotulos,
-                           "escadas": escadas, "cobertura": {"tipo": prog.get("toiture") or "duas_aguas", "inclinacao_graus": 35.0 if PAIS != "PT" else 25.0,
+                           "escadas": escadas, "objetos": objetos, "cobertura": {"tipo": prog.get("toiture") or "duas_aguas", "inclinacao_graus": 35.0 if PAIS != "PT" else 25.0,
                                                              "beiral_m": 0.40, "laje_m": LAJE},
                            "origem": "atelier-prompt"})
     if (prog.get("toiture") or "duas_aguas") == "plana":
