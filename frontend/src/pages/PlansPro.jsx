@@ -28,8 +28,16 @@ export default function PlansPro() {
 
   useEffect(() => {
     loadHistory();
-    const jobParam = new URLSearchParams(window.location.search).get("job");
+    const qs = new URLSearchParams(window.location.search);
+    const jobParam = qs.get("job");
     if (jobParam) api.get(`/plans-pro/job/${jobParam}`).then(({ data }) => openJob(data)).catch(() => toast.error("Análise não encontrada"));
+    // Projeto do Ateliê Arquiteto: os desenhos (DXF gerado do modelo guardado) passam sozinhos para a análise.
+    const atelierParam = qs.get("atelier");
+    if (atelierParam && !jobParam) {
+      api.get(`/atelier-archi/projets/${encodeURIComponent(atelierParam)}/desenhos.dxf`, { responseType: "blob" })
+        .then(({ data }) => { const f = new File([data], `atelier-${atelierParam}.dxf`, { type: "application/dxf" }); setFile(f); return upload(null, f); })
+        .catch(() => toast.error("Não foi possível transferir os desenhos do Ateliê."));
+    }
     return () => clearTimeout(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -59,14 +67,15 @@ export default function PlansPro() {
     }
   };
 
-  const upload = async (e) => {
-    e.preventDefault();
-    if (!file) return;
+  const upload = async (e, ficheiro = null) => {
+    e?.preventDefault?.();
+    const enviar = ficheiro || file;
+    if (!enviar) return;
     setResult(null);
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", enviar);
       if (chantierId) fd.append("chantier_id", chantierId);
       const { data } = await api.post("/plans-pro/upload", fd, {
         headers: { "Content-Type": "multipart/form-data" },

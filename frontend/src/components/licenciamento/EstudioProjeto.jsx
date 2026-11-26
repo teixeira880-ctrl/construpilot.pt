@@ -223,7 +223,7 @@ function Medicoes({ md }) {
   );
 }
 
-export default function EstudioProjeto({ pid, base, apiEstudio = "/estudio-projeto", semProcesso = false, textoRepor = "" }) {
+export default function EstudioProjeto({ pid, base, apiEstudio = "/estudio-projeto", semProcesso = false, textoRepor = "", registarGuardar = null }) {
   const raiz = base || `/estudio-projeto/${pid}`;           // Ateliê: /atelier-archi/projets/{id} ; licenciamento: /estudio-projeto/{processo}
   const [modelo, setModelo] = useState(null);
   const [derivado, setDerivado] = useState(null);
@@ -562,14 +562,21 @@ export default function EstudioProjeto({ pid, base, apiEstudio = "/estudio-proje
 
   const guardar = async () => {
     setAGuardar(true);
+    let ok = false;
     try {
       const { data } = await api.put(raiz, { modelo });
       setDerivado(data.derivado); setSujo(false);
       setInfo((i) => ({ ...i, origem: "guardado", updated_at: data.updated_at }));
       toast.success("Modelo guardado.");
+      ok = true;
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível guardar."); }
     setAGuardar(false);
+    return ok;
   };
+  // Quem integra o Estúdio (ex.: Ateliê) pode guardar antes de passar o modelo a outra app.
+  const guardarRef = useRef(guardar);
+  guardarRef.current = guardar;
+  useEffect(() => { registarGuardar?.({ sujo, guardar: () => guardarRef.current() }); }, [sujo, registarGuardar]);
   const repor = async () => {
     if (!window.confirm(textoRepor || "Repor o modelo a partir do processo? As alterações feitas no Estúdio são apagadas.")) return;
     try { await api.delete(raiz); await carregar(); } catch { toast.error("Não foi possível repor."); }

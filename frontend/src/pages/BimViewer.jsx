@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Box, Calculator, Download, FolderOpen, Layers, Loader2, Maximize, Scissors } from "lucide-react";
@@ -32,10 +32,35 @@ async function blobToText(blob) {
   try { return JSON.parse(await blob.text()).detail; } catch { return null; }
 }
 
+const ATL = {
+  pt: { projeto: "Projeto do Ateliê", voltar: "Projeto do Ateliê", doAtelier: "Projeto do Ateliê Arquiteto", guardadoEm: "guardado a",
+        areaBruta: "Área bruta de construção", areaUtil: "Área útil", paredes: "Paredes", vaos: "Vãos", medicoes: "Medições (CSV)", plantas: "Plantas BIM",
+        nota: "O modelo BIM é gerado automaticamente da última versão guardada no Ateliê.", erro: "Não foi possível abrir o projeto do Ateliê no BIM Studio." },
+  fr: { projeto: "Projet de l'Atelier", voltar: "Projet de l'Atelier", doAtelier: "Projet de l'Atelier Architecte", guardadoEm: "enregistré le",
+        areaBruta: "Surface de plancher brute", areaUtil: "Surface habitable", paredes: "Murs", vaos: "Baies", medicoes: "Métré (CSV)", plantas: "Plans BIM",
+        nota: "La maquette BIM est générée automatiquement depuis la dernière version enregistrée dans l'Atelier.", erro: "Impossible d'ouvrir le projet de l'Atelier dans le BIM Studio." },
+  en: { projeto: "Studio project", voltar: "Studio project", doAtelier: "Architect Studio project", guardadoEm: "saved",
+        areaBruta: "Gross floor area", areaUtil: "Net floor area", paredes: "Walls", vaos: "Openings", medicoes: "Take-off (CSV)", plantas: "BIM plans",
+        nota: "The BIM model is generated automatically from the last version saved in the Studio.", erro: "Could not open the Studio project in BIM Studio." },
+};
+
+async function baixarAtelier(url, nome) {
+  try {
+    const { data } = await api.get(url, { responseType: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(data);
+    a.download = nome.replace(/[^\w.\- ]+/g, "_");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch { toast.error("Download impossível"); }
+}
+
 export default function BimViewer() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const planId = sp.get("plan");
+  const atelierId = sp.get("atelier");   // projeto do Ateliê Arquiteto: o modelo passa sozinho, sem exportar/importar
+  const L = useMemo(() => ATL[(document.documentElement.lang || "").slice(0, 2)] || ATL.pt, []);
   const page = Number(sp.get("page") || 0);
   const query = PARAM_KEYS.filter((k) => sp.get(k)).map((k) => `${k}=${encodeURIComponent(sp.get(k))}`).join("&");
 
@@ -53,6 +78,7 @@ export default function BimViewer() {
   const [ortho, setOrtho] = useState(false);
   const [ifcBytes, setIfcBytes] = useState(null);
   const [modelName, setModelName] = useState(null);
+  const [atelier, setAtelier] = useState(null);
   const sectionRef = useRef(false);
 
   // Arranque do motor 3D (import dinâmico: That Open Engine + web-ifc só são descarregados nesta página).
@@ -111,6 +137,29 @@ export default function BimViewer() {
   }, [planId, page, query, showBytes]);
 
   useEffect(() => { if (ready && planId) loadFromPlan(); }, [ready, planId, loadFromPlan]);
+
+  // Projeto do Ateliê: o IFC é gerado do modelo guardado do projeto e aberto aqui, com as medições do Ateliê.
+  const loadFromAtelier = useCallback(async () => {
+    if (!atelierId || !viewerRef.current) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const base = `/atelier-archi/projets/${encodeURIComponent(atelierId)}`;
+      const [{ data: proj }, { data: blob }] = await Promise.all([api.get(base), api.get(`${base}/modelo.ifc`, { responseType: "blob" })]);
+      const titulo = proj?.projet?.titre || proj?.titulo || L.projeto;
+      setAtelier({ id: atelierId, titulo, totais: proj?.derivado?.medicoes?.totais || {}, guardado: proj?.updated_at });
+      setSummary(null);
+      setAnalysis(null);
+      await showBytes(await blob.arrayBuffer(), titulo);
+    } catch (e) {
+      const data = e?.response?.data;
+      const detail = data instanceof Blob ? await blobToText(data) : data?.detail;
+      setError(detail || L.erro);
+      setBusy(false);
+    }
+  }, [atelierId, showBytes, L]);
+
+  useEffect(() => { if (ready && atelierId && !planId) loadFromAtelier(); }, [ready, atelierId, planId, loadFromAtelier]);
 
   const openLocal = async (file) => {
     if (!file) return;
@@ -181,6 +230,11 @@ export default function BimViewer() {
             <ArrowLeft className="h-4 w-4" /> Planta
           </Button>
         )}
+        {atelierId && !planId && (
+          <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => navigate(`/atelier-arquiteto?projet=${encodeURIComponent(atelierId)}`)} data-testid="bim-voltar-atelier">
+            <ArrowLeft className="h-4 w-4" /> {L.voltar}
+          </Button>
+        )}
         <h1 className="font-display text-base font-semibold flex items-center gap-2 mr-auto">
           <Box className="h-4 w-4 text-primary" /> Modelo BIM
           {modelName && <span className="text-muted-foreground font-normal text-sm truncate max-w-[40vw]">· {modelName}</span>}
@@ -237,6 +291,22 @@ export default function BimViewer() {
         </div>
 
         <aside className="md:w-80 border-t md:border-t-0 md:border-l overflow-y-auto p-3 space-y-4 text-sm max-h-[45vh] md:max-h-none" data-testid="bim-panel">
+          {atelier && (
+            <section data-testid="bim-atelier">
+              <h2 className="font-semibold mb-1">{L.doAtelier}</h2>
+              <p className="text-xs text-muted-foreground mb-2">{atelier.titulo}{atelier.guardado ? ` · ${L.guardadoEm} ${String(atelier.guardado).slice(0, 16).replace("T", " ")}` : ""}</p>
+              <table className="w-full text-xs"><tbody>
+                {[["area_bruta_construcao_m2", L.areaBruta, "m²"], ["area_util_m2", L.areaUtil, "m²"], ["n_paredes", L.paredes, ""], ["n_vaos", L.vaos, ""]]
+                  .filter(([k]) => atelier.totais[k] != null).map(([k, l, u]) => (
+                    <tr key={k} className="border-t"><td className="py-1">{l}</td><td className="py-1 text-right tabular-nums font-medium">{num(atelier.totais[k], 2)}{u && ` ${u}`}</td></tr>))}
+              </tbody></table>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => baixarAtelier(`/atelier-archi/projets/${encodeURIComponent(atelier.id)}/medicoes.csv`, `${atelier.titulo}-medicoes.csv`)}><Download className="h-3.5 w-3.5" /> {L.medicoes}</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/plans-pro?atelier=${encodeURIComponent(atelier.id)}`)}><Layers className="h-3.5 w-3.5" /> {L.plantas}</Button>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">{L.nota}</p>
+            </section>
+          )}
           {summary && (
             <section>
               <h2 className="font-semibold mb-2">Elementos</h2>
