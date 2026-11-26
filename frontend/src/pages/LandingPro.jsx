@@ -9,6 +9,7 @@ import { LandingLayout, LandingHeading, LandingPricing, scrollToLanding } from "
 import { ProductPreview } from "@/components/landing/ProductPreview";
 import { LandingProof } from "@/components/landing/LandingProof";
 import { useOffer } from "@/components/OfferNotice";
+import DemoInterativa from "@/components/landing/DemoInterativa";
 
 const FEATURES = [
   { id: "metre", icon: Ruler, clip: "metre", tag: "Plantas e medições", title: "Meça a obra na planta, sem régua nem calculadora", desc: "Importe as suas plantas PDF, DWG ou DXF, calibre a escala e controle as suas áreas, comprimentos e volumes.", to: "/plan" },
@@ -69,6 +70,7 @@ export default function LandingPro() {
     </section>
     <div className="azulejo-band" aria-hidden="true" />
     <div className="landing-ribbon"><span>Menos dispersão.</span><strong>O futuro não se espera, constrói-se.</strong><span>No escritório como na obra.</span></div>
+    <DemoInterativa />
     <section className="landing-section" id="landing-how"><LandingHeading eyebrow="Uma continuidade, do início ao fim" title="A sua obra avança. As suas informações também." />
       <div className="landing-steps">{[{title:"Responda ao concurso depressa",desc:"As plantas, as peças do processo e o pedido do cliente no mesmo sítio, para orçamentar no próprio dia.",icon:Ruler},{title:"Confie nas quantidades",desc:"Medições controladas na planta e um orçamento construído artigo a artigo, sem refazer as contas à mão.",icon:FileText},{title:"Responda ao cliente primeiro",desc:"Os documentos, as próximas ações e as conversas da equipa à mão, para não perder a obra por responder tarde.",icon:Users}].map((s,i)=><article key={s.title}><div><span>0{i+1}</span><s.icon size={23} /></div><h3>{s.title}</h3><p>{s.desc}</p></article>)}</div>
     </section>
