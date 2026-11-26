@@ -51,10 +51,22 @@ def _txt(fr: str, pt: str) -> str:
     return pt if PAIS == "PT" else fr
 
 
+HABITABLES = {"chambre", "suite", "bureau", "sejour", "sejour_cuisine"}
+
+
 def _largeur(p: Dict[str, Any], prof: float) -> float:
-    """Largeur d'axe à axe pour obtenir la surface nette demandée dans une bande de profondeur `prof`."""
+    """Largeur d'axe à axe pour obtenir la surface nette demandée dans une bande de profondeur `prof`.
+    Pièces principales : dimension minimale selon la surface (RGEU art. 69.º : 2,10 / 2,40 / 2,70 m ; au-delà de 15 m²,
+    longueur ≤ 2 × largeur) — règle de bonne proportion appliquée aussi en France."""
     net = max(1.0, prof - 0.20)
-    return R(max(LARG_MIN.get(p["cle"], 1.6), p["surface"] / net + 0.10))
+    w = max(LARG_MIN.get(p["cle"], 1.6), p["surface"] / net + 0.10)
+    if p["cle"] in HABITABLES:
+        a = p["surface"] * 1.25                         # marge : la pièce peut s'élargir en fermant la bande
+        mini = 2.10 if a < 9.5 else (2.40 if a < 12.0 else (2.70 if a < 15.0 else max(2.70, net / 2.0)))
+        w = max(w, mini + 0.25)                       # axes → net : cloison 6 cm + mur extérieur 15 cm + arrondi
+    elif p["cle"] == "cuisine":
+        w = max(w, 1.70 + 0.25)
+    return R(w)
 
 
 def _repartir(nuit: List[Dict[str, Any]], avant: List[float], arriere: List[float], pa: float, pb: float) -> Tuple[list, list]:
@@ -195,20 +207,58 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             bandes[(1, "av")], bandes[(1, "ar")] = gauche + [palier] + droite, list(fb1)
         return bandes, fins, sx
 
-    bandes, fins, (sx0, sx1) = disposer()
-    if deux:
-        # équilibre des niveaux : si l'étage est nettement plus long, une chambre descend au rez-de-chaussée
-        while True:
-            l0 = max(fins[(0, "av")], fins[(0, "ar")])
-            l1 = max(fins[(1, "av")], fins[(1, "ar")])
-            ch1 = [p for p in pcs if p["niveau"] == 1 and p["cle"] == "chambre"]
-            if l1 - l0 <= 2.0 or len(ch1) <= 1:
-                break
-            bas = min(ch1, key=lambda p: p["surface"])
-            bas["niveau"] = 0
-            avisos.append(_txt(f"« {bas['nom']} » placée au rez-de-chaussée pour équilibrer les deux niveaux.",
-                               f"«{bas['nom']}» colocado no rés-do-chão para equilibrar os dois pisos."))
-            bandes, fins, (sx0, sx1) = disposer()
+    def essai(notes: List[str]) -> Tuple[Dict[Tuple[int, str], List[Dict[str, Any]]], Dict[Tuple[int, str], float], Tuple[float, float]]:
+        bandes, fins, sx = disposer()
+        if deux:
+            # équilibre des niveaux : si l'étage est nettement plus long, une chambre descend au rez-de-chaussée
+            while True:
+                l0 = max(fins[(0, "av")], fins[(0, "ar")])
+                l1 = max(fins[(1, "av")], fins[(1, "ar")])
+                ch1 = [p for p in pcs if p["niveau"] == 1 and p["cle"] == "chambre"]
+                if l1 - l0 <= 2.0 or len(ch1) <= 1:
+                    break
+                bas = min(ch1, key=lambda p: p["surface"])
+                bas["niveau"] = 0
+                notes.append(_txt(f"« {bas['nom']} » placée au rez-de-chaussée pour équilibrer les deux niveaux.",
+                                  f"«{bas['nom']}» colocado no rés-do-chão para equilibrar os dois pisos."))
+                bandes, fins, sx = disposer()
+        return bandes, fins, sx
+
+    def emprise(fins: Dict[Tuple[int, str], float], sx: Tuple[float, float]) -> float:
+        """Surface construite approchée (axes) : RDC + étage (en retrait si plus court)."""
+        w0 = max(max(fins.values()), 6.0)
+        tot = w0 * D
+        if deux:
+            w1 = max(fins[(1, "av")], fins[(1, "ar")], sx[1] + 1.2, 6.0)
+            tot += (w1 if w0 - w1 >= 1.8 else w0) * D
+        return tot
+
+    # Profondeurs des bandes : on essaie plusieurs couples (avant, jardin) et on garde la maison la plus compacte —
+    # même programme, moins de couloir et de murs, surface construite plus proche de la demande.
+    niv0 = [p["niveau"] for p in pcs]
+    PB0 = PB
+    pas_av = (3.6, 3.9, 4.2, 4.5) if deux else (3.0, 3.3, 3.6, 3.9, 4.2)
+    pas_ar = sorted({R(max(3.6, PB0 + d)) for d in (-0.4, 0.0, 0.4, 0.8, 1.2)})
+    meilleur = None
+    for pa in pas_av:
+        for pb in pas_ar:
+            PA, PB = pa, pb
+            D = R(PA + HALL + PB)
+            y_hall0, y_hall1 = PA, R(PA + HALL)
+            for p, n in zip(pcs, niv0):
+                p["niveau"] = n
+            b_, f_, s_ = essai([])
+            cout = emprise(f_, s_) + 0.01 * (abs(pa - PROF_AVANT) + abs(pb - PB0))
+            if meilleur is None or cout < meilleur[0] - 1e-6:
+                meilleur = (cout, pa, pb)
+    _, PA, PB = meilleur
+    D = R(PA + HALL + PB)
+    y_hall0, y_hall1 = PA, R(PA + HALL)
+    for p, n in zip(pcs, niv0):
+        p["niveau"] = n
+    notes: List[str] = []
+    bandes, fins, (sx0, sx1) = essai(notes)
+    avisos += notes
 
     W = R(max(max(fins.values()), 6.0))
     # Étage nettement plus court que le rez-de-chaussée : l'étage est en retrait et le reste du RDC devient une terrasse

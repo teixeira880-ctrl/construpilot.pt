@@ -64,12 +64,25 @@ def test_verificacao_regulamentar_e_programa():
 
 
 def test_verificacao_detecta_quarto_pequeno():
+    """O gerador já respeita os mínimos; a verificação tem de apanhar um quarto reduzido depois, no Estúdio."""
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import verificacao as V
+    r = G.generer(P.programme(PROMPT))
+    d = EP.derivar(r["modelo"])
+    for dv in d["divisoes"]:
+        if dv["nome"] == "Quarto 3":
+            dv["area_m2"] = 6.0
+    v = V.verificar(r["modelo"], d)
+    falhas = [x for x in v["resultados"] if x["estado"] == "falha"]
+    assert any("Quarto 3" in x["msg"] and x["fonte"] == "RGEU art. 66.º" for x in falhas), falhas
+
+
+def test_gerador_nunca_desce_dos_minimos_mesmo_com_programa_pequeno():
     from engines import estudio_projeto as EP
     from engines.atelier_archi import verificacao as V
     r = G.generer(P.programme(PROMPT.replace("Quarto 3: 15 m²", "Quarto 3: 6 m²")))
     v = V.verificar(r["modelo"], EP.derivar(r["modelo"]))
-    falhas = [x for x in v["resultados"] if x["estado"] == "falha"]
-    assert any("Quarto 3" in x["msg"] and x["fonte"] == "RGEU art. 66.º" for x in falhas), falhas
+    assert not [x for x in v["resultados"] if x["estado"] == "falha" and x["fonte"] == "RGEU art. 69.º"]
 
 
 def test_estagio_recuado_gera_terraco_sem_divisao_a_definir():

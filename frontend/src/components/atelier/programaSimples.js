@@ -26,10 +26,12 @@ const NOMES = {
 };
 
 // Mínimos usados pelo modo simples (acima do RGEU art. 66.º e do logement décent): nunca descer abaixo.
-const MIN = { entrada: 3, sala: 16, cozinha: 8, wc: 2, escritorio: 7, lavandaria: 3, suite: 12, closet: 3, sde: 3.5, quarto: 10, sdb: 4.5 };
+const MIN = { entrada: 3, sala: 16, cozinha: 8, wc: 2, escritorio: 7, lavandaria: 3, suite: 12.5, closet: 3, sde: 3.5, quarto: 11, sdb: 4.5 };
 const BASE = { entrada: 6, sala: 30, cozinha: 12, wc: 2, escritorio: 10, lavandaria: 6, suite: 16, closet: 6, sde: 5, quarto: 12, sdb: 6 };
 // Parte da área ocupada por circulações e paredes numa moradia corrente (medida no gerador: 30 a 35 %).
 const K = 1.33;
+// Dois pisos: escada nos dois pisos + corredor do andar (medido no gerador).
+const FIXO_2P = 40;
 const meio = (x) => Math.round(x * 2) / 2;
 const fmt = (x, lang) => (lang === "en" ? String(x) : String(x).replace(".", ","));
 
@@ -50,7 +52,7 @@ function divisoes(o) {
 export function areaMinima(o) {
   const { dia, noite } = divisoes(o);
   const s = [...dia, ...noite].reduce((t, k) => t + MIN[k], 0);
-  return Math.ceil((s * K * (o.pisos === 2 ? 1.25 : 1.08)) / 10) * 10;
+  return Math.ceil((s * K * 1.08 + (o.pisos === 2 ? FIXO_2P : 0)) / 10) * 10;
 }
 
 /** Programa detalhado a partir das escolhas (função pura, testada). */
@@ -60,7 +62,7 @@ export function programaSimples(o, lang = "pt") {
   const { dia, noite } = divisoes(o);
   const todas = [...dia, ...noite];
   const soma = todas.reduce((s, k) => s + BASE[k], 0);
-  const f = Math.min(2.2, Math.max(0.7, (o.area / K / (o.pisos === 2 ? 1.18 : 1.1)) / soma));
+  const f = Math.min(3.0, Math.max(0.7, ((o.area - (o.pisos === 2 ? FIXO_2P : 0)) / K / 1.08) / soma));
   const area = (k) => meio(k === "wc" ? BASE.wc : Math.max(MIN[k], BASE[k] * f));
   const linhas = (lista) => {
     let nq = o.suite ? 1 : 0;
