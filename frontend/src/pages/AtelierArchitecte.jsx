@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useSearchParams } from "react-router-dom";
 import {
   DraftingCompass, PenTool, Camera, Sparkles, Loader2, FolderOpen, Trash2, ArrowLeft, FileText, Archive, Box, Layers3, ScrollText,
-  AlertTriangle, CheckCircle2, Plus,
+  AlertTriangle, CheckCircle2, Plus, Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ const COPY = {
     exemples: ["Maison T4 plain-pied 110 m² avec garage et cuisine ouverte", "Maison R+1 4 chambres dont une suite parentale, bureau, buanderie, double garage, toit plat",
       "Petite maison T3 de 80 m², toiture 4 pans"],
     generer: "Générer l'esquisse", photoAide: "Photographiez le croquis bien à plat, en entier, avec les cotes lisibles. Les murs, ouvertures, noms de pièces et cotes sont relus puis redressés.",
-    choisir: "Choisir ou prendre une photo", lire: "Lire le croquis",
+    choisir: "Choisir ou prendre une photo", galerie: "Choisir dans la galerie", camera: "Prendre une photo", photoErr: "Image illisible : choisissez une photo JPEG ou PNG.", lire: "Lire le croquis",
     apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", ajustar: "Ajuster les pièces pour {m2} m² construits", verif: "Vérification avant validation", actualiser: "Actualiser", nOk: "conformes", nAviso: "à revoir", nFalha: "non conformes", voirTout: "Tout voir", masquer: "Masquer les points conformes", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
     creer: "Créer le projet et ouvrir le Studio", nomProjet: "Nom du projet", adresse: "Adresse (facultatif)", moa: "Maître d'ouvrage (facultatif)",
     projets: "Mes projets d'architecture", aucun: "Aucun projet pour l'instant : commencez par une esquisse ci-dessus.", ouvrir: "Ouvrir",
@@ -46,7 +46,7 @@ const COPY = {
     exemples: ["Moradia T3 térrea 120 m² com garagem e cozinha aberta", "Moradia V4 de dois pisos com suite, escritório, lavandaria e garagem dupla, cobertura plana",
       "Pequena moradia T2 de 80 m², cobertura de quatro águas"],
     generer: "Gerar o esboço", photoAide: "Fotografe o esboço bem plano, inteiro, com as cotas legíveis. Paredes, vãos, nomes das divisões e cotas são lidos e endireitados.",
-    choisir: "Escolher ou tirar uma fotografia", lire: "Ler o esboço",
+    choisir: "Escolher ou tirar uma fotografia", galerie: "Escolher da galeria", camera: "Tirar fotografia", photoErr: "Imagem ilegível: escolha uma fotografia JPEG ou PNG.", lire: "Ler o esboço",
     apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", ajustar: "Ajustar as divisões para {m2} m² de construção", verif: "Verificação antes de validar", actualiser: "Atualizar", nOk: "conformes", nAviso: "a rever", nFalha: "não conformes", voirTout: "Ver tudo", masquer: "Esconder os pontos conformes", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
     creer: "Criar o projeto e abrir o Estúdio", nomProjet: "Nome do projeto", adresse: "Morada (opcional)", moa: "Dono de obra (opcional)",
     projets: "Os meus projetos de arquitetura", aucun: "Ainda sem projetos: comece por um esboço acima.", ouvrir: "Abrir",
@@ -65,7 +65,7 @@ const COPY = {
     exemples: ["Single-storey 3-bedroom house, 110 m², garage, open kitchen", "Two-storey house, 4 bedrooms with master suite, office, laundry, double garage, flat roof",
       "Small 2-bedroom house of 80 m², hip roof"],
     generer: "Generate the sketch", photoAide: "Photograph the sketch flat, in full, with readable dimensions. Walls, openings, room names and dimensions are read then straightened.",
-    choisir: "Choose or take a photo", lire: "Read the sketch",
+    choisir: "Choose or take a photo", galerie: "Choose from gallery", camera: "Take a photo", photoErr: "Unreadable image: choose a JPEG or PNG photo.", lire: "Read the sketch",
     apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", ajustar: "Fit the rooms to {m2} m² gross area", verif: "Check before validation", actualiser: "Refresh", nOk: "compliant", nAviso: "to review", nFalha: "non-compliant", voirTout: "Show all", masquer: "Hide compliant items", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
     creer: "Create the project and open the Studio", nomProjet: "Project name", adresse: "Address (optional)", moa: "Client (optional)",
     projets: "My architecture projects", aucun: "No project yet: start with a sketch above.", ouvrir: "Open",
@@ -332,11 +332,23 @@ export default function AtelierArchitecte() {
     } catch (e) { toast.error(e?.response?.data?.detail || c.erreur); }
     setBusy(false);
   };
-  const lirePhoto = (f) => {
+  const lirePhoto = async (f) => {
     if (!f) return;
-    const r = new FileReader();
-    r.onload = () => setPhoto(String(r.result));
-    r.readAsDataURL(f);
+    // Fotografias da galeria (12–50 Mpx) ficam pesadas: redimensiona para 2400 px no lado maior, JPEG 0,88,
+    // o suficiente para ler as cotas. Se o navegador não conseguir abrir o formato (ex.: HEIC), envia o original.
+    const original = () => new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => res(null); r.readAsDataURL(f); });
+    let url = null;
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+      const k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(img.src);
+      url = cv.toDataURL("image/jpeg", 0.88);
+    } catch { url = await original(); }
+    if (!url || url.length < 200) { toast.error(c.photoErr); return; }
+    setPhoto(url);
   };
   const creer = async (meta) => {
     setBusy(true);
@@ -408,10 +420,16 @@ export default function AtelierArchitecte() {
         {mode === "photo" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{c.photoAide}</p>
-            <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-4 py-3 hover:border-primary/60">
-              <Camera className="h-5 w-5 text-primary" /><span className="text-sm">{c.choisir}</span>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => lirePhoto(e.target.files?.[0])} data-testid="atelier-photo" />
-            </label>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-4 py-3 min-h-11 hover:border-primary/60">
+                <ImageIcon className="h-5 w-5 text-primary" /><span className="text-sm">{c.galerie}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { lirePhoto(e.target.files?.[0]); e.target.value = ""; }} data-testid="atelier-photo" />
+              </label>
+              <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-4 py-3 min-h-11 hover:border-primary/60">
+                <Camera className="h-5 w-5 text-primary" /><span className="text-sm">{c.camera}</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { lirePhoto(e.target.files?.[0]); e.target.value = ""; }} data-testid="atelier-photo-camera" />
+              </label>
+            </div>
             {photo && <img src={photo} alt="" className="max-h-80 rounded-lg border border-border" />}
             <div className="flex justify-end">
               <Button disabled={!photo || busy} onClick={() => esquisser("/atelier-archi/esquisse/photo", { image_b64: photo }, "photo")}>
