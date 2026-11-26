@@ -108,6 +108,8 @@ const CalcLiveLazy = lazy(() => import("@/pages/CalcLive"));
 const UrbanismoValidacaoLazy = lazy(() => import("@/pages/UrbanismoValidacao"));
 const VistoBetLazy = lazy(() => import("@/pages/VistoBet"));
 const BimViewerLazy = lazy(() => import("@/pages/BimViewer"));
+const AtelierArquitetoLazy = lazy(() => import("@/pages/AtelierArchitecte"));   // app « Arquiteto & BIM »
+const CctpPageLazy = lazy(() => import("@/pages/CctpPage"));                     // redator CCTP / DCE em francês
 const AppFamilyHubLazy = lazy(() => import("@/pages/AppFamilyHub"));
 import AppsHub from "@/pages/AppsHub";
 import MedicaoRapida from "@/pages/MedicaoRapida";
@@ -413,6 +415,8 @@ function AppRouter() {
       <Route path="/verifier-email/:token" element={<Shell><VerifyEmail /></Shell>} />
       <Route path="/plan/compare" element={<ProRoute><Shell><PlanCompare /></Shell></ProRoute>} />
       <Route path="/bim" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><BimViewerLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/atelier-arquiteto" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><AtelierArquitetoLazy /></Suspense></Shell></ProRoute>} />
+      <Route path="/cctp" element={<ProRoute><Shell><Suspense fallback={<RouteSkeleton />}><CctpPageLazy /></Suspense></Shell></ProRoute>} />
       <Route path="/marketplace" element={<Shell><Marketplace /></Shell>} />
       <Route path="/pro" element={<Protected><Shell><ProPortal /></Shell></Protected>} />
       <Route path="/pro/paiement/succes" element={<Protected><Shell><PaymentSuccess /></Shell></Protected>} />

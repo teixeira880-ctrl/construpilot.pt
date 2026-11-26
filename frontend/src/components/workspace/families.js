@@ -1,4 +1,4 @@
-import { Building2, Shield, Ruler, Sparkles, FileSearch, Wrench, Calculator, Library, Receipt, CalendarRange, Users, Radar, KeyRound } from "lucide-react";
+import { Building2, Shield, Ruler, Sparkles, FileSearch, Wrench, Calculator, Library, Receipt, CalendarRange, Users, Radar, KeyRound, DraftingCompass } from "lucide-react";
 
 // Apps fusionadas: cada família é UMA só app no menu. As ferramentas que a
 // compõem mantêm as suas rotas (ligações diretas, Assistente BTP e Aurora
@@ -27,13 +27,24 @@ export const APP_FAMILIES = [
   },
   {
     id: "plantas", to: "/plantas-medicoes", icon: Ruler, group: "chantiers", pin: true,
-    label: { pt: "Plantas, Medições & BIM", en: "Plans, take-off & BIM", fr: "Plans, métrés & BIM" },
+    label: { pt: "Plantas & Medições", en: "Plans & take-off", fr: "Plans & métrés" },
     desc: {
-      pt: "Medições em plantas PDF/DWG, BIM/IFC, controlo de cotas, comparação de plantas e medição em fotografia.",
-      en: "Take-off on PDF/DWG plans, BIM/IFC, dimension checks, plan comparison and photo measuring.",
-      fr: "Métrés sur plans PDF/DWG, BIM/IFC, contrôle des cotes, comparaison de plans et mesure sur photo.",
+      pt: "Medições em plantas PDF/DWG, controlo de cotas, comparação de plantas e medição em fotografia. O BIM está em «Arquiteto & BIM».",
+      en: "Take-off on PDF/DWG plans, dimension checks, plan comparison and photo measuring. BIM is in “Architect & BIM”.",
+      fr: "Métrés sur plans PDF/DWG, contrôle des cotes, comparaison de plans et mesure sur photo. Le BIM est dans « Architecte & BIM ».",
     },
-    members: ["/plan", "/medicao-rapida", "/plans-pro", "/bim", "/controle-cotes", "/plan/compare", "/mesure-photo"],
+    members: ["/plan", "/medicao-rapida", "/controle-cotes", "/plan/compare", "/mesure-photo"],
+  },
+  {
+    // Regra do produto: toda a nova app de arquitetura ou de BIM vai para esta família.
+    id: "arquiteto", to: "/arquiteto-bim", icon: DraftingCompass, group: "chantiers", pin: true,
+    label: { pt: "Arquiteto & BIM", en: "Architect & BIM", fr: "Architecte & BIM" },
+    desc: {
+      pt: "Esboço à mão levantada, a partir de uma fotografia ou por prompt → modelo (plantas, alçados, cortes, 3D, DXF, IFC) → DCE completo (CCTP por lote + DPGF) em francês. BIM Studio e plantas BIM / Autodesk.",
+      en: "Freehand sketch, photo of a sketch or prompt → model (plans, elevations, sections, 3D, DXF, IFC) → full tender package (CCTP per lot + DPGF) in French. BIM Studio and BIM / Autodesk plans.",
+      fr: "Esquisse à main levée, depuis une photo de croquis ou par prompt → maquette (plans, façades, coupes, 3D, DXF, IFC) → DCE complet (CCTP par lot + DPGF) en français. BIM Studio et plans BIM / Autodesk.",
+    },
+    members: ["/atelier-arquiteto", "/bim", "/plans-pro", "/cctp"],
   },
   {
     id: "imagens", to: "/imagens-3d", icon: Sparkles, group: "chantiers",

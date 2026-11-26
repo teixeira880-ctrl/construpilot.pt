@@ -31,6 +31,8 @@ export const WORKSPACE_LINKS = [
   { to: "/urbanismo", key: "nav.urbanismo", label: "Urbanismo (editor de volumes)", icon: Building2, group: "chantiers", pro: true, pin: true, words: "urbanismo planta de implantação alçados cortes área de implantação área de construção cércea afastamentos índice de ocupação índice de utilização pdm rgeu pé-direito estacionamento volumes" },
   { to: "/structuro-bet", key: "nav.betdossier", label: "Análise de processo de engenharia", icon: FileSearch, group: "chantiers", pro: true, pin: true, words: "gabinete projeto engenharia memória cálculo revisão índice incoerência controlo planta comparar versões processo" },
   { to: "/btp-solver", key: "nav.solver", label: "Resolver um problema", icon: Wrench, group: "chantiers", pin: true, words: "fissura humidade patologia diagnóstico solução" },
+  { to: "/atelier-arquiteto", label: "Atelier do Arquiteto", icon: Ruler, group: "chantiers", pro: true, pin: true, words: "arquiteto arquitetura esboço desenho mão levantada caneta tablet fotografia prompt planta moradia modelo alçado corte 3d dxf ifc dce cctp dpgf estúdio de projeto architecte croquis" },
+  { to: "/cctp", label: "Redator CCTP · DCE (francês)", icon: FileSearch, group: "chantiers", pro: true, words: "cctp dce caderno de encargos peças escritas lotes dpgf concurso francês france" },
   { to: "/plans-pro", key: "nav.plansPro", label: "Plantas BIM / Autodesk", icon: Layers, group: "chantiers", min: "pro", pin: false, words: "autodesk revit ifc visão quantidades paredes portas janelas" },
   { to: "/controle-cotes", key: "nav.cotes", label: "Controlo das cotas", icon: Ruler, group: "chantiers", pro: true, pin: false, words: "paredes dimensões interior planta" },
   { to: "/escaliers", key: "nav.stairs", label: "Cálculo de escadas", icon: Footprints, group: "chantiers", pro: true, pin: true, words: "escada degraus cobertor espelho blondel rgeu quarto de volta helicoidal betão armado lanço armaduras" },
@@ -99,7 +101,7 @@ export const WORKSPACE_GROUPS = ["favorites", "today", "chantiers", "billing", "
 // Keep every specialist tool available in the directory; only daily work is pinned.
 export const workspaceEssentials = (links, professional) => {
   const paths = professional
-    ? ["/dashboard", "/chantiers", "/estudos-engenharia", "/licenciamento", "/plantas-medicoes", "/agents", "/devis", "/faturacao", "/clients", "/assistant"]
+    ? ["/dashboard", "/chantiers", "/estudos-engenharia", "/licenciamento", "/plantas-medicoes", "/arquiteto-bim", "/agents", "/devis", "/faturacao", "/clients", "/assistant"]
     : ["/dashboard", "/estimar", "/assistant", "/agents", "/licenciamento", "/precos-biblioteca", "/marketplace"];
   const hubs = [...new Set(paths.map(familyHubFor))];
   return hubs.map(path => links.find(item => item.to === path && !item.locked)).filter(Boolean);
@@ -167,6 +169,8 @@ export const UPSELL_BENEFITS = {
   "/particulares/autorizacao-obras": "Diagnóstico RJUE e processo para a Câmara Municipal (comunicação prévia, licença, isenção).",
   "/medicao-rapida": "Áreas, perímetro e volume de uma divisão — por prompt ou à mão.",
   "/bim": "Abra um IFC: modelo 3D, medições e orçamento (BIM Studio).",
+  "/atelier-arquiteto": "Esboço à mão, fotografia de um esboço ou prompt → modelo, plantas à escala, IFC e DCE completo.",
+  "/cctp": "Redija o CCTP de cada lote e o quadro de DPGF do seu DCE, em francês.",
   "/estimation": "Estime o custo de uma obra em poucos cliques.",
   "/smart-project": "Descreva o projeto: a IA prepara o plano de obra e o orçamento.",
   "/calculadoras": "Cálculos rápidos de construção: betão, armaduras, revestimentos, quantidades.",
