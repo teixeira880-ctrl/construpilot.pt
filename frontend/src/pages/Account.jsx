@@ -37,6 +37,11 @@ export default function Account() {
             <p className="text-xs text-muted-foreground">
               {t("account.temp_desc")}
             </p>
+            {!user?.phone && (
+              <p className="text-xs font-medium mt-1" data-testid="temp-password-phone-hint">
+                {t("account.temp_phone")}
+              </p>
+            )}
           </div>
         </div>
       )}

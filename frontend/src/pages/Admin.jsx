@@ -50,6 +50,7 @@ import { PasswordForm } from "@/components/account/PasswordForm";
 import { DevicesList } from "@/components/account/DevicesList";
 import { TwoFaCard } from "@/components/account/TwoFaCard";
 import PedidosRecentes from "@/pages/admin/PedidosRecentes";
+import CreateAccountDialog from "@/components/admin/CreateAccountDialog";
 
 export default function Admin() {
   const { text: expenseText } = useExpenseCopy();
@@ -433,6 +434,9 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="users" className="mt-6">
+          <div className="flex justify-end mb-3">
+            <CreateAccountDialog lang="pt" onCreated={() => load()} />
+          </div>
           <div className="surface overflow-x-auto">
             <Table data-testid="admin-users-table">
               <TableHeader>

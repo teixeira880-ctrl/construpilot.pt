@@ -649,6 +649,61 @@ class UserIn(BaseModel):
     two_fa_email: str | None = None
 
 
+class UserCreateIn(BaseModel):
+    email: str
+    temp_password: str
+    company_name: str | None = None
+    name: str | None = None
+    phone: str | None = None
+    siret: str | None = None
+    account_type: str | None = "pro_business"
+    plan: str | None = "pro"
+    lang: str | None = None
+    send_welcome_email: bool = False
+
+
+@router.post("/users")
+async def create_user(body: UserCreateIn, request: Request, admin=Depends(admin_user)) -> dict:
+    """Botão «Criar conta»: cria uma conta com palavra-passe provisória.
+
+    O cliente é obrigado a mudar a palavra-passe (e pode acrescentar o
+    telefone) no primeiro início de sessão.
+    """
+    from core.admin_create_account import create_account, AccountCreateError
+    from core.security import hash_password, new_user_id
+    try:
+        user = await create_account(db, body.model_dump(), hash_password=hash_password,
+                                    new_user_id=new_user_id, admin_id=admin["user_id"],
+                                    lang_default="pt")
+    except AccountCreateError as e:
+        raise HTTPException(400, str(e))
+    await _log_admin_action(
+        actor_user_id=admin["user_id"], target_user_id=user["user_id"],
+        action="user_create", before={},
+        after={"email": user["email"], "account_type": user["account_type"], "plan": user["plan"]},
+        request=request)
+    email_sent = False
+    if body.send_welcome_email:
+        try:
+            from engines import emailer
+            front = os.getenv("FRONTEND_URL", "")
+            first = (user.get("name") or "").split(" ")[0]
+            html = emailer.wrap_html(
+                "A sua conta ConstruPilot está pronta",
+                f"<p>Olá {first},</p><p>Foi criada para si uma conta <b>ConstruPilot</b> "
+                f"com o e-mail <b>{user['email']}</b>.</p>"
+                "<p>Inicie sessão com a palavra-passe provisória que lhe foi comunicada pela "
+                "equipa ConstruPilot. No primeiro acesso, ser-lhe-á pedido que escolha a sua "
+                "palavra-passe definitiva e que acrescente o seu número de telefone.</p>"
+                "<p>Até breve,<br/>A equipa ConstruPilot</p>",
+                cta_url=f"{front}/login", cta_label="Iniciar sessão")
+            await emailer.send_email(user["email"], "A sua conta ConstruPilot está pronta", html)
+            email_sent = True
+        except Exception:  # noqa: BLE001 — o e-mail nunca bloqueia a criação
+            email_sent = False
+    return {"user": user, "email_sent": email_sent}
+
+
 @router.put("/users/{user_id}")
 async def update_user(user_id: str, body: UserIn, request: Request, admin=Depends(admin_user)):
     before = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
