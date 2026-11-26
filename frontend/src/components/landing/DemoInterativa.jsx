@@ -22,7 +22,7 @@ export function interpretar(texto, divisoes) {
     if (ent || sai) {
       const mov = ent && (!sai || ent.index <= sai.index) ? "entrada" : "saida";
       const resto = n.slice((ent || sai).index);
-      const rx = /\b(\d+(?:\.\d+)?|[a-z]+)\s+(sacos|saco|m3|m2|paletes|palete|kg|unidades|tijolos)\b(?:\s+(?:de|do|da))?\s*([a-z ]*)/g;
+      const rx = new RegExp(`\\b(\\d+(?:\\.\\d+)?|[a-z]+)\\s+(${VOC.unidades_rx})\\b(?:\\s+(?:${VOC.ligacao.join("|")})\\b)?\\s*([a-z ]*)`, "g");
       let m;
       while ((m = rx.exec(resto))) {
         const q = num(m[1]);
@@ -30,7 +30,7 @@ export function interpretar(texto, divisoes) {
         const mat = m[3].split(" ").filter(Boolean);
         const nome = [];
         for (const w of mat) { if (VOC.fim.includes(w) || nome.length >= 3) break; nome.push(w); }
-        const material = m[2] === "tijolos" ? "tijolo" : nome.join(" ");
+        const material = VOC.material_de_unidade[m[2]] || nome.join(" ");
         if (!material) continue;
         out.stock.push({ mov, q, un: VOC.unidades[m[2]], material: material.charAt(0).toUpperCase() + material.slice(1) });
         usada = true;
@@ -133,8 +133,8 @@ function DemoOrcamento() {
         <tbody>{linhas.map((l) => <tr key={l.nome} className="border-t"><td className="p-2">{l.nome}</td><td className="p-2 text-right tabular-nums">{l.q}</td><td className="p-2 text-center">{l.un}</td><td className="p-2 text-right tabular-nums">{eur(l.p)}</td><td className="p-2 text-right tabular-nums font-medium">{eur(l.t)}</td></tr>)}</tbody>
         <tfoot className="text-sm">
           <tr className="border-t"><td colSpan={4} className="p-2 text-right">{D.subtotal}</td><td className="p-2 text-right tabular-nums">{eur(sub)}</td></tr>
-          <tr><td colSpan={4} className="p-2 text-right">{D.iva}</td><td className="p-2 text-right tabular-nums">{eur(sub * 0.23)}</td></tr>
-          <tr className="bg-emerald-50"><td colSpan={4} className="p-2 text-right font-bold">{D.total_iva}</td><td className="p-2 text-right tabular-nums font-bold text-emerald-800" data-testid="demo-orc-total">{eur(sub * 1.23)}</td></tr>
+          <tr><td colSpan={4} className="p-2 text-right">{D.iva}</td><td className="p-2 text-right tabular-nums">{eur(sub * D.tva)}</td></tr>
+          <tr className="bg-emerald-50"><td colSpan={4} className="p-2 text-right font-bold">{D.total_iva}</td><td className="p-2 text-right tabular-nums font-bold text-emerald-800" data-testid="demo-orc-total">{eur(sub * (1 + D.tva))}</td></tr>
         </tfoot></table></div>
       <p className="text-xs text-slate-500">{D.precos_ficticios}</p>
     </div>

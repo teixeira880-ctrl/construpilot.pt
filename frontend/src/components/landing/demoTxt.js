@@ -23,7 +23,7 @@ export const D = {
   // orçamento
   orc_intro: "Um orçamento de remodelação calculado a partir da área: mude a área e o nível de acabamento e veja os totais mudar.",
   area: "Área a remodelar", acabamento: "Acabamento", niveis: { economico: "Económico", medio: "Médio", premium: "Premium" },
-  artigo: "Artigo", qtd: "Qtd.", un: "Un.", preco: "Preço", total: "Total", subtotal: "Subtotal sem IVA", iva: "IVA 23 %", total_iva: "Total com IVA",
+  artigo: "Artigo", qtd: "Qtd.", un: "Un.", preco: "Preço", total: "Total", subtotal: "Subtotal sem IVA", iva: "IVA 23 %", total_iva: "Total com IVA", tva: 0.23,
   precos_ficticios: "Preços fictícios de exemplo. Na plataforma, os preços vêm da biblioteca da sua empresa.",
   linhas: [
     ["Demolições e remoção de entulho", "m²", 1.0, 18],
@@ -46,6 +46,8 @@ export const D = {
 export const VOC = {
   numeros: { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, cem: 100 },
   unidades: { sacos: "saco", saco: "saco", m3: "m³", m2: "m²", paletes: "palete", palete: "palete", kg: "kg", unidades: "un", tijolos: "un" },
+  unidades_rx: "sacos|saco|m3|m2|paletes|palete|kg|unidades|tijolos",
+  material_de_unidade: { tijolos: "tijolo" },
   entrada: /\b(cheg\w*|receb\w*|entreg\w*|descarreg\w*|vieram)\b/,
   saida: /\b(gast\w*|us\w*mos|consum\w*|aplic\w*|betonamos)\b/,
   pessoas: /(\d+|\w+) (pessoas|homens|trabalhadores|operarios|eletricistas|pedreiros|canalizadores)( da equipa (do |da |de )?(\w+))?/,
