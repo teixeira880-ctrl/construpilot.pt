@@ -51,6 +51,7 @@ export default function CroquisCanvas({ lang = "fr", onRedresser, enCours = fals
   const [textes, setTextes] = useState([]);
   const [cotes, setCotes] = useState([]);
   const [enTrace, setEnTrace] = useState(null);
+  const [curseur, setCurseur] = useState(null);       // position du pointeur (marqueur dessiné dans la feuille, visible même si le site masque la souris)
   const [ppm, setPpm] = useState(36);                  // pixels par mètre (zoom)
   const [largeur, setLargeur] = useState(900);
   const histo = useRef([]);
@@ -84,8 +85,9 @@ export default function CroquisCanvas({ lang = "fr", onRedresser, enCours = fals
     setEnTrace({ type: outil, points: [p] });
   };
   const move = (ev) => {
-    if (!enTrace) return;
     const p = point(ev);
+    setCurseur(p);
+    if (!enTrace) return;
     const pts = enTrace.points;
     const last = pts[pts.length - 1];
     if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.04) return;
@@ -145,8 +147,8 @@ export default function CroquisCanvas({ lang = "fr", onRedresser, enCours = fals
         </span>
       </div>
       <div ref={boite} className="rounded-xl border border-border bg-white overflow-hidden">
-        <svg ref={svg} width={largeur} height={H} style={{ touchAction: "none", cursor: "crosshair", display: "block" }}
-          onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} data-testid="croquis-feuille">
+        <svg ref={svg} width={largeur} height={H} style={{ touchAction: "none", cursor: "crosshair", display: "block" }} className="croquis-feuille"
+          onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={() => { setCurseur(null); up(); }} data-testid="croquis-feuille">
           {grille}
           {traits.map((t, i) => {
             const s = style(t.type);
@@ -169,6 +171,15 @@ export default function CroquisCanvas({ lang = "fr", onRedresser, enCours = fals
           {textes.map((t, i) => (
             <text key={`t${i}`} x={t.x * ppm} y={t.y * ppm} fill="#0f4c45" fontSize="14" textAnchor="middle" fontWeight="600">{t.nom}</text>
           ))}
+          {curseur && (
+            <g pointerEvents="none" data-testid="croquis-curseur">
+              <line x1={curseur[0] * ppm - 12} y1={curseur[1] * ppm} x2={curseur[0] * ppm + 12} y2={curseur[1] * ppm} stroke="#ffffff" strokeWidth={4} />
+              <line x1={curseur[0] * ppm} y1={curseur[1] * ppm - 12} x2={curseur[0] * ppm} y2={curseur[1] * ppm + 12} stroke="#ffffff" strokeWidth={4} />
+              <line x1={curseur[0] * ppm - 12} y1={curseur[1] * ppm} x2={curseur[0] * ppm + 12} y2={curseur[1] * ppm} stroke={style(outil).couleur || "#1f2933"} strokeWidth={1.6} />
+              <line x1={curseur[0] * ppm} y1={curseur[1] * ppm - 12} x2={curseur[0] * ppm} y2={curseur[1] * ppm + 12} stroke={style(outil).couleur || "#1f2933"} strokeWidth={1.6} />
+              <circle cx={curseur[0] * ppm} cy={curseur[1] * ppm} r={4} fill="none" stroke={style(outil).couleur || "#1f2933"} strokeWidth={1.6} />
+            </g>
+          )}
         </svg>
       </div>
       <p className="text-xs text-muted-foreground">{c.aide}</p>
