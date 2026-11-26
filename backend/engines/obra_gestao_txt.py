@@ -38,6 +38,7 @@ T = {
     "pergunta_vazia": "Escreva a sua pergunta.",
     "armazenamento": "O armazenamento de ficheiros está indisponível. Tente novamente.",
     "versao": "O registo foi alterado entretanto. Recarregue a página.",
+    "quota_ia": "Limite diário de pedidos de IA atingido para esta obra. Tente novamente amanhã.",
 }
 
 # ------------------------------------------------------------------ meteorologia (códigos WMO do Open-Meteo)
@@ -68,8 +69,8 @@ CAMPOS_5W2H = {"o_que": "o quê", "porque": "porquê", "quem": "quem", "onde": "
                "como": "como", "quanto": "quanto custa"}
 
 LEMBRETES = {
-    "incidente": "Acidente grave ou mortal: comunicar à ACT (Autoridade para as Condições do Trabalho) nas 24 horas e "
-                 "participar à seguradora de acidentes de trabalho. Preservar o local até à chegada das autoridades.",
+    "incidente": "Acidente mortal ou grave: comunicar à ACT (Autoridade para as Condições do Trabalho) nas 24 horas seguintes e "
+                 "participar o acidente à seguradora de acidentes de trabalho nas 24 horas após o conhecimento. Preservar o local.",
     "quase_acidente": "Registe a causa e a medida imediata: um quase-acidente tratado evita o acidente seguinte.",
     "nao_conformidade": "Defina o plano de ação (5W2H) e quem verifica a eficácia antes de fechar.",
     "dialogo_seguranca": "Indique o tema, os participantes e as medidas combinadas. Ligue o DDS ao Plano de Segurança e Saúde (PSS).",
@@ -163,6 +164,7 @@ CURVA = {
     "ponderacao_duracao": "Sem orçamento por lote ligado às tarefas: ponderação pela duração das tarefas.",
     "custos_incompletos": "Custos reais incompletos (taxa horária em falta ou compras sem preço): a curva dos custos reais não é mostrada.",
     "sem_orcamento": "Sem orçamento de venda válido: a curva dos custos não pode ser comparada ao orçamento.",
+    "nao_partilhado": "O planeamento desta obra não está partilhado com os intervenientes.",
 }
 
 # ------------------------------------------------------------------ copiloto e relatórios

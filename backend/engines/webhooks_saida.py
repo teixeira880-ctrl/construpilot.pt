@@ -40,8 +40,10 @@ def _ip_publico(ip: str) -> bool:
         a = ipaddress.ip_address(ip)
     except ValueError:
         return False
-    return not (a.is_private or a.is_loopback or a.is_link_local or a.is_multicast or a.is_reserved
-                or a.is_unspecified or (a.version == 6 and a.ipv4_mapped is not None and not _ip_publico(str(a.ipv4_mapped))))
+    if a.version == 6 and a.ipv4_mapped is not None:
+        return _ip_publico(str(a.ipv4_mapped))
+    # is_global exclui privados, loopback, link-local, reservados, CGNAT (100.64.0.0/10) e documentação
+    return a.is_global and not a.is_multicast
 
 
 def url_valida(url: str) -> bool:

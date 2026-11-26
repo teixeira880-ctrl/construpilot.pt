@@ -146,7 +146,8 @@ def test_escopo_rfi_e_qse_para_empresa():
 def test_webhook_url_anti_ssrf():
     assert wh.url_valida("https://erp.exemplo.pt/hooks/cp")
     for u in ("http://erp.exemplo.pt", "https://127.0.0.1/x", "https://10.0.0.5/x", "https://localhost/x",
-              "https://169.254.169.254/latest", "https://user:pw@erp.exemplo.pt", "https://intranet.local/x", "ftp://a.b"):
+              "https://169.254.169.254/latest", "https://user:pw@erp.exemplo.pt", "https://intranet.local/x", "ftp://a.b",
+              "https://100.64.0.1/x", "https://[::ffff:10.0.0.1]/x"):
         assert not wh.url_valida(u), u
     assert wh.assinatura("s", b"{}").startswith("sha256=")
 
@@ -155,10 +156,14 @@ def test_webhook_url_anti_ssrf():
 @pytest.fixture()
 def api(monkeypatch):
     db = mm.AsyncMongoMockClient()["t_gestao"]
-    from engines import chantier_costs, storage
+    from engines import chantier_costs, storage, usage_meter
     from routes import chantiers, obra_colab, obra_gestao, portal
     for mod in (chantiers, obra_colab, obra_gestao, portal, chantier_costs):
         monkeypatch.setattr(mod, "db", db)
+
+    async def sem_limite(user_id):   # o orçamento IA da conta é testado no seu próprio módulo
+        return None
+    monkeypatch.setattr(usage_meter, "check_ai_budget", sem_limite)
     blobs: dict = {}
     monkeypatch.setattr(storage, "put_object", lambda path, data, ct: blobs.__setitem__(path, (data, ct)) or {"path": path})
     monkeypatch.setattr(storage, "get_object", lambda path: blobs[path])
@@ -425,3 +430,48 @@ def test_enviar_webhook_assinado():
         return await wh.enviar({"url": "https://erp.exemplo.pt/cp", "segredo": "abc"}, "qse.criado", {"n": 1}, client=FakeClient())
     res = run(go())
     assert res["ok"] and capt["headers"]["X-ConstruPilot-Signature"] == wh.assinatura("abc", capt["content"])
+
+
+def test_api_fotos_dos_operarios_no_diario(api):
+    from engines import storage
+    storage.put_object("cp/hr/u_owner/w1/f.png", png(), "image/png")
+    run(api.db.hr_files.insert_one({"storage_path": "cp/hr/u_owner/w1/f.png", "content_type": "image/png", "employer_id": "u_owner",
+                                    "worker_id": "w1", "is_deleted": False}))
+    run(api.db.hr_photos.insert_one({"photo_id": "ph1", "employer_id": "u_owner", "worker_id": "w1", "worker_name": "Rui",
+                                     "project_id": "prj1", "path": "cp/hr/u_owner/w1/f.png", "caption": "Cofragem",
+                                     "created_at": "2026-11-24T11:00:00"}))
+    run(api.db.hr_photos.insert_one({"photo_id": "ph_outra", "employer_id": "outro", "worker_id": "x", "project_id": "prjX",
+                                     "path": "cp/hr/outro/x.png", "created_at": "2026-11-24T11:00:00"}))
+    prep = api.call("owner", "GET", "/diario/preparar", params={"data": "2026-11-24"}).json()
+    assert [f["photo_id"] for f in prep["operarios"]["fotos"]] == ["ph1"]
+    d = api.call("owner", "POST", "/diario", json={"data": "2026-11-24", "fotos_operarios": ["ph1", "ph_outra"]}).json()
+    assert len(d["fotos"]) == 1 and d["fotos"][0]["origem"] == "operario"          # a foto de outra empresa é ignorada
+    r = api.call("owner", "GET", f"/diario/{d['diario_id']}/fotos/0")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/png")
+
+
+def test_api_planeamento_nao_partilhado_e_quota_ia(api, monkeypatch):
+    run(api.db.chantier_plannings.insert_one({"chantier_id": CID, "user_id": "u_owner", "start_date": "2026-11-02", "client_visible": False,
+                                              "tasks": [{"id": "t1", "name": "Estrutura", "resource": "Estrutura", "duration": 5, "progress": 10}]}))
+    assert api.call("owner", "GET", "/curva-s").json()["disponivel"]
+    dono = api.call("dono", "GET", "/curva-s").json()
+    assert not dono["disponivel"] and "pontos" not in dono
+    assert all(a["tipo"] not in ("tarefa_atraso", "tarefa_critica") for a in api.call("fiscal", "GET", "/alertas").json()["itens"])
+    from routes import obra_gestao
+    monkeypatch.setitem(obra_gestao.IA_LIMITES, "copiloto", 1)
+    import sys
+    import types
+    fake = types.ModuleType("engines.ai")
+
+    async def ok(*a, **k):
+        return "Resposta."
+    fake._complete = ok
+    fake._json = lambda raw, fb: fb
+    monkeypatch.setitem(sys.modules, "engines.ai", fake)
+    import engines
+    monkeypatch.setattr(engines, "ai", fake, raising=False)
+    assert api.call("owner", "POST", "/copiloto/pergunta", json={"pergunta": "Ponto da situação?"}).json()["resposta"] == "Resposta."
+    assert api.call("owner", "POST", "/copiloto/pergunta", json={"pergunta": "Outra vez?"}).status_code == 429
+    qse = api.call("empA", "POST", "/qse", json={"tipo": "quase_acidente", "titulo": "Escada sem guarda"}).json()
+    api.call("empA", "POST", f"/qse/{qse['item_id']}/fotos", files={"file": ("f.png", png(), "image/png")})
+    assert api.call("empA", "POST", f"/qse/{qse['item_id']}/analisar-foto/0").status_code == 403   # IA só para a gestão

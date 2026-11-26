@@ -115,6 +115,28 @@ async def _seq(cid: str, chave: str) -> int:
     return int(r["n"])
 
 
+IA_LIMITES = {"foto": 40, "copiloto": 60, "resumo": 20}   # pedidos de IA por obra e por dia
+
+
+async def _quota_ia(ctx: Ctx, chave: str) -> None:
+    """Limita o custo de IA: orçamento da conta do titular + teto diário por obra (nunca ilimitado)."""
+    try:
+        from engines import usage_meter
+        await usage_meter.check_ai_budget(_owner(ctx))
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        logger.info("orçamento IA não verificado: %s", e)
+    dia = _today().isoformat()
+    r = await db.obra_ia_quota.find_one_and_update({"chantier_id": ctx.cid, "dia": dia, "chave": chave},
+                                                   {"$inc": {"n": 1}, "$setOnInsert": {"criado_em": datetime.now(timezone.utc)}},
+                                                   upsert=True, return_document=True)
+    if r is None or "n" not in r:
+        r = await db.obra_ia_quota.find_one({"chantier_id": ctx.cid, "dia": dia, "chave": chave}) or {"n": 1}
+    if int(r["n"]) > IA_LIMITES[chave]:
+        raise HTTPException(429, TX.T["quota_ia"])
+
+
 async def _branding(ctx: Ctx) -> dict:
     try:
         from routes.portal import _pv_branding
@@ -393,6 +415,17 @@ async def _plan(ctx: Ctx) -> Optional[dict]:
     return await db.chantier_plannings.find_one({"chantier_id": ctx.cid, "user_id": _owner(ctx)}, {"_id": 0})
 
 
+async def _planeamento_partilhado(ctx: Ctx, plan: Optional[dict]) -> bool:
+    """O titular vê sempre o planeamento. Um interveniente só o vê se o titular o partilhou
+    (plan.client_visible, como no portal) e se o seu convite tem o direito «avanço»."""
+    if _gestor(ctx):
+        return True
+    if not plan or not plan.get("client_visible", True):
+        return False
+    p = await db.chantier_participants.find_one({"participant_id": ctx.actor_id}, {"_id": 0, "permissions": 1}) or {}
+    return bool((p.get("permissions") or {}).get("progress", True))
+
+
 async def _schedule(ctx: Ctx, plan: Optional[dict] = None) -> Optional[dict]:
     from engines import planning as P
     plan = plan or await _plan(ctx)
@@ -444,6 +477,8 @@ async def _custos_datados(ctx: Ctx, costs: dict) -> dict:
 
 async def _curva(ctx: Ctx) -> dict:
     plan = await _plan(ctx)
+    if plan and not await _planeamento_partilhado(ctx, plan):
+        return {"disponivel": False, "motivo": TX.CURVA["nao_partilhado"]}
     sched = await _schedule(ctx, plan)
     internos = await _custos_internos(ctx)
     snaps = await db.obra_avanco_snapshots.find({"chantier_id": ctx.cid}, {"_id": 0}).sort("data", 1).to_list(2000)
@@ -460,7 +495,8 @@ async def _curva(ctx: Ctx) -> dict:
 
 
 async def _alertas(ctx: Ctx) -> list[dict]:
-    sched = await _schedule(ctx)
+    plan = await _plan(ctx)
+    sched = await _schedule(ctx, plan) if await _planeamento_partilhado(ctx, plan) else None
     costs = await _custos(ctx)
     qse = await db.obra_qse.find({"chantier_id": ctx.cid, "estado": {"$ne": "fechado"}}, {"_id": 0}).to_list(2000)
     rfis = await db.obra_rfi.find({"chantier_id": ctx.cid, "estado": "aberto"}, {"_id": 0}).to_list(2000)
@@ -567,7 +603,9 @@ def _mount(router: APIRouter, b: str, dep) -> None:
             ids = await _projetos_rh(ctx)
             rows = await db.hr_photos.find({"photo_id": {"$in": body.fotos_operarios[:MAX_FOTOS]}, "employer_id": _owner(ctx),
                                             "project_id": {"$in": ids}}, {"_id": 0}).to_list(MAX_FOTOS)
-            fotos = [{"path": r["path"], "filename": r.get("caption") or r["photo_id"], "content_type": "image/jpeg",
+            tipos = {f["storage_path"]: f.get("content_type") for f in await db.hr_files.find(
+                {"storage_path": {"$in": [r.get("path") for r in rows]}, "employer_id": _owner(ctx)}, {"_id": 0, "storage_path": 1, "content_type": 1}).to_list(MAX_FOTOS)}
+            fotos = [{"path": r["path"], "filename": r.get("caption") or r["photo_id"], "content_type": tipos.get(r["path"]) or "image/jpeg",
                       "origem": "operario", "autor": r.get("worker_name"), "uploaded_at": r.get("created_at")} for r in rows if r.get("path")]
         doc = {"diario_id": _id("dia"), "chantier_id": ctx.cid, "data": body.data, "meteo": meteo, "efetivo_auto": efetivo,
                "efetivos": [{"equipa": str(e.get("equipa") or "")[:120], "n": int(e.get("n") or 0)} for e in body.efetivos],
@@ -823,11 +861,12 @@ def _mount(router: APIRouter, b: str, dep) -> None:
     @router.post(g + "/qse/{item_id}/analisar-foto/{n}")
     async def qse_analisar_foto(item_id: str, n: int, ctx: Ctx = Depends(dep)):
         """Análise de segurança/qualidade de uma fotografia por IA — só acrescenta observações, nunca fecha nada."""
-        _need(ctx, "qse.criar")
+        _need(ctx, "qse.gerir")
         it = await _qse(ctx, item_id)
         fotos = it.get("fotos") or []
         if not 0 <= n < len(fotos):
             raise HTTPException(404, TX.T["nao_encontrado"])
+        await _quota_ia(ctx, "foto")
         data = await _read_file(fotos[n])
         if not data:
             raise HTTPException(503, TX.T["armazenamento"])
@@ -1244,9 +1283,10 @@ async def _contexto_copiloto(ctx: Ctx) -> dict:
 async def copiloto_pergunta(body: PerguntaIn, ctx: Ctx = Depends(_ctx_gestor)):
     if not body.pergunta.strip():
         raise HTTPException(400, TX.T["pergunta_vazia"])
+    await _quota_ia(ctx, "copiloto")
     dados = await _contexto_copiloto(ctx)
     from engines import ai
-    prompt = TX.PROMPTS["pergunta"].format(dados=json.dumps(dados, ensure_ascii=False, default=str)[:60000], pergunta=body.pergunta.strip())
+    prompt = TX.PROMPTS["pergunta"].format(dados=json.dumps(dados, ensure_ascii=False, default=str)[:30000], pergunta=body.pergunta.strip())
     try:
         resposta = await asyncio.wait_for(ai._complete(TX.COPILOTO_SISTEMA, prompt, feature="obra_copiloto"), 90)
         return {"resposta": resposta.strip(), "fonte": "ia", "dados_usados": list(dados)}
@@ -1277,6 +1317,7 @@ async def copiloto_resumo(data: Optional[str] = None, ctx: Ctx = Depends(_ctx_ge
     from engines import ai
     fonte = "ia"
     try:
+        await _quota_ia(ctx, "resumo")
         dados = {"semana": d, "alertas": [a["texto"] for a in al],
                  "curva_s": {k: curva.get(k) for k in ("disponivel", "previsto_hoje_pct", "real_hoje_pct", "desvio_pp", "spi")}}
         texto = (await asyncio.wait_for(ai._complete(TX.RESUMO_SISTEMA, json.dumps(dados, ensure_ascii=False, default=str)[:40000],
