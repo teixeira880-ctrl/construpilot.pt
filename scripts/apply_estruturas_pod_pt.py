@@ -275,6 +275,10 @@ edit(B, "documentos na língua pedida",
      '                args["lingua"] = "en"                         # the CLT Rezult account receives its documents in English\n',
      '            # documentos na língua pedida (ou a da conversa) — sem língua imposta a uma conta\n', mode="replace")
 
+edit(B, "if False and not ctx.get(\"lingua\")",
+     '    if is_pilot(user) and not ctx.get("lingua"):\n',
+     '    if False and not ctx.get("lingua"):               # sem língua imposta a uma conta: documentos na língua pedida\n', mode="replace", optional=True)
+
 L = f"{BE}/engines/calc_live.py"
 edit(L, "def acesso(",
      '''def is_clt(user: Optional[Dict[str, Any]]) -> bool:
@@ -309,6 +313,12 @@ edit(f"{BE}/engines/assistant_bet_core_tool.py", "sem desvio automático para o 
      "    # sem desvio automático para o modelo Ucrânia por causa da conta (o utilizador escolhe o país do estudo)\n", mode="replace")
 
 # --------------------------------------------------------------------------------------------------- 3. frontend
+CL = f"{FE}/pages/CalcLive.jsx"
+for velho, novo in (("Esta página está reservada à conta CLT Rezult.", "Esta página está reservada às contas profissionais."),
+                    ("This page is reserved for the CLT Rezult account.", "This page is reserved for professional accounts."),
+                    ("Cette page est réservée au compte CLT Rezult.", "Cette page est réservée aux comptes professionnels."),
+                    ("— conta CLT Rezult (o servidor recusa as outras contas).", "— contas profissionais (o servidor recusa as contas de particulares).")):
+    edit(CL, novo, velho, novo, mode="replace", optional=True)
 A = f"{FE}/App.js"
 edit(A, "CltEstudoLazy", 'const CltIndustrialLazy = lazy(() => import("@/pages/CltIndustrial"));',
      'const CltEstudoLazy = lazy(() => import("@/pages/CltStudies"));\n'
