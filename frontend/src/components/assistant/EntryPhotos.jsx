@@ -46,7 +46,7 @@ export const EntryPhotos = ({ conversationId, entry, onChange }) => {
         <option value="before">Antes</option><option value="after">Após</option>
       </select>
       <button type="button" className="underline flex items-center gap-1" disabled={busy} onClick={() => input.current?.click()} data-testid={`entry-photo-add-${entry.entry_id}`}>{busy ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />} Adicionar uma fotografia datada</button>
-      <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => upload(e.target.files?.[0])} data-testid={`entry-photo-input-${entry.entry_id}`} />
+      <input ref={input} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} data-testid={`entry-photo-input-${entry.entry_id}`} />
     </div>
   </div>;
 };

@@ -94,7 +94,7 @@ export default function PhotoAnalyse() {
                 </>
               )}
             </label>
-            <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={onFile} className="hidden" data-testid="photo-input" />
+            <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" data-testid="photo-input" />
           </div>
           <div className="grid gap-2">
             <Label>Precisão (opcional)</Label>
