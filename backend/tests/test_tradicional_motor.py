@@ -5,11 +5,11 @@ import os
 
 import pytest
 
-from engines.tradicional import adapter, calcular, defaults, estudo
-from engines.tradicional.note import note
-from engines.tradicional.pdf import dossier
-from engines.tradicional.viewer import html_viewer
-from engines.tradicional.xlsx import xlsx
+from engines.tradicional.estudo import adapter, calcular, defaults, estudo
+from engines.tradicional.estudo.note import note
+from engines.tradicional.estudo.pdf import dossier
+from engines.tradicional.estudo.viewer import html_viewer
+from engines.tradicional.estudo.xlsx import xlsx
 
 FIX = os.path.join(os.path.dirname(__file__), "fixtures", "mep_moradia_exemplo.json")
 
@@ -56,8 +56,13 @@ def test_alvenaria_fiada_a_fiada(ex):
     U = defaults.UNIDADES["T30x20x22"]
     assert w["fiadas"] == math.ceil(2700 / (U["h"] + U["junta"]))
     nominal = w["areaAlv"] / ((U["l"] + U["junta"]) * (U["h"] + U["junta"]) / 1e6)
-    assert nominal <= w["unidades"] <= nominal * 1.25          # unidades inteiras por troço: ≥ área / módulo, cortes incluídos
-    assert ex["estudo"]["unidadesAlvenaria"] == sum(x["unidades"] for x in ex["paredes"]) + ex["coberturas"][0]["empenas"]["unidades"]
+    assert w["contagem"] == "unidade a unidade"                # motor de alvenaria da plataforma (cada tijolo no seu sítio)
+    assert nominal <= w["unidades"] <= nominal * 1.4           # peças assentes (inteiras + cortadas) ≥ área / módulo
+    W = [x for x in ex["paredes"] if x["nivel"] == w["nivel"] and x["unidade"] == w["unidade"]]
+    nom = sum(x["areaAlv"] for x in W) / ((U["l"] + U["junta"]) * (U["h"] + U["junta"]) / 1e6)
+    compra = sum(x["a_comprar"] for x in ex["alvenariaResumo"] if x["nivel"] == w["nivel"] and x["unidade"] == w["unidade"])
+    assert nom <= compra <= nom * 1.15                         # a comprar: inteiras + unidades para os cortes (sobras reaproveitadas)
+    assert ex["estudo"]["unidadesAlvenaria"] == sum(x["a_comprar"] for x in ex["alvenariaResumo"]) + ex["coberturas"][0]["empenas"]["unidades"]
 
 
 def test_mapa_por_piso(ex):

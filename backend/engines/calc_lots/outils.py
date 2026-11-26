@@ -920,7 +920,7 @@ def run(name: str, args: dict) -> dict:
             out_["files_extra"] = o["files_extra"]
         return out_
     if name == "calcul_tradicional":
-        from engines.tradicional import note as trad_note
+        from engines.tradicional.estudo import note as trad_note
         args_priv = {k: v for k, v in (args or {}).items() if k.startswith("_")}
         o = trad_note.note({**a, **args_priv})
         out_ = {"titre": o["titre"], "resume": o["resume"] + "\n" + FIM, "pdf": o["pdf"], "png": o["png"], "data": o["data"],

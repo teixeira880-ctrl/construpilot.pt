@@ -23,7 +23,7 @@ from engines.clt import adapter as A
 from engines.clt import defaults as D
 from engines.clt import quantities as Q
 
-router = APIRouter(prefix="/clt", tags=["clt"], dependencies=[Depends(require_level("pro"))])
+router = APIRouter(prefix="/clt-estudo", tags=["clt"], dependencies=[Depends(require_level("pro"))])
 
 from routes.auth import current_user  # noqa: E402
 from engines.nom_fichier import content_disposition, nom_document  # noqa: E402

@@ -71,8 +71,20 @@ def linhas(res: dict, lang: str = "pt") -> list[dict]:
             e["m2"] += w["areaAlv"]
             e["arg"] += w["argamassa"]
             e["ids"].append(f"{w['id']} {w['unidades']}")
+        compra = {}
+        for x in res.get("alvenariaResumo") or []:            # motor de alvenaria unidade a unidade: unidades a comprar com os cortes
+            if x["nivel"] == nv:
+                c = compra.setdefault(x["unidade"], {"a_comprar": 0, "inteiras": 0, "cortes": 0, "unidades_para_cortes": 0, "cortadas_a_altura": 0})
+                for k in c:
+                    c[k] += x[k]
         for u, e in por_un.items():
-            add(cat2, f"ALV-{_slug(u)}-{_slug(nv)}", u, "un", e["un"], f"{e['m2']:.2f} m² · por parede: " + ", ".join(e["ids"])[:260], [i.split()[0] for i in e["ids"]])
+            c = compra.get(u)
+            if c:
+                add(cat2, f"ALV-{_slug(u)}-{_slug(nv)}", u, "un", c["a_comprar"],
+                    f"{c['inteiras']} inteiras + {c['unidades_para_cortes']} para {c['cortes']} cortes + {c['cortadas_a_altura']} cortadas à altura · "
+                    f"{e['m2']:.2f} m² · por parede: " + ", ".join(e["ids"])[:200], [i.split()[0] for i in e["ids"]])
+            else:
+                add(cat2, f"ALV-{_slug(u)}-{_slug(nv)}", u, "un", e["un"], f"{e['m2']:.2f} m² · por parede: " + ", ".join(e["ids"])[:260], [i.split()[0] for i in e["ids"]])
             add(cat2, f"ALV-ARG-{_slug(u)}-{_slug(nv)}", f"Argamassa de assentamento — {u}", "m³", e["arg"])
         # lajes no topo deste piso
         zt = max((w["z0"] + w["H"] for w in W), default=None)

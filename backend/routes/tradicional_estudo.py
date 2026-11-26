@@ -18,12 +18,12 @@ from pydantic import BaseModel, Field
 
 from core.db import db
 from engines.access import require_level
-from engines.tradicional import VERSAO, estudo
-from engines.tradicional import adapter as A
-from engines.tradicional import defaults as D
+from engines.tradicional.estudo import VERSAO, estudo
+from engines.tradicional.estudo import adapter as A
+from engines.tradicional.estudo import defaults as D
 from engines.lsf import quantities as Q
 
-router = APIRouter(prefix="/tradicional", tags=["tradicional"], dependencies=[Depends(require_level("pro"))])
+router = APIRouter(prefix="/tradicional/estudo", tags=["tradicional"], dependencies=[Depends(require_level("pro"))])
 
 from routes.auth import current_user  # noqa: E402
 from engines.nom_fichier import content_disposition, nom_document  # noqa: E402
@@ -230,7 +230,7 @@ async def _render(doc: dict, st: dict, uid: str):
     if doc.get("render_png_b64"):
         return [("estrutura", base64.b64decode(doc["render_png_b64"]))]
     try:
-        from engines.tradicional.render import render
+        from engines.tradicional.estudo.render import render
         out = await asyncio.to_thread(render, st["resultado"], None, 1600, 900, 64, 150)
     except Exception:  # noqa: BLE001 — sem Mitsuba: sem render
         return []
@@ -269,7 +269,7 @@ async def study_photo(study_id: str, user=Depends(current_user)) -> Response:
 
 @router.get("/studies/{study_id}/pdf")
 async def study_pdf(study_id: str, lang: str = "pt", user=Depends(current_user)) -> Response:
-    from engines.tradicional.pdf import dossier
+    from engines.tradicional.estudo.pdf import dossier
     doc = await _get(study_id, user["user_id"])
     st = await _full(doc, user["user_id"])
     ren = await _render(doc, st, user["user_id"])
@@ -284,7 +284,7 @@ async def study_pdf(study_id: str, lang: str = "pt", user=Depends(current_user))
 @router.get("/studies/{study_id}/xlsx")
 async def study_xlsx(study_id: str, lang: str = "pt", user=Depends(current_user)) -> Response:
     from engines.bet_core.brand import from_branding
-    from engines.tradicional.xlsx import xlsx
+    from engines.tradicional.estudo.xlsx import xlsx
     doc = await _get(study_id, user["user_id"])
     st = await _full(doc, user["user_id"])
     b = from_branding(await _branding(user["user_id"]), "PT")
@@ -298,7 +298,7 @@ async def study_xlsx(study_id: str, lang: str = "pt", user=Depends(current_user)
 async def study_viewer(study_id: str, lang: str = "pt", user=Depends(current_user)) -> Response:
     """Visualizador 3D autónomo (HTML único, funciona sem internet)."""
     from engines.bet_core.brand import from_branding
-    from engines.tradicional.viewer import html_viewer
+    from engines.tradicional.estudo.viewer import html_viewer
     doc = await _get(study_id, user["user_id"])
     st = await _full(doc, user["user_id"])
     b = from_branding(await _branding(user["user_id"]), "PT")

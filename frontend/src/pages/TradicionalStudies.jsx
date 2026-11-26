@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import {
   Boxes, Trash2, ArrowLeft, Loader2, FileDown, AlertTriangle, Info, FileSpreadsheet, Box, Coins, Globe, Save, Sparkles, Ruler, Camera,
 } from "lucide-react";
@@ -38,20 +39,21 @@ export default function TradicionalStudies() {
   const [studies, setStudies] = useState([]);
   const [active, setActive] = useState(null);
   const loadList = useCallback(async () => {
-    try { const { data } = await api.get("/tradicional/studies"); setStudies(data.studies || []); } catch { /* ignore */ }
+    try { const { data } = await api.get("/tradicional/estudo/studies"); setStudies(data.studies || []); } catch { /* ignore */ }
   }, []);
   useEffect(() => { loadList(); }, [loadList]);
   const open = async (id) => {
-    try { const { data } = await api.get(`/tradicional/studies/${id}`); setActive(data); } catch { toast.error("Não foi possível abrir o estudo"); }
+    try { const { data } = await api.get(`/tradicional/estudo/studies/${id}`); setActive(data); } catch { toast.error("Não foi possível abrir o estudo"); }
   };
   const remove = async (id) => {
-    try { await api.delete(`/tradicional/studies/${id}`); if (active?.study_id === id) setActive(null); await loadList(); }
+    try { await api.delete(`/tradicional/estudo/studies/${id}`); if (active?.study_id === id) setActive(null); await loadList(); }
     catch { toast.error("Não foi possível apagar"); }
   };
   if (active) return <StudyDetail study={active} setStudy={setActive} onBack={() => { setActive(null); loadList(); }} />;
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6" data-testid="trad-page">
       <header className="space-y-2">
+        <Link to="/construcao-tradicional" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"><ArrowLeft className="h-3 w-3" />Construção tradicional — alvenaria unidade a unidade</Link>
         <div className="flex items-center gap-2">
           <Boxes className="h-6 w-6 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">Construção tradicional (betão armado + alvenarias)</h1>
@@ -111,7 +113,7 @@ function NewStudy({ onCreated }) {
     if (!planId) { toast.error("Escolha uma planta já lida e calibrada"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/tradicional/studies", {
+      const { data } = await api.post("/tradicional/estudo/studies", {
         plan_id: planId, country: "pt", q_adm_kpa: qadm ? Number(qadm) : null, options: { ...opts, inclinacao: Number(opts.inclinacao), beiral: Number(opts.beiral) },
         levels: levels.map((l) => ({ page_index: Number(l.page_index), name: l.name, elevation_m: Number(l.elevation_m), height_m: Number(l.height_m) })),
       });
@@ -122,8 +124,8 @@ function NewStudy({ onCreated }) {
   const exemplo = async () => {
     setBusy(true);
     try {
-      const { data: ex } = await api.get("/tradicional/exemplo");
-      const { data } = await api.post("/tradicional/studies/from-input", { input: ex, title: "Moradia exemplo — construção tradicional" });
+      const { data: ex } = await api.get("/tradicional/estudo/exemplo");
+      const { data } = await api.post("/tradicional/estudo/studies/from-input", { input: ex, title: "Moradia exemplo — construção tradicional" });
       onCreated(data.study_id);
     } catch (e) { toast.error(e?.response?.data?.detail || "Não foi possível calcular"); } finally { setBusy(false); }
   };
@@ -194,24 +196,24 @@ function StudyDetail({ study, setStudy, onBack }) {
   }, [study.lines]);
   const run = async (key, fn) => { setBusy(key); try { await fn(); } catch (e) { toast.error(e?.response?.data?.detail || "Operação falhou"); } finally { setBusy(""); } };
   const openViewer = () => run("viewer", async () => {
-    const { data } = await api.get(`/tradicional/studies/${study.study_id}/viewer`, { responseType: "text" });
+    const { data } = await api.get(`/tradicional/estudo/studies/${study.study_id}/viewer`, { responseType: "text" });
     setViewer(data);
   });
   const [foto, setFoto] = useState(null);
   const photo = () => run("foto", async () => {
-    const res = await api.post(`/tradicional/studies/${study.study_id}/photo`, {}, { responseType: "blob" });
+    const res = await api.post(`/tradicional/estudo/studies/${study.study_id}/photo`, {}, { responseType: "blob" });
     setFoto(URL.createObjectURL(res.data));
     toast.success("Render fotorrealista pronto — também incluído no dossier PDF");
   });
   const price = (mercado) => run(mercado ? "mercado" : "preco", async () => {
-    const { data } = await api.post(`/tradicional/studies/${study.study_id}/price`, { mercado });
+    const { data } = await api.post(`/tradicional/estudo/studies/${study.study_id}/price`, { mercado });
     setStudy({ ...study, lines: data.lines, totals: data.totals });
     toast.success(mercado ? "Preços de mercado procurados — linhas assinaladas a analisar" : "Preços da biblioteca aplicados");
   });
   const save = () => run("save", async () => {
     let project;
     try { project = JSON.parse(json); } catch { toast.error("JSON inválido"); return; }
-    const { data } = await api.put(`/tradicional/studies/${study.study_id}/project`, { project });
+    const { data } = await api.put(`/tradicional/estudo/studies/${study.study_id}/project`, { project });
     setStudy(data); toast.success("Projeto recalculado");
   });
   const t = study.totals || {};
@@ -227,9 +229,9 @@ function StudyDetail({ study, setStudy, onBack }) {
         <Kpi label={t.total ? "Total com preço" : "Pilares / vigas / sapatas"} value={t.total ? fmt(t.total, 2) : `${s.pilares} / ${s.vigas} / ${s.sapatas}`} unit={t.total ? "€" : ""} />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => run("pdf", () => download(`/tradicional/studies/${study.study_id}/pdf`, "Construcao-tradicional.pdf"))} disabled={!!busy} data-testid="trad-pdf">
+        <Button onClick={() => run("pdf", () => download(`/tradicional/estudo/studies/${study.study_id}/pdf`, "Construcao-tradicional.pdf"))} disabled={!!busy} data-testid="trad-pdf">
           {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}Dossier PDF</Button>
-        <Button variant="outline" onClick={() => run("xlsx", () => download(`/tradicional/studies/${study.study_id}/xlsx`, "Mapa-tradicional.xlsx"))} disabled={!!busy}>
+        <Button variant="outline" onClick={() => run("xlsx", () => download(`/tradicional/estudo/studies/${study.study_id}/xlsx`, "Mapa-tradicional.xlsx"))} disabled={!!busy}>
           {busy === "xlsx" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}Excel</Button>
         <Button variant="outline" onClick={openViewer} disabled={!!busy} data-testid="trad-3d">
           {busy === "viewer" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Box className="h-4 w-4 mr-1" />}Visualizador 3D</Button>

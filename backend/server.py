@@ -284,9 +284,9 @@ from routes import mep as mep_routes  # noqa: E402  — planos de execução ele
 api_router.include_router(mep_routes.router)
 from routes import lsf as lsf_routes  # noqa: E402  — estrutura em aço leve (LSF): cálculo, quantidades, corte, dossier, 3D
 api_router.include_router(lsf_routes.router)
-from routes import clt as clt_routes  # noqa: E402  — estrutura em CLT: painéis com geometria real, prensa, ligações, dossier, 3D
+from routes import clt_estudo as clt_routes  # noqa: E402  — estrutura em CLT: painéis com geometria real, prensa, ligações, dossier, 3D
 api_router.include_router(clt_routes.router)
-from routes import tradicional as trad_routes  # noqa: E402  — construção tradicional: betão armado + alvenarias, elemento a elemento
+from routes import tradicional_estudo as trad_routes  # noqa: E402  — construção tradicional: betão armado + alvenarias, elemento a elemento
 api_router.include_router(trad_routes.router)
 from routes import bim as bim_routes  # noqa: E402  — modelo BIM IFC 4.3 a partir das plantas
 api_router.include_router(bim_routes.router)

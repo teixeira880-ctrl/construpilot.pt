@@ -9,7 +9,7 @@ os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "test_clt")
 os.environ.setdefault("JWT_SECRET", "test")
 
-M = pytest.importorskip("routes.clt")
+M = pytest.importorskip("routes.clt_estudo")
 FIX = os.path.join(os.path.dirname(__file__), "fixtures", "mep_moradia_exemplo.json")
 
 
