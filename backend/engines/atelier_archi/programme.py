@@ -197,7 +197,7 @@ def lista_detalhada(prompt: str) -> Dict[str, Any]:
 # Tudo o que o prompt pede e que não é uma divisão fica registado — nada é ignorado em silêncio.
 # Cada pedido diz se é feito aqui (Ateliê / Estúdio) ou em que app do ConstruPilot continua,
 # no mesmo processo de obra (fluxo entre apps).
-_APP = {
+_APP_PT = {
     "atelier": ("Ateliê Arquiteto / Estúdio de Projeto", "/atelier-arquiteto"),
     "bim": ("BIM Studio", "/bim"),
     "eng": ("Estudos de Engenharia", "/estudos-engenharia"),
@@ -207,44 +207,73 @@ _APP = {
     "img": ("Imagens & Renders 3D", "/estudio-imagens"),
     "lic": ("Licenciamento", "/licenciamento-automatico"),
 }
+_APP_FR = {
+    "atelier": ("Atelier Architecte / Studio de projet", "/atelier-architecte"),
+    "bim": ("BIM Studio", "/bim-studio"),
+    "eng": ("Études d'ingénierie", "/etudes-ingenierie"),
+    "exec": ("Plans d'exécution (réseaux)", "/plans-execution"),
+    "assist": ("Assistant BTP (métré et chiffrage)", "/assistant"),
+    "plan": ("Planning", "/planning"),
+    "img": ("Images & rendus 3D", "/generateur-images"),
+    "lic": ("Permis & urbanisme", "/urbanisme"),
+}
+_APP = _APP_PT if PAIS == "PT" else _APP_FR
+# (tema, título FR, título PT, regex, app)
 _PEDIDOS = [
-    ("exterior", "Piscina", r"piscina|piscine|swimming pool|\bpool\b", "atelier"),
-    ("exterior", "Arranjos exteriores (jardim, terraço, pérgola, zona de refeições)", r"jardim|jardin|garden|terraco|terrasse|pergola|zona de refeic", "atelier"),
-    ("exterior", "Fachadas e materiais exteriores", r"fachada|facade|pedra natural|pierre naturelle|madeira|bois|aluminio|aluminium|platibanda|acrotere", "atelier"),
-    ("exterior", "Envidraçados do chão ao teto / varandas com guardas em vidro", r"envidracad|baie vitree|vitrage|do chao ao teto|toute hauteur|varanda|balcon|guardas? em vidro|garde[- ]corps", "atelier"),
-    ("exterior", "Iluminação LED arquitetónica", r"\bled\b|iluminac|eclairage", "atelier"),
-    ("interior", "Design interior (acabamentos, pavimentos, mobiliário, cores)", r"design interior|interieur|pavimento|revetement de sol|mobiliario|mobilier|tons |couleurs|pedra sinterizada|ceramica|carrelage", "atelier"),
-    ("pecas", "Plantas cotadas, cobertura, alçados, cortes e implantação", r"plantas?|plans? cotes?|alcados?|facades|cortes?|coupes?|implantac|plan de masse|planta de cobertura", "atelier"),
-    ("eng", "Estrutura em betão armado (Eurocódigos, sísmica, geotecnia)", r"betao armado|beton arme|estrutur|structure|eurocodig|eurocode|sism|geotecn|fundac|pilares|vigas|lajes", "eng"),
-    ("eng", "Térmica e acústica (isolamento, caixilharia, orientação solar)", r"termic|thermique|acustic|acoustique|isolamento|isolation|caixilharia|menuiserie|corte termico|eficiencia energetica|orientacao solar", "eng"),
-    ("redes", "Redes: eletricidade, águas, esgotos, climatização", r"eletricidade|electricite|aguas|esgotos|assainissement|plomberie|climatizac|climatisation|redes", "exec"),
-    ("redes", "Bomba de calor, pavimento radiante, VMC de duplo fluxo", r"bomba de calor|pompe a chaleur|radiante|plancher chauffant|\bvmc\b|ventilac|double flux|duplo fluxo", "exec"),
-    ("redes", "Fotovoltaico, domótica, recuperação de águas pluviais", r"fotovolta|photovolta|solares?|domotic|pluvia|eaux de pluie", "exec"),
-    ("bim", "Modelo BIM, deteção de incompatibilidades, exportação IFC / DWG / PDF", r"\bbim\b|\bifc\b|\bdwg\b|incompatib|clash", "bim"),
-    ("custos", "Mapa de quantidades e orçamento por especialidade", r"mapa de quantidades|quantidades|metre|orcamento|devis|budget", "assist"),
-    ("obra", "Planeamento de execução da obra", r"planeamento|planning|cronograma|calendrier", "plan"),
-    ("imagens", "Renders 3D fotorrealistas (exterior, interior, aérea, noturna)", r"render|fotorrealis|photorealis|4k|vista aerea|vue aerienne|noturna|nocturne", "img"),
-    ("regras", "Conformidade regulamentar e urbanística (validação por técnicos habilitados)", r"normas|normes|regulament|urbanistic|conformidade|conformite|tecnicos habilitados", "lic"),
+    ("exterior", "Piscine", "Piscina", r"piscina|piscine|swimming pool|\bpool\b", "atelier"),
+    ("exterior", "Aménagements extérieurs (jardin, terrasse, pergola, repas extérieur)", "Arranjos exteriores (jardim, terraço, pérgola, zona de refeições)",
+     r"jardim|jardin|garden|terraco|terrasse|pergola|zona de refeic", "atelier"),
+    ("exterior", "Façades et matériaux extérieurs", "Fachadas e materiais exteriores",
+     r"fachada|facade|pedra natural|pierre naturelle|madeira|bois|aluminio|aluminium|platibanda|acrotere", "atelier"),
+    ("exterior", "Baies toute hauteur / balcons à garde-corps vitrés", "Envidraçados do chão ao teto / varandas com guardas em vidro",
+     r"envidracad|baie vitree|vitrage|do chao ao teto|toute hauteur|varanda|balcon|guardas? em vidro|garde[- ]corps", "atelier"),
+    ("exterior", "Éclairage LED architectural", "Iluminação LED arquitetónica", r"\bled\b|iluminac|eclairage", "atelier"),
+    ("interior", "Design intérieur (finitions, sols, mobilier, couleurs)", "Design interior (acabamentos, pavimentos, mobiliário, cores)",
+     r"design interior|interieur|pavimento|revetement de sol|mobiliario|mobilier|tons |couleurs|pedra sinterizada|ceramica|carrelage", "atelier"),
+    ("pecas", "Plans cotés, toiture, façades, coupes et plan de masse", "Plantas cotadas, cobertura, alçados, cortes e implantação",
+     r"plantas?|plans? cotes?|alcados?|facades|cortes?|coupes?|implantac|plan de masse|planta de cobertura", "atelier"),
+    ("eng", "Structure béton armé (Eurocodes, sismique, géotechnique)", "Estrutura em betão armado (Eurocódigos, sísmica, geotecnia)",
+     r"betao armado|beton arme|estrutur|structure|eurocodig|eurocode|sism|geotecn|fundac|fondation|pilares|poteaux|vigas|poutres|lajes|dalles", "eng"),
+    ("eng", "Thermique et acoustique (isolation, menuiseries, orientation)", "Térmica e acústica (isolamento, caixilharia, orientação solar)",
+     r"termic|thermique|acustic|acoustique|isolamento|isolation|caixilharia|menuiserie|corte termico|eficiencia energetica|orientacao solar|re2020", "eng"),
+    ("redes", "Réseaux : électricité, eau, assainissement, climatisation", "Redes: eletricidade, águas, esgotos, climatização",
+     r"eletricidade|electricite|aguas|esgotos|assainissement|plomberie|climatizac|climatisation|redes|reseaux", "exec"),
+    ("redes", "Pompe à chaleur, plancher chauffant, VMC double flux", "Bomba de calor, pavimento radiante, VMC de duplo fluxo",
+     r"bomba de calor|pompe a chaleur|radiante|plancher chauffant|\bvmc\b|ventilac|double flux|duplo fluxo", "exec"),
+    ("redes", "Photovoltaïque, domotique, récupération des eaux de pluie", "Fotovoltaico, domótica, recuperação de águas pluviais",
+     r"fotovolta|photovolta|solares?|solaires?|domotic|domotique|pluvia|eaux de pluie", "exec"),
+    ("bim", "Maquette BIM, détection des conflits, export IFC / DWG / PDF", "Modelo BIM, deteção de incompatibilidades, exportação IFC / DWG / PDF",
+     r"\bbim\b|\bifc\b|\bdwg\b|incompatib|clash|conflits", "bim"),
+    ("custos", "Métré et devis par lot", "Mapa de quantidades e orçamento por especialidade",
+     r"mapa de quantidades|quantidades|metre|orcamento|devis|budget|dpgf|chiffrage", "assist"),
+    ("obra", "Planning d'exécution du chantier", "Planeamento de execução da obra", r"planeamento|planning|cronograma|calendrier", "plan"),
+    ("imagens", "Rendus 3D photoréalistes (extérieur, intérieur, aérien, nuit)", "Renders 3D fotorrealistas (exterior, interior, aérea, noturna)",
+     r"render|rendu|fotorrealis|photorealis|4k|vista aerea|vue aerienne|noturna|nocturne|de nuit", "img"),
+    ("regras", "Conformité réglementaire et urbanistique (validation par des professionnels habilités)",
+     "Conformidade regulamentar e urbanística (validação por técnicos habilitados)",
+     r"normas|normes|regulament|reglementaire|urbanistic|urbanisme|conformidade|conformite|tecnicos habilitados|plu\b", "lic"),
 ]
 
 
-def pedidos(prompt: str) -> List[Dict[str, Any]]:
+def pedidos(prompt: str, lang: Optional[str] = None) -> List[Dict[str, Any]]:
     """Lista dos pedidos do prompt (fora das divisões) com a app onde cada um é tratado."""
     t = _fold(prompt)
+    fr = (lang or ("pt" if PAIS == "PT" else "fr")) == "fr"
     out: List[Dict[str, Any]] = []
-    for tema, titulo, rx, app in _PEDIDOS:
+    for tema, titulo_fr, titulo_pt, rx, app in _PEDIDOS:
+        titulo = titulo_fr if fr else titulo_pt
         if not re.search(rx, t):
             continue
         nome_app, rota = _APP[app]
         aqui = app == "atelier"
         estado = ("gerado" if tema == "pecas" else "estudio") if aqui else "continuar"
         item: Dict[str, Any] = {"tema": tema, "titulo": titulo, "app": nome_app, "rota": rota, "aqui": aqui, "estado": estado}
-        if titulo == "Piscina":
+        if tema == "exterior" and titulo_pt == "Piscina":
             dim = re.search(r"(\d{1,2}(?:[.,]\d+)?)\s*[x×]\s*(\d{1,2}(?:[.,]\d+)?)\s*m", prompt or "")
             if dim:
                 a, b = (float(v.replace(",", ".")) for v in dim.groups())
                 item["dimensoes_m"] = [a, b]
-                item["titulo"] = f"Piscina {a:g} × {b:g} m"
+                item["titulo"] = f"{titulo} {a:g} × {b:g} m"
         out.append(item)
     return out
 
@@ -330,7 +359,7 @@ def programme(prompt: str, lang: Optional[str] = None) -> Dict[str, Any]:
     if "toiture" not in lu:
         H("Toiture deux pans retenue (non précisé).", "Cobertura de duas águas considerada (não indicado).")
     return {"pieces": pieces, "niveaux": niveaux, "garage": garage, "toiture": toiture, "surface_visee": cible,
-            "chambres": chambres, "reconnu": lu["reconnu"], "lu": lu, "hypotheses": hyp, "pedidos": pedidos(prompt)}
+            "chambres": chambres, "reconnu": lu["reconnu"], "lu": lu, "hypotheses": hyp, "pedidos": pedidos(prompt, lang)}
 
 
 def _programme_detalhado(prompt: str, lu: Dict[str, Any], det: Dict[str, Any], lang: Optional[str], hyp: List[str], H) -> Dict[str, Any]:
@@ -386,7 +415,7 @@ def _programme_detalhado(prompt: str, lu: Dict[str, Any], det: Dict[str, Any], l
     return {"pieces": pieces, "niveaux": niveaux, "garage": garage, "toiture": toiture, "surface_visee": None,
             "surface_pieces_m2": habitavel, "pisos_indicados": det["pisos"], "circulacao_indicada": det["circulacao"],
             "chambres": sum(1 for p in pieces if p["cle"] in ("chambre", "suite")), "reconnu": True, "lu": lu,
-            "hypotheses": hyp, "pedidos": pedidos(prompt), "detalhado": True}
+            "hypotheses": hyp, "pedidos": pedidos(prompt, lang), "detalhado": True}
 
 
 def programme_depuis_ia(data: Any, lang: Optional[str] = None) -> Optional[Dict[str, Any]]:
