@@ -48,3 +48,34 @@ def test_coerencia_detecta_diferenca():
 def test_prompt_curto_mantem_comportamento_anterior():
     p = P.programme("Moradia T3 de 120 m² com garagem")
     assert not p.get("detalhado") and p["chambres"] == 3 and p["garage"]
+
+
+def test_verificacao_regulamentar_e_programa():
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import verificacao as V
+    p = P.programme(PROMPT)
+    r = G.generer(p)
+    v = V.verificar(r["modelo"], EP.derivar(r["modelo"]), p)
+    fontes = {x["fonte"] for x in v["resultados"]}
+    assert {"RGEU art. 65.º, n.º 1", "RGEU art. 66.º", "RGEU art. 68.º", "RGEU art. 69.º", "RGEU art. 71.º"} <= fontes
+    assert v["resumo"]["falha"] == 0                     # a moradia gerada cumpre as regras verificadas
+    assert any(x["regra"] == "Área por piso" for x in v["resultados"])
+    assert "técnico habilitado" in v["nota"]
+
+
+def test_verificacao_detecta_quarto_pequeno():
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import verificacao as V
+    r = G.generer(P.programme(PROMPT.replace("Quarto 3: 15 m²", "Quarto 3: 6 m²")))
+    v = V.verificar(r["modelo"], EP.derivar(r["modelo"]))
+    falhas = [x for x in v["resultados"] if x["estado"] == "falha"]
+    assert any("Quarto 3" in x["msg"] and x["fonte"] == "RGEU art. 66.º" for x in falhas), falhas
+
+
+def test_estagio_recuado_gera_terraco_sem_divisao_a_definir():
+    from engines import estudio_projeto as EP
+    r = G.generer(P.programme(PROMPT))
+    d = EP.derivar(r["modelo"])
+    assert not [x for x in d["divisoes"] if "definir" in x["nome"]]
+    assert d["medicoes"]["terracos"]
+    assert any("terraço" in a for a in r["avisos"])

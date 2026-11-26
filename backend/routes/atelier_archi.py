@@ -48,6 +48,7 @@ from engines.atelier_archi import croquis as C
 from engines.atelier_archi import dce as DCE
 from engines.atelier_archi import generateur as GEN
 from engines.atelier_archi import programme as PROG
+from engines.atelier_archi import verificacao as VER
 from engines.estudio_projeto import desenhos as D
 from engines.estudio_projeto import i18n as I
 from engines.nom_fichier import content_disposition, nom_document
@@ -240,10 +241,19 @@ class DceIn(BaseModel):
     nature: str = Field(default="neuf", pattern="^(neuf|renovation)$")
 
 
-def _apercu(m: Dict[str, Any], avisos: List[str], extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _verificar_seguro(m: Dict[str, Any], der: Dict[str, Any], programme: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """O controlo nunca pode impedir o esboço de aparecer."""
+    try:
+        return VER.verificar(m, der, programme)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _apercu(m: Dict[str, Any], avisos: List[str], extra: Optional[Dict[str, Any]] = None,
+            programme: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     der = EP.derivar(m)
     tot = der["medicoes"]["totais"]
-    return {**_sai(m, der), "avisos": I.traduzir(avisos), "resume": {
+    return {**_sai(m, der), "avisos": I.traduzir(avisos), "verificacao": _verificar_seguro(m, der, programme), "resume": {
         "niveaux": len(m["pisos"]), "murs": len(m["paredes"]), "ouvertures": len(m["vaos"]),
         "surface_utile_m2": tot["area_util_m2"], "surface_construite_m2": tot["area_bruta_construcao_m2"],
         "pieces": [{"nom": d["nome"], "niveau": d["piso"], "surface_m2": d["area_m2"]} for d in der["medicoes"]["divisoes"]]},
@@ -298,7 +308,7 @@ async def esquisse_prompt(body: PromptIn, user=Depends(current_user)) -> dict:
     return await run_in_threadpool(_apercu, r["modelo"], r["avisos"], {"programme": {"pieces": pieces, "niveaux": prog["niveaux"],
                                                                                      "garage": prog["garage"], "toiture": prog["toiture"],
                                                                                      "detalhado": bool(prog.get("detalhado"))},
-                                                                       "pedidos": prog.get("pedidos") or []})
+                                                                       "pedidos": prog.get("pedidos") or []}, prog)
 
 
 @router.post("/esquisse/croquis")
@@ -450,6 +460,18 @@ async def modelo_ifc(pid: str, user=Depends(current_user)):
     def go():
         return IFC.construir(m, EP.derivar(m), chave=pid, nome_projeto=p.get("titre") or T("Projeto ConstruPilot")).to_string().encode("utf-8")
     return _fichier(await run_in_threadpool(go), "application/x-step", "Estudio-modelo", p, "ifc")
+
+
+@router.get("/projets/{pid}/verificacao")
+async def verificacao(pid: str, user=Depends(current_user)) -> dict:
+    """Controlo regulamentar e do programa do projeto guardado (mesmas regras que no esboço)."""
+    p = await _projet(pid, user["user_id"])
+    m = _modele(p)
+
+    def go():
+        prog = PROG.programme(p["programme"]) if (p.get("programme") or "").strip() else None
+        return VER.verificar(m, EP.derivar(m), prog)
+    return await run_in_threadpool(go)
 
 
 @router.get("/projets/{pid}/medicoes.csv")

@@ -68,6 +68,24 @@ def _repartir(nuit: List[Dict[str, Any]], avant: List[float], arriere: List[floa
     return fa, fb
 
 
+def _equilibrar(flex: List[Dict[str, Any]], la: float, lb: float, pa: float, pb: float) -> Tuple[list, list]:
+    """Toutes les pièces « libres » (cuisine, bureau, pièces d'eau, chambres…) vont dans la bande la plus courte : les deux
+    façades ont la même longueur, la maison reste compacte et proche de la surface demandée (pas de grande « pièce à
+    affecter » pour fermer une bande vide). La suite parentale reste côté jardin."""
+    fa, fb = [], []
+    for p in sorted(flex, key=lambda q: -_largeur(q, pa)):
+        wa, wb = _largeur(p, pa), _largeur(p, pb)
+        if p["cle"] == "suite" or lb + wb <= la + wa:
+            fb.append(p)
+            lb += wb
+        else:
+            fa.append(p)
+            la += wa
+    ordre = {"cuisine": 0}                              # côté jardin : la cuisine reste contre le séjour
+    fb.sort(key=lambda q: ordre.get(q["cle"], 1))
+    return fa, fb
+
+
 def _ranger(items: List[Dict[str, Any]], prof: float, x0: float = 0.0) -> float:
     x = x0
     for p in items:
@@ -146,9 +164,9 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             av0 += wc0[:1]
         if deux:
             av0.append({"cle": "escalier", "nom": _txt("Escalier", "Escada"), "surface": 0, "niveau": 0, "w": ESC_LARG})
-        av0 += de(0, "cuisine", "buanderie", "bureau") + de(0, "sdb", "sde", "dressing")
         ar0 = list(jour_salle)
-        fa, fb = _repartir(de(0, "chambre", "suite"), [_largeur(p, PA) for p in av0], [_largeur(p, PB) for p in ar0], PA, PB)
+        libres0 = de(0, "cuisine", "buanderie", "bureau", "sdb", "sde", "dressing", "chambre", "suite")
+        fa, fb = _equilibrar(libres0, sum(p.get("w") or _largeur(p, PA) for p in av0), sum(_largeur(p, PB) for p in ar0), PA, PB)
         av0, ar0 = av0 + fa, ar0 + fb
         bandes[(0, "av")], bandes[(0, "ar")] = av0, ar0
         fins[(0, "av")], fins[(0, "ar")] = _ranger(av0, PA), _ranger(ar0, PB)
@@ -165,9 +183,9 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             if not gauche and sx0 > 0.3:
                 gauche = [{"cle": "rangement", "nom": _txt("Rangement", "Arrumos"), "surface": 0, "niveau": 1, "w": sx0, "x0": 0.0, "x1": sx0}]
             palier = {"cle": "escalier", "nom": _txt("Escalier", "Escada"), "surface": 0, "niveau": 1, "w": ESC_LARG, "x0": sx0, "x1": sx1}
-            droite = [p for p in eau1 if p not in gauche]
-            fa1, fb1 = _repartir(de(1, "chambre", "suite"), [_largeur(p, PA) for p in droite], [], PA, PB)
-            droite += fa1
+            libres1 = [p for p in eau1 if p not in gauche] + de(1, "chambre", "suite")
+            fa1, fb1 = _equilibrar(libres1, sx1, 0.0, PA, PB)
+            droite = fa1
             fins[(1, "av")] = _ranger(droite, PA, sx1)
             fins[(1, "ar")] = _ranger(fb1, PB)
             bandes[(1, "av")], bandes[(1, "ar")] = gauche + [palier] + droite, list(fb1)
@@ -189,11 +207,23 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
             bandes, fins, (sx0, sx1) = disposer()
 
     W = R(max(max(fins.values()), 6.0))
+    # Étage nettement plus court que le rez-de-chaussée : l'étage est en retrait et le reste du RDC devient une terrasse
+    # accessible (au lieu d'élargir les pièces de l'étage ou d'ajouter une « pièce à affecter »).
+    Wn = {0: W, 1: W}
+    terrasse = 0.0
+    if deux:
+        w1 = R(max(fins[(1, "av")], fins[(1, "ar")], sx1 + 1.2, 6.0))
+        if W - w1 >= 1.8:
+            Wn[1] = w1
+            terrasse = R((W - w1) * D)
     for (niv, b), items in bandes.items():
         fixe = deux and b == "av"                      # l'escalier et ce qui est à sa gauche restent alignés d'un niveau à l'autre
         mobiles = [p for p in items if p["x0"] >= sx1 - 1e-6 and p["cle"] != "escalier"] if fixe else items
         debut = sx1 if fixe else 0.0
-        _fermer(items, mobiles, W, fins[(niv, b)], debut, PA if b == "av" else PB, niv, avisos)
+        _fermer(items, mobiles, Wn[niv], fins[(niv, b)], debut, PA if b == "av" else PB, niv, avisos)
+    if terrasse:
+        avisos.append(_txt(f"Étage en retrait : terrasse d'environ {terrasse:.0f} m² sur le rez-de-chaussée, accessible depuis le dégagement.",
+                           f"1.º andar recuado: terraço de cerca de {terrasse:.0f} m² sobre o rés-do-chão, com acesso pelo corredor."))
 
     # ---- bandes → compartiments (y)
     comps: List[Dict[str, Any]] = []
@@ -206,8 +236,10 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         {"material": "Bloco de betão normal", "esp_m": 0.20}, {"material": "Reboco monomassa", "esp_m": 0.015}]}}
     pisos, paredes, vaos, rotulos, escadas = [], [], [], [], []
     noms_niv = [_txt("Rez-de-chaussée", "Rés-do-chão"), _txt("Étage", "1.º andar")]
+    W0 = W
     for niv in range(niveaux):
         pid = f"p{niv}"
+        W = Wn[niv]
         pisos.append({"id": pid, "nome": noms_niv[niv], "pe_direito_m": PE_DIREITO, "laje_m": LAJE})
         for lado, a, b in (("avant", (0, 0), (W, 0)), ("droite", (W, 0), (W, D)), ("arriere", (W, D), (0, D)), ("gauche", (0, D), (0, 0))):
             paredes.append({"id": f"{pid}_{lado}", "piso": pid, "a": list(a), "b": list(b), "tipo": "ext_30"})
@@ -264,6 +296,7 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                 avisos.append(_txt("L'escalier n'a pas pu être posé automatiquement : placez-le dans le Studio.",
                                    "Não coube uma escada automaticamente: coloque-a no Estúdio."))
 
+    W = W0
     # ---- garage
     garage = prog.get("garage")
     if garage:
@@ -375,6 +408,8 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
         portail = min(4.80 if gw > 5 else 2.40, gw - 0.6)
         vao("p0", R(-gw / 2), 0.0, "portao", portail, 2.10, 0.0, quoi=_txt("porte de garage", "portão da garagem"))
         vao("p0", 0.0, R(min(PA, PROF_GARAGE) / 2), "porta", 0.90, quoi=_txt("porte de service du garage", "porta de serviço da garagem"))
+    if terrasse:
+        vao("p1", Wn[1], R((y_hall0 + y_hall1) / 2), "porta", 0.90, quoi=_txt("porte-fenêtre de la terrasse", "porta do terraço"))
     if manques:
         avisos.append(_txt("Ouvertures non posées (mur trop court) : ", "Vãos não colocados (parede curta): ") + ", ".join(sorted(set(manques))))
 

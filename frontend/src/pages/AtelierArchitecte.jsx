@@ -26,7 +26,7 @@ const COPY = {
       "Petite maison T3 de 80 m², toiture 4 pans"],
     generer: "Générer l'esquisse", photoAide: "Photographiez le croquis bien à plat, en entier, avec les cotes lisibles. Les murs, ouvertures, noms de pièces et cotes sont relus puis redressés.",
     choisir: "Choisir ou prendre une photo", lire: "Lire le croquis",
-    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
+    apercu: "Esquisse", niveau: "Niveau", pieces: "Pièces", surface: "Surface utile", sb: "Surface construite", avis: "À vérifier", pedidos: "Demandes du prompt", verif: "Vérification avant validation", actualiser: "Actualiser", nOk: "conformes", nAviso: "à revoir", nFalha: "non conformes", voirTout: "Tout voir", masquer: "Masquer les points conformes", gerado: "généré", estudio: "à compléter dans le Studio", continuar: "Continuer dans",
     creer: "Créer le projet et ouvrir le Studio", nomProjet: "Nom du projet", adresse: "Adresse (facultatif)", moa: "Maître d'ouvrage (facultatif)",
     projets: "Mes projets d'architecture", aucun: "Aucun projet pour l'instant : commencez par une esquisse ci-dessus.", ouvrir: "Ouvrir",
     supprimer: "Supprimer", confirmerSup: "Supprimer définitivement ce projet ?", retour: "Mes projets",
@@ -45,7 +45,7 @@ const COPY = {
       "Pequena moradia T2 de 80 m², cobertura de quatro águas"],
     generer: "Gerar o esboço", photoAide: "Fotografe o esboço bem plano, inteiro, com as cotas legíveis. Paredes, vãos, nomes das divisões e cotas são lidos e endireitados.",
     choisir: "Escolher ou tirar uma fotografia", lire: "Ler o esboço",
-    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
+    apercu: "Esboço", niveau: "Piso", pieces: "Divisões", surface: "Área útil", sb: "Área de construção", avis: "A verificar", pedidos: "Pedidos do prompt", verif: "Verificação antes de validar", actualiser: "Atualizar", nOk: "conformes", nAviso: "a rever", nFalha: "não conformes", voirTout: "Ver tudo", masquer: "Esconder os pontos conformes", gerado: "gerado", estudio: "a completar no Estúdio", continuar: "Continuar em",
     creer: "Criar o projeto e abrir o Estúdio", nomProjet: "Nome do projeto", adresse: "Morada (opcional)", moa: "Dono de obra (opcional)",
     projets: "Os meus projetos de arquitetura", aucun: "Ainda sem projetos: comece por um esboço acima.", ouvrir: "Abrir",
     supprimer: "Eliminar", confirmerSup: "Eliminar definitivamente este projeto?", retour: "Os meus projetos",
@@ -64,7 +64,7 @@ const COPY = {
       "Small 2-bedroom house of 80 m², hip roof"],
     generer: "Generate the sketch", photoAide: "Photograph the sketch flat, in full, with readable dimensions. Walls, openings, room names and dimensions are read then straightened.",
     choisir: "Choose or take a photo", lire: "Read the sketch",
-    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
+    apercu: "Sketch", niveau: "Level", pieces: "Rooms", surface: "Usable area", sb: "Gross floor area", avis: "To check", pedidos: "Prompt requests", verif: "Check before validation", actualiser: "Refresh", nOk: "compliant", nAviso: "to review", nFalha: "non-compliant", voirTout: "Show all", masquer: "Hide compliant items", gerado: "generated", estudio: "to complete in the Studio", continuar: "Continue in",
     creer: "Create the project and open the Studio", nomProjet: "Project name", adresse: "Address (optional)", moa: "Client (optional)",
     projets: "My architecture projects", aucun: "No project yet: start with a sketch above.", ouvrir: "Open",
     supprimer: "Delete", confirmerSup: "Delete this project permanently?", retour: "My projects",
@@ -159,6 +159,7 @@ function Apercu({ data, c, onCreer, enCours }) {
             </div>
           )}
           {!!(data.pedidos || []).length && <PedidosPrompt pedidos={data.pedidos} c={c} />}
+          <Verificacao dados={data.verificacao} c={c} />
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -173,6 +174,54 @@ function Apercu({ data, c, onCreer, enCours }) {
       </div>
     </section>
   );
+}
+
+// Verificação antes de validar: regras com fonte (RGEU em Portugal, décret 2002-120 / RSD em França) e programa
+// pedido vs modelo. Indicativa: a nota do motor lembra que não substitui o técnico habilitado.
+function Verificacao({ dados, c, onAtualizar, carregando }) {
+  const [tudo, setTudo] = useState(false);
+  if (!dados) return null;
+  const r = dados.resumo || {};
+  const cor = { ok: "text-emerald-700", aviso: "text-amber-700", falha: "text-red-700" };
+  const lista = (dados.resultados || []).filter((x) => tudo || x.estado !== "ok");
+  return (
+    <div className="rounded-lg border border-border p-2.5 space-y-1.5" data-testid="atelier-verificacao">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-medium flex items-center gap-1">
+          {dados.conforme ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-600" />}{c.verif}
+        </p>
+        <span className="text-xs text-muted-foreground">
+          <b className={cor.ok}>{r.ok || 0}</b> {c.nOk} · <b className={cor.aviso}>{r.aviso || 0}</b> {c.nAviso} · <b className={cor.falha}>{r.falha || 0}</b> {c.nFalha}
+        </span>
+        <span className="ml-auto flex gap-1">
+          <Button size="sm" variant="ghost" onClick={() => setTudo(!tudo)}>{tudo ? c.masquer : c.voirTout}</Button>
+          {onAtualizar && <Button size="sm" variant="outline" onClick={onAtualizar} disabled={carregando}>
+            {carregando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : c.actualiser}</Button>}
+        </span>
+      </div>
+      <ul className="space-y-0.5 max-h-64 overflow-auto">
+        {lista.map((x, i) => (
+          <li key={i} className="text-xs flex gap-2">
+            <span className={`shrink-0 font-semibold ${cor[x.estado] || ""}`}>{x.estado === "ok" ? "✓" : x.estado === "aviso" ? "!" : "✗"}</span>
+            <span><b>{x.regra}</b> — {x.msg} <span className="text-muted-foreground">({x.fonte})</span></span>
+          </li>
+        ))}
+      </ul>
+      {dados.nota && <p className="text-[11px] text-muted-foreground">{dados.nota}</p>}
+    </div>
+  );
+}
+
+function VerificacaoProjeto({ pid, c }) {
+  const [dados, setDados] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try { const { data } = await api.get(`/atelier-archi/projets/${pid}/verificacao`); setDados(data); } catch { /* painel opcional */ }
+    setCarregando(false);
+  }, [pid]);
+  useEffect(() => { carregar(); }, [carregar]);
+  return <section className="surface rounded-2xl p-4"><Verificacao dados={dados} c={c} onAtualizar={carregar} carregando={carregando} /></section>;
 }
 
 function DcePanel({ pid, c, projet }) {
@@ -319,6 +368,7 @@ export default function AtelierArchitecte() {
               ? "Go back to the initial sketch? Changes made in the Studio will be lost." : "Revenir à l'esquisse de départ ? Les modifications faites dans le Studio seront effacées."} />
         </Suspense>
         <p className="text-xs text-muted-foreground">{c.enregistrez}</p>
+        <VerificacaoProjeto pid={pid} c={c} />
         <DcePanel pid={pid} c={c} projet={projet} />
       </div>
     );
