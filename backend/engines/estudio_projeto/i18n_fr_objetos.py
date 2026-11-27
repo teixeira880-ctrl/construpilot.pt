@@ -73,6 +73,7 @@ CATEGORIAS_OBJ = {
     "Piscina": "Piscine",
     "Terraços e pavimentos exteriores": "Terrasses et sols extérieurs",
     "Jardim e estruturas exteriores": "Jardin et structures extérieures",
+    "Jogos e lazer": "Jeux et loisirs",
 }
 
 OBJETOS = {
@@ -170,6 +171,21 @@ OBJETOS = {
     "Pérgola": "Pergola",
     "Cozinha / zona de refeições exterior": "Cuisine / coin repas extérieur",
     "Muro de vedação": "Mur de clôture",
+    "Estrada / arruamento": "Route / voirie",
+    "Estacionamento exterior": "Stationnement extérieur",
+    "Terraço suspenso / varanda em balanço": "Terrasse suspendue / balcon en porte-à-faux",
+    "Portão de entrada": "Portail d'entrée",
+    "Sebe": "Haie",
+    "Lago / espelho de água": "Bassin / miroir d'eau",
+    "Horta": "Potager",
+    "Parque infantil (zona de jogos)": "Aire de jeux pour enfants",
+    "Baloiço": "Balançoire",
+    "Escorrega": "Toboggan",
+    "Trampolim": "Trampoline",
+    "Caixa de areia": "Bac à sable",
+    "Casinha de crianças": "Cabane pour enfants",
+    "Campo de jogos": "Terrain de jeux / multisport",
+    "Campo de ténis": "Court de tennis",
 }
 
 MODELOS_VAO = {

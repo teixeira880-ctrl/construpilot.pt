@@ -290,7 +290,11 @@ def _um(m: dict, o: Dict[str, Any]) -> str:
         else:
             piso, x, y = _piso(m, o.get("piso")), float(o["x"]), float(o["y"])
         oid = _novo_id("o", m["objetos"])
-        m["objetos"].append({"id": oid, "piso": piso, "tipo": tipo, "x": x, "y": y, "rot": float(o.get("rot") or 0)})
+        novo = {"id": oid, "piso": piso, "tipo": tipo, "x": x, "y": y, "rot": float(o.get("rot") or 0)}
+        for k in ("largura_m", "prof_m"):               # medidas próprias (opcionais; por omissão as do catálogo)
+            if o.get(k):
+                novo[k] = float(o[k])
+        m["objetos"].append(novo)
         return f"{OBJ.OBJETOS[tipo]['nome']} ({oid}) colocado."
     if op == "remover_objeto":
         if not any(x["id"] == o.get("id") for x in m["objetos"]):

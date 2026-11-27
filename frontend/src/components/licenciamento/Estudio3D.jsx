@@ -141,6 +141,16 @@ const EXTERIOR = {
   relvado: { cor: "#7fae5a", padrao: "relva", extra: { roughness: 1 } },
   canteiro: { cor: "#7b5a3c", padrao: "seixo" },
   muro_vedacao: { cor: "#e9e5dd", padrao: "reboco" },
+  estrada: { cor: "#55585c", padrao: "seixo", extra: { roughness: 0.95 } },
+  estacionamento: { cor: "#8d8f92", padrao: "seixo" },
+  terraco_suspenso: { cor: "#d8cfc0", padrao: "pedra_exterior" },
+  sebe: { cor: "#4f7f3a", padrao: "relva", extra: { roughness: 1 } },
+  lago: { cor: "#4a9ccf", padrao: "agua", extra: { roughness: 0.08, transparent: true, opacity: 0.88 } },
+  horta: { cor: "#6b4d32", padrao: "seixo" },
+  parque_infantil: { cor: "#e0a23c", padrao: "seixo", extra: { roughness: 1 } },
+  caixa_areia: { cor: "#e6d3a3", padrao: "seixo" },
+  campo_jogos: { cor: "#3f8f5f", padrao: "relva" },
+  campo_tenis: { cor: "#b5573a", padrao: "seixo" },
 };
 const ALIAS = { deck: "soalho", pedra_exterior: "pedra" };   // sem fotografia própria, usa o desenho mais próximo
 

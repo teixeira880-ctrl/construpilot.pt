@@ -11,10 +11,10 @@ import { errorText } from "@/lib/errorText";
 const T = {
   pt: { titulo: "Editar por frase ou por voz", ph: "Ex.: aumenta a sala 2 metros · janelas maiores no quarto 2 · piscina de 10 x 5",
         ouvir: "Falar", parar: "Parar", enviar: "Aplicar", voz: "A ouvir…", semVoz: "Este browser não tem reconhecimento de voz.",
-        exemplos: ["aumenta a sala 2 metros", "janelas maiores no quarto 2", "piscina de 10 x 5", "telhado de 4 águas", "casa em L", "interior provençal"], lang: "pt-PT" },
+        exemplos: ["aumenta a sala 2 metros", "terraço à frente da sala a todo o comprimento da casa", "estrada à frente com acesso privado", "jardim com árvores e jogos para crianças", "andar com terraço sobre a piscina", "fachadas em granito e madeira", "muro de vedação à volta num terreno de 1500 m2", "casa em L"], lang: "pt-PT" },
   fr: { titulo: "Modifier par une phrase ou à la voix", ph: "Ex. : agrandis le séjour de 2 m · fenêtres plus grandes dans la chambre 2 · piscine de 10 x 5",
         ouvir: "Parler", parar: "Arrêter", enviar: "Appliquer", voz: "Écoute…", semVoz: "Ce navigateur n'a pas de reconnaissance vocale.",
-        exemplos: ["agrandis le séjour de 2 m", "fenêtres plus grandes dans la chambre 2", "piscine de 10 x 5", "toit 4 pans", "maison en L", "intérieur provençal"], lang: "fr-FR" },
+        exemplos: ["agrandis le séjour de 2 m", "terrasse devant le séjour sur toute la longueur de la maison", "route devant la maison avec accès privé", "jardin avec arbres et jeux pour enfants", "étage avec terrasse qui déborde sur la piscine", "façades en granit et bois", "murs de clôture autour sur un terrain de 1500 m2", "maison en L"], lang: "fr-FR" },
   en: { titulo: "Edit with a sentence or by voice", ph: "E.g.: make the living room 2 m bigger · bigger windows in bedroom 2 · pool 10 x 5",
         ouvir: "Speak", parar: "Stop", enviar: "Apply", voz: "Listening…", semVoz: "This browser has no speech recognition.",
         exemplos: ["make the living room 2 m bigger", "bigger windows in bedroom 2", "pool 10 x 5", "hip roof", "L-shaped house", "provençal interior"], lang: "en-GB" },

@@ -82,6 +82,9 @@ _OBJ: List[Tuple[str, str, List[Tuple[str, str, float, float, float, float, str,
         ("deck_piscina", "Deck de piscina", 12.00, 2.00, 0.08, 0, "ret", "IfcSlab"),
         ("caminho", "Caminho pedonal", 1.20, 6.00, 0.03, 0, "ret", "IfcSlab"),
         ("acesso_viaturas", "Acesso automóvel", 3.50, 8.00, 0.05, 0, "ret", "IfcSlab"),
+        ("estrada", "Estrada / arruamento", 6.00, 20.00, 0.08, 0, "ret", "IfcSlab"),
+        ("estacionamento", "Estacionamento exterior", 5.00, 5.00, 0.05, 0, "ret", "IfcSlab"),
+        ("terraco_suspenso", "Terraço suspenso / varanda em balanço", 6.00, 3.00, 0.25, -0.25, "ret", "IfcSlab"),
     ]),
     ("Jardim e estruturas exteriores", "#6f9d4f", [
         ("relvado", "Relvado", 8.00, 6.00, 0.02, 0, "ret", "IfcBuildingElementProxy"),
@@ -91,9 +94,23 @@ _OBJ: List[Tuple[str, str, List[Tuple[str, str, float, float, float, float, str,
         ("pergola", "Pérgola", 4.00, 3.00, 2.50, 0, "alto", "IfcBuildingElementProxy"),
         ("cozinha_exterior", "Cozinha / zona de refeições exterior", 3.00, 0.70, 0.90, 0, "ret", "IfcFurniture"),
         ("muro_vedacao", "Muro de vedação", 10.00, 0.20, 1.50, 0, "ret", "IfcWall"),
+        ("portao_entrada", "Portão de entrada", 4.00, 0.20, 1.80, 0, "ret", "IfcBuildingElementProxy"),
+        ("sebe", "Sebe", 10.00, 0.80, 1.50, 0, "ret", "IfcBuildingElementProxy"),
+        ("lago", "Lago / espelho de água", 4.00, 3.00, 0.10, 0, "cuba", "IfcBuildingElementProxy"),
+        ("horta", "Horta", 4.00, 3.00, 0.30, 0, "ret", "IfcBuildingElementProxy"),
+    ]),
+    ("Jogos e lazer", "#e0a23c", [
+        ("parque_infantil", "Parque infantil (zona de jogos)", 8.00, 6.00, 0.05, 0, "ret", "IfcBuildingElementProxy"),
+        ("baloico", "Baloiço", 3.00, 2.00, 2.20, 0, "alto", "IfcBuildingElementProxy"),
+        ("escorrega", "Escorrega", 4.00, 1.00, 2.20, 0, "alto", "IfcBuildingElementProxy"),
+        ("trampolim", "Trampolim", 3.70, 3.70, 0.90, 0, "circ", "IfcBuildingElementProxy"),
+        ("caixa_areia", "Caixa de areia", 2.00, 2.00, 0.30, 0, "ret", "IfcBuildingElementProxy"),
+        ("casinha_criancas", "Casinha de crianças", 1.50, 1.50, 1.80, 0, "alto", "IfcBuildingElementProxy"),
+        ("campo_jogos", "Campo de jogos", 15.00, 8.00, 0.02, 0, "ret", "IfcBuildingElementProxy"),
+        ("campo_tenis", "Campo de ténis", 36.00, 18.00, 0.02, 0, "ret", "IfcBuildingElementProxy"),
     ]),
 ]
-CATEGORIAS_EXTERIORES = ("Piscina", "Terraços e pavimentos exteriores", "Jardim e estruturas exteriores")
+CATEGORIAS_EXTERIORES = ("Piscina", "Terraços e pavimentos exteriores", "Jardim e estruturas exteriores", "Jogos e lazer")
 
 OBJETOS: Dict[str, Dict[str, Any]] = {}
 CATEGORIAS_OBJ: List[str] = []

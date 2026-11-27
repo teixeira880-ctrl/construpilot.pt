@@ -126,13 +126,15 @@ def selection(modelo: Dict[str, Any], lots: Optional[List[str]] = None) -> Dict[
             L("vrd", _ligne(f"{nom} — terrassement, structure et étanchéité (suivant étude)", "m2", e["area_m2"], "Extérieurs",
                             f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."),
               _ligne(f"{nom} — margelles", "ml", e["perimetro_m"], "Extérieurs", "Périmètre du bassin mesuré sur la maquette."))
-        elif t in ("terraco_pedra", "deck_madeira", "deck_piscina", "caminho", "acesso_viaturas"):
+        elif t in ("terraco_pedra", "deck_madeira", "deck_piscina", "caminho", "acesso_viaturas", "estrada", "estacionamento",
+                   "terraco_suspenso", "parque_infantil", "campo_jogos", "campo_tenis", "lago", "horta", "sebe"):
             L("vrd", _ligne(f"{nom}", "m2", e["area_m2"], "Extérieurs", f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."))
         elif t in ("relvado", "canteiro"):
             L("vrd", _ligne(f"{nom} — préparation du sol et engazonnement / plantation", "m2", e["area_m2"], "Extérieurs"))
         elif t in ("arvore", "arbusto"):
             L("vrd", _ligne(f"{nom} — fourniture et plantation", "u", e["quantidade"], "Extérieurs"))
-        elif t in ("pergola", "muro_vedacao", "cozinha_exterior", "casa_maquinas"):
+        elif t in ("pergola", "muro_vedacao", "cozinha_exterior", "casa_maquinas", "portao_entrada", "baloico", "escorrega",
+                   "trampolim", "caixa_areia", "casinha_criancas"):
             L("vrd", _ligne(f"{nom}", "u", e["quantidade"], "Extérieurs", f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."))
 
     # ---- toiture

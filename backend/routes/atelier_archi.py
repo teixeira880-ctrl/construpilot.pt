@@ -442,14 +442,30 @@ class FraseIn(BaseModel):
 
 @router.post("/projets/{pid}/frase")
 async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) -> dict:
-    """Edição por frase (escrita ou dita): «aumenta a sala 2 metros», «janelas maiores no quarto 2», «piscina de 10 x 5»."""
+    """Edição por frase (escrita ou dita), em qualquer língua: «aumenta a sala 2 metros», «terrasse devant le séjour sur toute
+    la longueur de la maison», «murs de clôture autour de la maison sur 1500 m²»… Regras primeiro (determinísticas), depois a IA
+    em cascata para o resto. Nunca devolve erro 500: o que não se puder fazer vem em «falhas», e um pedido que nada consegue
+    executar fica anotado no plano."""
     from engines.atelier_archi import edicao as ED
     p = await _projet(pid, user["user_id"])
     m0 = _modele(p)
+    try:
+        return await _frase(pid, body, user, m0, ED)
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 — o utilizador recebe sempre uma resposta legível
+        import logging
+        logging.getLogger(__name__).exception("atelier frase: %s", e)
+        return {"ok": False, "compreendido": False, "feitos": [],
+                "falhas": [ED._t(f"Erreur interne pendant la modification ({type(e).__name__}). Le projet n'a pas été modifié.",
+                                 f"Erro interno durante a alteração ({type(e).__name__}). O projeto não foi alterado.")]}
+
+
+async def _frase(pid: str, body: FraseIn, user: Dict[str, Any], m0: Dict[str, Any], ED) -> dict:
     acoes, sobras = await run_in_threadpool(ED.interpretar_partes, body.frase, m0)
     origem = "regras"
     if sobras and body.ia:
-        # o que as regras não perceberam vai para a IA, com o modelo inteiro como contexto (ids, divisões, acabamentos)
+        # o que as regras não perceberam vai para a IA (cascata de fornecedores), com o modelo inteiro como contexto
         try:
             from engines import ai
             ctx = await run_in_threadpool(ED.contexto_ia, m0)
@@ -457,25 +473,25 @@ async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) 
             brut = await ai._complete(ED.AJUDA_IA, f"{ctx}\nPedido: {pedido[:800]}", feature="atelier_frase")
             extra = [x for x in (ED.normalizar_acao(a) for a in ((ai._json(brut, {}) or {}).get("acoes") or [])) if x][:12]
             if extra:
+                origem = "regras+ia" if acoes else "ia"
                 acoes = acoes + extra
-                origem = "regras+ia" if origem == "regras" and len(acoes) > len(extra) else "ia"
         except Exception:  # noqa: BLE001 — sem IA: só as frases reconhecidas pelas regras
             pass
-    if not acoes:
-        return {"ok": False, "compreendido": False, "feitos": [], "falhas": [ED._t("Je n'ai pas compris la demande. Exemples : « agrandis le séjour de 2 m », "
-                                                                                 "« fenêtres plus grandes dans la chambre 2 », « maison en L », « intérieur provençal ».",
-                                                                                 "Não percebi o pedido. Exemplos: «aumenta a sala 2 metros», "
-                                                                                 "«janelas maiores no quarto 2», «casa em L», «interior provençal».")]}
+    if not acoes:                                  # nada executável: o pedido fica escrito no plano, nunca se perde
+        acoes, origem = [{"acao": "nota_pedido", "texto": body.frase}], "nota"
 
     def go():
         m, feitos, falhas = ED.executar(m0, acoes)
+        if not feitos:                             # todas as ações falharam: anota o pedido no plano
+            m, msg = ED.nota_pedido(m0, body.frase)
+            feitos = [msg]
         return m, feitos, falhas, EP.derivar(m)
     m, feitos, falhas, der = await run_in_threadpool(go)
     guardado = None
     if body.guardar and feitos:
         guardado = _now()
         await db.archi_projects.update_one({"projet_id": pid, "user_id": user["user_id"]}, {"$set": {"modelo": m, "updated_at": guardado}})
-    return {"ok": bool(feitos), "compreendido": True, "origem": origem, "acoes": acoes, "feitos": I.traduzir(feitos),
+    return {"ok": bool(feitos), "compreendido": origem != "nota", "origem": origem, "acoes": acoes, "feitos": I.traduzir(feitos),
             "falhas": I.traduzir(falhas), **_sai(m, der), "updated_at": guardado}
 
 
