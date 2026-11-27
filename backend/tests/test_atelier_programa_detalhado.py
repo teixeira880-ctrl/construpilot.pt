@@ -182,3 +182,29 @@ def test_edicao_reduzir_e_materiais_e_recusas():
     _, feitos, falhas = ED.executar(m, ED.interpretar("diminui o escritório 20 metros", m))
     assert not feitos and falhas                                       # nunca parte o modelo
     assert ED.interpretar("olá, tudo bem?", m) == []
+
+
+def test_frase_forma_em_l_e_estilo_editaveis():
+    """«Faz a moradia em L com vários recortes e o interior provençal»: forma e estilo aplicados, maqueta válida."""
+    from engines import estudio_projeto as EP
+    from engines.atelier_archi import edicao as ED
+    from engines.atelier_archi import forma as FO
+    from engines.atelier_archi import generateur as GEN
+    from engines.atelier_archi import programme as PROG
+    for txt in ("moradia térrea T3 com suite, garagem, piscina", "moradia de 2 pisos T4 160 m2"):
+        m = GEN.generer(PROG.programme(txt, "pt"))["modelo"]
+        acoes, sobras = ED.interpretar_partes("Faz a moradia em L com vários recortes e o interior provençal", m)
+        assert [a["acao"] for a in acoes] == ["forma", "estilo"] and sobras == []
+        m2, feitos, falhas = ED.executar(m, acoes)
+        assert not falhas, falhas
+        assert not EP.derivar(m2)["erros"]
+        assert any(w["id"] == "ala_galeria" for w in m2["paredes"])
+        assert m2["materiais"]["pavimento"] == "tijoleira"
+        m3, _ = FO.retangular(m2)
+        assert not EP.derivar(m3)["erros"]
+
+
+def test_acoes_ia_normalizadas():
+    from engines.atelier_archi import edicao as ED
+    assert ED.normalizar_acao({"acao": "op", "op": {"tipo": "quatro_aguas"}})["op"]["op"] == "cobertura"
+    assert ED.normalizar_acao({"acao": "op", "op": {"x": 1}}) is None

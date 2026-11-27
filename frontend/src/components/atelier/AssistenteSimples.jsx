@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Home, BedDouble, Layers, Ruler, Car, Waves, Trees, Sun, Briefcase, Shirt, Sparkles, Loader2, Minus, Plus } from "lucide-react";
+import { Home, BedDouble, Layers, Ruler, Car, Waves, Trees, Sun, Briefcase, Shirt, Sparkles, Loader2, Minus, Plus, Shapes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { programaSimples, areaMinima } from "./programaSimples";
 
@@ -12,6 +12,7 @@ const TXT = {
     titulo: "Diga-nos como imagina a sua casa", quartos: "Quartos", pisos: "Pisos", um: "Térreo", dois: "2 pisos", area: "Área aproximada", minimo: "mín. realista",
     garagem: "Garagem", sem: "Sem", carro1: "1 carro", carro2: "2 carros", cobertura: "Telhado", plana: "Plano (moderno)", duas: "2 águas", quatro: "4 águas",
     estilo: "Estilo", moderno: "Moderno", contemporaneo: "Contemporâneo", tradicional: "Tradicional", extras: "Extras",
+    provencal: "Provençal", rustico: "Rústico", mediterranico: "Mediterrânico", escandinavo: "Escandinavo", forma: "Forma", retangular: "Retangular", formaL: "Em L (com recortes)",
     suite: "Suite com closet", escritorio: "Escritório", lavandaria: "Lavandaria", piscina: "Piscina", jardim: "Jardim", terraco: "Terraço com pérgola",
     criar: "Criar a minha casa", ver: "Ver o texto gerado", nota: "Tudo continua editável depois no Estúdio: paredes, divisões, janelas, materiais, piscina…",
   },
@@ -19,6 +20,7 @@ const TXT = {
     titulo: "Dites-nous comment vous imaginez votre maison", quartos: "Chambres", pisos: "Niveaux", um: "Plain-pied", dois: "R+1", area: "Surface approximative", minimo: "min. réaliste",
     garagem: "Garage", sem: "Sans", carro1: "1 voiture", carro2: "2 voitures", cobertura: "Toiture", plana: "Toit plat (moderne)", duas: "2 pans", quatro: "4 pans",
     estilo: "Style", moderno: "Moderne", contemporaneo: "Contemporain", tradicional: "Traditionnel", extras: "Options",
+    provencal: "Provençal", rustico: "Rustique", mediterranico: "Méditerranéen", escandinavo: "Scandinave", forma: "Forme", retangular: "Rectangulaire", formaL: "En L (décrochements)",
     suite: "Suite parentale avec dressing", escritorio: "Bureau", lavandaria: "Buanderie", piscina: "Piscine", jardim: "Jardin", terraco: "Terrasse avec pergola",
     criar: "Créer ma maison", ver: "Voir le texte généré", nota: "Tout reste modifiable ensuite dans le Studio : murs, pièces, fenêtres, matériaux, piscine…",
   },
@@ -26,6 +28,7 @@ const TXT = {
     titulo: "Tell us how you imagine your house", quartos: "Bedrooms", pisos: "Storeys", um: "Single storey", dois: "2 storeys", area: "Approximate area", minimo: "realistic min.",
     garagem: "Garage", sem: "None", carro1: "1 car", carro2: "2 cars", cobertura: "Roof", plana: "Flat (modern)", duas: "Gable", quatro: "Hip",
     estilo: "Style", moderno: "Modern", contemporaneo: "Contemporary", tradicional: "Traditional", extras: "Extras",
+    provencal: "Provençal", rustico: "Rustic", mediterranico: "Mediterranean", escandinavo: "Scandinavian", forma: "Shape", retangular: "Rectangular", formaL: "L-shaped",
     suite: "Master suite with walk-in closet", escritorio: "Office", lavandaria: "Laundry", piscina: "Pool", jardim: "Garden", terraco: "Terrace with pergola",
     criar: "Create my house", ver: "See the generated text", nota: "Everything stays editable in the Studio: walls, rooms, windows, materials, pool…",
   },
@@ -47,7 +50,7 @@ function Chip({ ativo, onClick, children, testid }) {
 
 export default function AssistenteSimples({ lang = "pt", onGerar, ocupado }) {
   const t = TXT[lang] || TXT.pt;
-  const [o, setO] = useState({ quartos: 3, pisos: 2, area: 180, garagem: 2, cobertura: "plana", estilo: "moderno",
+  const [o, setO] = useState({ quartos: 3, pisos: 2, area: 180, garagem: 2, cobertura: "plana", estilo: "moderno", forma: "R",
     suite: true, escritorio: true, lavandaria: true, piscina: false, jardim: true, terraco: false });
   const [ver, setVer] = useState(false);
   const p = (k, v) => setO((x) => ({ ...x, [k]: v }));
@@ -79,7 +82,12 @@ export default function AssistenteSimples({ lang = "pt", onGerar, ocupado }) {
           {[["plana", t.plana], ["duas", t.duas], ["quatro", t.quatro]].map(([v, l]) => <Chip key={v} ativo={o.cobertura === v} onClick={() => p("cobertura", v)}>{l}</Chip>)}
         </Grupo>
         <Grupo icon={Sparkles} rotulo={t.estilo}>
-          {[["moderno", t.moderno], ["contemporaneo", t.contemporaneo], ["tradicional", t.tradicional]].map(([v, l]) => <Chip key={v} ativo={o.estilo === v} onClick={() => p("estilo", v)}>{l}</Chip>)}
+          {[["moderno", t.moderno], ["contemporaneo", t.contemporaneo], ["tradicional", t.tradicional], ["provencal", t.provencal], ["rustico", t.rustico],
+            ["mediterranico", t.mediterranico], ["escandinavo", t.escandinavo]].map(([v, l]) => <Chip key={v} ativo={o.estilo === v} onClick={() => p("estilo", v)}>{l}</Chip>)}
+        </Grupo>
+        <Grupo icon={Shapes} rotulo={t.forma}>
+          <Chip ativo={o.forma === "R"} onClick={() => p("forma", "R")}>{t.retangular}</Chip>
+          <Chip ativo={o.forma === "L"} onClick={() => p("forma", "L")} testid="atelier-simples-forma-l">{t.formaL}</Chip>
         </Grupo>
       </div>
       <Grupo icon={Plus} rotulo={t.extras}>
