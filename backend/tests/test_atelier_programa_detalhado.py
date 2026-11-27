@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from engines.atelier_archi import programme as P, generateur as G
+from engines import estudio_projeto as EP
 
 PROMPT = (Path(__file__).parent / "fixtures_prompt_moradia_200.txt").read_text(encoding="utf-8")
 
@@ -182,3 +183,37 @@ def test_edicao_reduzir_e_materiais_e_recusas():
     _, feitos, falhas = ED.executar(m, ED.interpretar("diminui o escritório 20 metros", m))
     assert not feitos and falhas                                       # nunca parte o modelo
     assert ED.interpretar("olá, tudo bem?", m) == []
+
+
+def test_frase_forma_l_e_estilo_editaveis():
+    """«Faz a casa em L com vários recortes e o interior provençal»: forma e estilo aplicados, modelo válido e editável."""
+    from engines.atelier_archi import edicao as ED
+    from engines.atelier_archi import forma as FO
+    for txt in ("moradia térrea com 3 quartos e suite, garagem, piscina", "moradia 3 quartos com suite 2 pisos 180 m2 piscina"):
+        m = G.generer(P.programme(txt))["modelo"]
+        acoes, sobras = ED.interpretar_partes("Faz à casa em L com varios  recortes e o interior provençal", m)
+        assert [a["acao"] for a in acoes] == ["forma", "estilo"] and sobras == []
+        m2, feitos, falhas = ED.executar(m, acoes)
+        assert not falhas, falhas
+        der = EP.derivar(m2)
+        assert not der["erros"]
+        xs = [p for w in m2["paredes"] for p in (w["a"][0], w["b"][0])]
+        assert any(w["id"] == "ala_galeria" for w in m2["paredes"])
+        assert m2["materiais"]["pavimento"] == "tijoleira"
+        # todas as divisões habitáveis da ala têm janela
+        ala = {v["parede"] for v in m2["vaos"] if v["tipo"] == "janela"}
+        assert "ala_fachada" in ala
+        # continua editável: aumentar uma divisão da ala e voltar ao retângulo
+        quarto = next(d["nome"] for d in der["divisoes"] if d["nome"].startswith(("Suite", "Quarto")))
+        m3, f3, x3 = ED.executar(m2, ED.interpretar(f"aumenta {quarto.lower()} 1 metro", m2))
+        assert f3 and not x3, x3
+        m4, msg = FO.retangular(m3)
+        assert not EP.derivar(m4)["erros"]
+
+
+def test_acoes_ia_normalizadas():
+    from engines.atelier_archi import edicao as ED
+    assert ED.normalizar_acao({"acao": "op", "op": {"tipo": "quatro_aguas"}})["op"]["op"] == "cobertura"
+    assert ED.normalizar_acao({"acao": "divisao", "nome": "Suite", "pavimento": "soalho_carvalho"})["op"]["op"] == "divisao"
+    assert ED.normalizar_acao({"acao": "op", "op": "materiais", "fachada": "granito"})["op"] == {"fachada": "granito", "op": "materiais"}
+    assert ED.normalizar_acao({"acao": "op", "op": {"x": 1}}) is None

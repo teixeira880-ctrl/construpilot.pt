@@ -7,21 +7,27 @@ const NOMES = {
         rc: "Rés do chão", andar: "Primeiro andar", casa: "Moradia", garagem: (n) => `Garagem para ${n === 2 ? "dois automóveis" : "um automóvel"}`,
         piscina: "Piscina exterior de 8 × 4 m", jardim: "Jardim paisagístico", terraco: "Terraço com pérgola e zona de refeições exterior",
         cob: { plana: "Cobertura plana", duas: "Cobertura de duas águas", quatro: "Cobertura de quatro águas" },
-        estilo: { moderno: "design moderno e minimalista", contemporaneo: "design contemporâneo", tradicional: "estilo tradicional português" },
+        estilo: { moderno: "design moderno e minimalista", contemporaneo: "design contemporâneo", tradicional: "estilo tradicional português",
+                  provencal: "estilo provençal", rustico: "estilo rústico", mediterranico: "estilo mediterrânico", escandinavo: "estilo escandinavo" },
+        formaL: "em L com recortes",
         pisos: (n) => (n === 2 ? "de dois pisos" : "térrea"), quartos: (n) => `${n} quartos` },
   fr: { entrada: "Entrée", sala: "Séjour / salle à manger", cozinha: "Cuisine", wc: "WC", escritorio: "Bureau", lavandaria: "Buanderie",
         suite: "Suite parentale", closet: "Dressing", sde: "Salle d'eau parentale", quarto: "Chambre", sdb: "Salle de bains", circ: "Dégagement, escalier et murs",
         rc: "Rez-de-chaussée", andar: "Étage", casa: "Maison", garagem: (n) => (n === 2 ? "Double garage, 2 voitures" : "Garage 1 voiture"),
         piscina: "Piscine 8 x 4 m", jardim: "Jardin paysager", terraco: "Terrasse avec pergola et coin repas extérieur",
         cob: { plana: "Toit plat", duas: "Toiture 2 pans", quatro: "Toiture 4 pans" },
-        estilo: { moderno: "design moderne et épuré", contemporaneo: "design contemporain", tradicional: "style traditionnel" },
+        estilo: { moderno: "design moderne et épuré", contemporaneo: "design contemporain", tradicional: "style traditionnel",
+                  provencal: "style provençal", rustico: "style rustique", mediterranico: "style méditerranéen", escandinavo: "style scandinave" },
+        formaL: "en L avec décrochements",
         pisos: (n) => (n === 2 ? "en R+1" : "de plain-pied"), quartos: (n) => `${n} chambres` },
   en: { entrada: "Entrance", sala: "Living and dining room", cozinha: "Kitchen", wc: "WC", escritorio: "Office", lavandaria: "Laundry",
         suite: "Master bedroom", closet: "Walk-in closet", sde: "Bathroom en suite", quarto: "Bedroom", sdb: "Bathroom", circ: "Stairs, hallway and walls",
         rc: "Ground floor", andar: "First floor", casa: "House", garagem: (n) => (n === 2 ? "Two-car garage" : "Garage for one car"),
         piscina: "Swimming pool 8 x 4 m", jardim: "Landscaped garden", terraco: "Terrace with pergola and outdoor dining",
         cob: { plana: "Flat roof", duas: "Gable roof", quatro: "Hip roof" },
-        estilo: { moderno: "modern minimalist design", contemporaneo: "contemporary design", tradicional: "traditional style" },
+        estilo: { moderno: "modern minimalist design", contemporaneo: "contemporary design", tradicional: "traditional style",
+                  provencal: "provençal style", rustico: "rustic style", mediterranico: "mediterranean style", escandinavo: "scandinavian style" },
+        formaL: "L-shaped",
         pisos: (n) => (n === 2 ? "two-storey" : "single-storey"), quartos: (n) => `${n} bedrooms` },
 };
 
@@ -100,7 +106,7 @@ export function programaSimples(o, lang = "pt") {
   } else {
     total = bloco(N.rc, todas);
   }
-  cab.push(`${N.casa} ${N.pisos(pisos)}, ${N.quartos(o.quartos)}, ${total} m², ${N.estilo[o.estilo] || N.estilo.moderno}.`);
+  cab.push(`${N.casa} ${N.pisos(pisos)}${o.forma === "L" ? ` ${N.formaL}` : ""}, ${N.quartos(o.quartos)}, ${total} m², ${N.estilo[o.estilo] || N.estilo.moderno}.`);
   extra.forEach((e) => cab.push(`* ${e}.`));
   return [...cab, "", ...L].join("\n");
 }

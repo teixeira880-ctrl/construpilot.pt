@@ -34,23 +34,24 @@ export default function FamilyTabs() {
   if (!family || members.length < 1) return null;
   const current = members.filter(m => routeMatches(pathname, m.to)).sort((a, b) => b.to.length - a.to.length)[0]?.to
     || (pathname === family.to ? family.to : null);
-  const tab = (active) => `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm border transition-colors ${active
+  // Em telemóvel e tablet os separadores passam à linha seguinte (nada fica cortado a meio nem escondido fora do ecrã).
+  const tab = (active) => `inline-flex items-center gap-1.5 max-w-full rounded-full px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm border transition-colors ${active
     ? "bg-primary text-primary-foreground border-primary"
     : "bg-card text-foreground border-border hover:border-primary/50"}`;
   return (
     <nav aria-label={familyLabel(family, lang)} data-testid={`family-tabs-${family.id}`}
       className="mx-auto max-w-[1500px] px-4 lg:px-8 pt-4">
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pb-2">
         <Link to={family.to} className={`${tab(current === family.to)} font-semibold`} data-testid={`family-tab-overview-${family.id}`}
           aria-current={current === family.to ? "page" : undefined}>
           <family.icon size={15} aria-hidden="true" />{familyLabel(family, lang)}
         </Link>
-        <span className="text-border" aria-hidden="true">|</span>
+        <span className="text-border hidden sm:inline" aria-hidden="true">|</span>
         {members.map(m => (
           <Link key={m.to} to={m.locked ? "/planos" : m.to} className={tab(current === m.to)}
             aria-current={current === m.to ? "page" : undefined} data-locked={m.locked || undefined}
             data-testid={`family-tab-${m.to.slice(1).replace(/\//g, "-")}`}>
-            <m.icon size={15} aria-hidden="true" />{label(m)}
+            <m.icon size={15} className="shrink-0" aria-hidden="true" /><span className="truncate">{label(m)}</span>
             {m.locked && <Lock size={12} aria-hidden="true" />}
           </Link>
         ))}

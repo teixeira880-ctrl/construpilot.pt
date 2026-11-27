@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { errorText } from "@/lib/errorText";
 import { promptDoModelo } from "./promptRender";
+import { guardarFicheiro } from "@/lib/guardarFicheiro";
 
 // Render fotorrealista com um clique: captura a vista 3D do Estúdio tal como está (geometria, enquadramento, sol) e
 // envia-a a /api/atelier-archi/render: OpenAI GPT Image (edição da própria vista, geometria mantida) primeiro, depois
@@ -82,24 +83,28 @@ export default function RenderFotorrealista({ capturar, derivado, lang = "pt" })
         {estado === "gerar" ? t.gerar : t.botao}
       </Button>
       {aberto ? (
-        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-4" data-testid="estudio-3d-render-painel">
-          <div className="bg-card rounded-2xl shadow-2xl max-w-5xl w-full p-4 space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-3 sm:p-4 overflow-y-auto" data-testid="estudio-3d-render-painel">
+          <div className="bg-card rounded-2xl shadow-2xl max-w-5xl w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="font-semibold">{t.titulo}</p>
               <Button size="icon" variant="ghost" onClick={() => setEstado(null)} aria-label={t.fechar}><X className="h-4 w-4" /></Button>
             </div>
             {estado === "erro" && <p className="text-sm text-red-700">{erro}</p>}
-            <div className="grid gap-3 md:grid-cols-2">
-              {urls.antes && <figure><img src={urls.antes} alt={t.antes} className="rounded-lg w-full" /><figcaption className="text-xs text-muted-foreground mt-1">{t.antes}</figcaption></figure>}
+            <div className="grid gap-3 lg:grid-cols-2">
+              {urls.antes && <figure><img src={urls.antes} alt={t.antes} className="rounded-lg w-full h-auto object-contain max-h-[40dvh] lg:max-h-none" /><figcaption className="text-xs text-muted-foreground mt-1">{t.antes}</figcaption></figure>}
               <figure className="grid place-items-center min-h-48 rounded-lg bg-secondary/40">
-                {urls.depois ? <img src={urls.depois} alt={t.depois} className="rounded-lg w-full" />
+                {urls.depois ? <img src={urls.depois} alt={t.depois} className="rounded-lg w-full h-auto object-contain" />
                   : estado === "gerar" ? <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{t.demora}</p> : null}
                 {urls.depois && <figcaption className="text-xs text-muted-foreground mt-1">{t.depois}</figcaption>}
               </figure>
             </div>
             {urls.depois && (
               <div className="flex justify-end">
-                <Button size="sm" asChild><a href={urls.depois} download="render-construpilot.png"><Download className="h-4 w-4 mr-1" />{t.baixar}</a></Button>
+                <Button size="sm" data-testid="estudio-3d-render-baixar"
+                  onClick={() => guardarFicheiro(urls.depois, `render-construpilot.${String(urls.depois).startsWith("data:image/jpeg") ? "jpg" : "png"}`)
+                    .catch(() => window.open(urls.depois, "_blank"))}>
+                  <Download className="h-4 w-4 mr-1" />{t.baixar}
+                </Button>
               </div>
             )}
           </div>

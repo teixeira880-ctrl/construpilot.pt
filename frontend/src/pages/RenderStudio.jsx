@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { guardarFicheiro } from "@/lib/guardarFicheiro";
 import { toast } from "sonner";
 import {
   Sparkles, Upload, Image as ImageIcon, Video, Loader2, Trash2,
@@ -237,9 +238,8 @@ export default function RenderStudio() {
     if (!current?.render_id) return;
     try {
       const url = await fetchBlobUrl(`/runway/renders/${current.render_id}/file`, { which: "output" });
-      const a = document.createElement("a");
-      a.href = url; a.download = `render-${current.render_id}.${current.kind === "video" ? "mp4" : "jpg"}`; a.click();
-      URL.revokeObjectURL(url);
+      await guardarFicheiro(url, `render-${current.render_id}.${current.kind === "video" ? "mp4" : "jpg"}`);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { toast.error("Transferência impossível"); }
   };
 

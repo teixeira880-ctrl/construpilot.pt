@@ -278,6 +278,17 @@ async def desenho_svg(body: DesenhoIn, user=Depends(current_user)):
     return Response(content=await run_in_threadpool(go), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
 
 
+def _forma_estilo_do_prompt(prompt: str, r: Dict[str, Any]) -> Dict[str, Any]:
+    """«moradia em L com recortes», «estilo provençal»: a forma e o estilo pedidos no texto são aplicados ao modelo gerado
+    (as mesmas ações da edição por frase; continua tudo editável no Estúdio)."""
+    from engines.atelier_archi import edicao as ED
+    acoes, _ = ED._forma_e_estilo(prompt or "")
+    if not acoes:
+        return r
+    m, feitos, falhas = ED.executar(r["modelo"], acoes)
+    return {**r, "modelo": m, "avisos": list(r.get("avisos") or []) + feitos + falhas}
+
+
 # ------------------------------------------------------------------------------------------ esquisses (aperçu)
 @router.post("/esquisse/prompt")
 async def esquisse_prompt(body: PromptIn, user=Depends(current_user)) -> dict:
@@ -308,6 +319,7 @@ async def esquisse_prompt(body: PromptIn, user=Depends(current_user)) -> dict:
         prog, r = await run_in_threadpool(GEN.ajustar_area, prog, float(body.alvo_m2))
     else:
         r = await run_in_threadpool(GEN.generer, prog)
+    r = await run_in_threadpool(_forma_estilo_do_prompt, body.prompt, r)
     pieces = [{"nom": p["nom"], "surface": p["surface"], "niveau": p["niveau"]} for p in prog["pieces"]]
     return await run_in_threadpool(_apercu, r["modelo"], r["avisos"], {"programme": {"pieces": pieces, "niveaux": prog["niveaux"],
                                                                                      "garage": prog["garage"], "toiture": prog["toiture"],
@@ -434,22 +446,26 @@ async def editar_por_frase(pid: str, body: FraseIn, user=Depends(current_user)) 
     from engines.atelier_archi import edicao as ED
     p = await _projet(pid, user["user_id"])
     m0 = _modele(p)
-    acoes = await run_in_threadpool(ED.interpretar, body.frase, m0)
+    acoes, sobras = await run_in_threadpool(ED.interpretar_partes, body.frase, m0)
     origem = "regras"
-    if not acoes and body.ia:
+    if sobras and body.ia:
+        # o que as regras não perceberam vai para a IA, com o modelo inteiro como contexto (ids, divisões, acabamentos)
         try:
             from engines import ai
-            nomes = sorted({d["nome"] for d in (await run_in_threadpool(EP.derivar, m0))["divisoes"]})
-            brut = await ai._complete(ED.AJUDA_IA, f"Divisões do projeto: {nomes}\nPedido: {body.frase[:600]}", feature="atelier_frase")
-            acoes = [a for a in (ai._json(brut, {}) or {}).get("acoes") or [] if isinstance(a, dict)][:8]
-            origem = "ia"
+            ctx = await run_in_threadpool(ED.contexto_ia, m0)
+            pedido = " ; ".join(sobras) if acoes else body.frase
+            brut = await ai._complete(ED.AJUDA_IA, f"{ctx}\nPedido: {pedido[:800]}", feature="atelier_frase")
+            extra = [x for x in (ED.normalizar_acao(a) for a in ((ai._json(brut, {}) or {}).get("acoes") or [])) if x][:12]
+            if extra:
+                acoes = acoes + extra
+                origem = "regras+ia" if origem == "regras" and len(acoes) > len(extra) else "ia"
         except Exception:  # noqa: BLE001 — sem IA: só as frases reconhecidas pelas regras
-            acoes = []
+            pass
     if not acoes:
         return {"ok": False, "compreendido": False, "feitos": [], "falhas": [ED._t("Je n'ai pas compris la demande. Exemples : « agrandis le séjour de 2 m », "
-                                                                                 "« fenêtres plus grandes dans la chambre 2 », « piscine de 10 x 5 ».",
+                                                                                 "« fenêtres plus grandes dans la chambre 2 », « maison en L », « intérieur provençal ».",
                                                                                  "Não percebi o pedido. Exemplos: «aumenta a sala 2 metros», "
-                                                                                 "«janelas maiores no quarto 2», «piscina de 10 x 5».")]}
+                                                                                 "«janelas maiores no quarto 2», «casa em L», «interior provençal».")]}
 
     def go():
         m, feitos, falhas = ED.executar(m0, acoes)

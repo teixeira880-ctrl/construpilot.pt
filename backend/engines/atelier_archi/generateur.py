@@ -574,7 +574,7 @@ def generer(prog: Dict[str, Any]) -> Dict[str, Any]:
                        f"vitrage ≥ 1/6 de la surface des pièces principales — tout est modifiable dans le Studio.",
                        f"Hipóteses: pé-direito {PE_DIREITO:.2f} m, paredes exteriores e divisórias correntes, envidraçado ≥ 1/10 "
                        f"da área dos compartimentos habitáveis (RGEU) — tudo editável no Estúdio."))
-    return {"modelo": modelo, "avisos": avisos,
+    return {"modelo": modelo, "avisos": avisos, "geo": {"W": W, "D": D, "PA": PA, "HALL": HALL, "niveaux": niveaux},
             "resume": {"longueur_m": W + (R(float(garage.get('largeur') or 3.0) + 0.30) if garage else 0), "profondeur_m": D,
                        "niveaux": niveaux, "surface_habitable_m2": habitable, "surface_utile_m2": tot["area_util_m2"], "surface_construite_m2": tot["area_bruta_construcao_m2"],
                        "pieces": [{"nom": d["nome"], "niveau": d["piso"], "surface_m2": d["area_m2"]} for d in der["medicoes"]["divisoes"]],

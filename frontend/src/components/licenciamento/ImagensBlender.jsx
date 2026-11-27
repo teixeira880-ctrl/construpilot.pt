@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { guardarFicheiro } from "@/lib/guardarFicheiro";
 import { Box, Camera, Download, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -155,7 +156,7 @@ export default function ImagensBlender({ pid }) {
           {st.ficheiros.map(n => (
             <Button key={n} size="sm" variant="outline" onClick={async () => {
               const r = await api.get(`/urbanismo-auto/processos/${pid}/blender/${n}`, { responseType: "blob", timeout: 180000 });
-              const u = URL.createObjectURL(r.data); const a = document.createElement("a"); a.href = u; a.download = n; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+              guardarFicheiro(r.data, n);
             }}><Download className="h-3.5 w-3.5 mr-1" />{n}</Button>
           ))}
           {st.manifesto && <span className="text-[11px] text-muted-foreground">Blender {st.manifesto.blender} · {st.manifesto.motor} · {st.manifesto.amostras} amostras · {st.manifesto.resolucao?.join("×")} px</span>}

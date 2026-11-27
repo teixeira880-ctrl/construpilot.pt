@@ -48,7 +48,7 @@ export default function TechAnalysis() {
         <span className="text-[10px] font-bold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro · Aço · Impermeabilização · Cobertura · Infraestruturas</span>
       </div>
 
-      <div className="flex gap-2 border-b border-border overflow-x-auto">
+      <div className="flex flex-wrap gap-x-2 gap-y-1 border-b border-border">
         {tabs.map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
             className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap ${tab === k ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{l}</button>
