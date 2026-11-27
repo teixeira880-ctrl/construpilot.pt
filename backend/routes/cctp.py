@@ -120,7 +120,15 @@ async def catalogue() -> dict:
 
 async def _run(dossier_id: str, user_id: str, projet: dict, selection: list[dict], ia: bool) -> None:
     try:
-        lots = await R.rediger(projet, selection, ia=ia)
+        try:
+            # l'IA ne doit jamais bloquer le dossier : au-delà de 4 min (IA lente ou indisponible), rédaction par la
+            # bibliothèque de prescriptions, sans IA — le dossier sort toujours
+            lots = await asyncio.wait_for(R.rediger(projet, selection, ia=ia), timeout=240 if ia else 600)
+        except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+            if not ia:
+                raise
+            logger.warning("cctp: IA indisponible pour %s (%s) — rédaction sans IA", dossier_id, type(exc).__name__)
+            lots = await R.rediger(projet, selection, ia=False)
         if not lots:
             raise ValueError("Aucun lot reconnu dans la sélection.")
         fichiers = R.fichiers_dossier(projet, lots, await _branding(user_id))
@@ -186,7 +194,19 @@ async def lister(user=Depends(current_user)) -> dict:
 
 @router.get("/dossiers/{dossier_id}")
 async def lire(dossier_id: str, user=Depends(current_user)) -> dict:
-    return _public(await _get(dossier_id, user))
+    d = await _get(dossier_id, user)
+    if d.get("status") == "running":
+        # tâche perdue (redémarrage du serveur pendant la rédaction) : on le dit au lieu de tourner sans fin
+        try:
+            debut = datetime.fromisoformat(str(d.get("created_at")))
+            if (datetime.now(timezone.utc) - debut).total_seconds() > 15 * 60:
+                msg = "La rédaction a été interrompue (redémarrage du serveur). Relancez la génération du DCE."
+                await db.cctp_dossiers.update_one({"dossier_id": dossier_id, "status": "running"},
+                                                  {"$set": {"status": "error", "error": msg, "finished_at": _now()}})
+                d = {**d, "status": "error", "error": msg}
+        except (TypeError, ValueError):
+            pass
+    return _public(d)
 
 
 @router.get("/dossiers/{dossier_id}/fichiers/{index}")

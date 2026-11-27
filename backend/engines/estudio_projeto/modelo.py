@@ -259,7 +259,16 @@ def normalizar(m: Any) -> Dict[str, Any]:
         p = _pt([n_.get("x"), n_.get("y")], "nota")
         notas.append({"id": nid, "piso": str(n_["piso"]), "x": p[0], "y": p[1], "texto": _txt(n_.get("texto"), 120)})
 
-    mat = m.get("materiais") if isinstance(m.get("materiais"), dict) else {}
+    mat = dict(m.get("materiais")) if isinstance(m.get("materiais"), dict) else {}
+    # revestimento coerente com a forma da cobertura: telha numa cobertura plana (ou seixo num telhado inclinado)
+    # dava medições, desenhos e renders impossíveis
+    _so_inclinado = ("telha", "ardosia", "xisto", "shingle", "colmo", "sandwich_telha", "fibrocimento", "madeira_ripas")
+    cob_mat = str(mat.get("cobertura") or "")
+    if (cobertura or {}).get("tipo") == "plana":
+        if not cob_mat or cob_mat.startswith(_so_inclinado):   # telhas, ardósia… não existem numa cobertura plana
+            mat["cobertura"] = "plana_seixo"
+    elif cob_mat.startswith("plana_"):
+        mat["cobertura"] = "telha_ceramica"
     return {"versao": VERSAO, "pisos": pisos, "tipos_parede": tipos, "paredes": paredes, "vaos": vaos,
             "cobertura": cobertura, "rotulos": rotulos, "escadas": escadas,
             "objetos": objetos, "cotas": cotas_, "notas": notas,

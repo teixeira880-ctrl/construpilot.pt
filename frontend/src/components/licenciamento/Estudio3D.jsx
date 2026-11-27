@@ -275,8 +275,11 @@ function construir(derivado, pisoVisivel, comTexturas = true, reais = {}) {
   for (const o of derivado.objetos || []) {
     if (ordem[o.piso] > ate) continue;
     if (o.tipo === "arvore" || o.tipo === "arbusto") {      // árvore: tronco + copa ; arbusto: copa
-      const r = Math.max(0.3, Math.min(o.largura_m, o.prof_m) / 2), h = Math.max(0.5, o.z1 - o.z0);
-      const copa = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), mat("#5f8f45", { roughness: 1 }, comTexturas ? "relva" : null));
+      // copa verde em facetas (sem fotografia de relva, que a escurecia em castanho) e de tamanho realista
+      const r = Math.min(2.2, Math.max(0.3, Math.min(o.largura_m, o.prof_m) / 2)), h = Math.max(0.5, o.z1 - o.z0);
+      const verdes = ["#5f8f45", "#4f8a3c", "#6a9a4c", "#58823f"];
+      const cv = verdes[Math.abs(Math.round((o.x || 0) * 7 + (o.y || 0) * 13)) % verdes.length];
+      const copa = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat(cv, { roughness: 1, flatShading: true }));
       copa.position.set(o.x, o.z0 + (o.tipo === "arvore" ? h - r : r), -o.y);
       copa.castShadow = true; junta(copa, { tipo: "objeto", id: o.id, piso: o.piso });
       if (o.tipo === "arvore") {
