@@ -164,7 +164,7 @@ export default function WorkerApp() {
         <div className="surface p-4 rounded-sm grid gap-2" data-testid="worker-photo-section">
           <p className="text-sm font-semibold flex items-center gap-1.5"><ImagePlus className="h-4 w-4 text-primary" /> {t("hr.w_add_photo")}</p>
           {photo && <img src={photo} alt="preview" className="w-full rounded-sm object-cover max-h-48" data-testid="worker-photo-preview" />}
-          <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} data-testid="worker-photo-input" />
+          <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={onPhoto} data-testid="worker-photo-input" />
           <div className="flex gap-2">
             <Button variant="outline" className="rounded-sm gap-2 flex-1" onClick={() => photoRef.current?.click()} data-testid="worker-pick-photo">
               <ImagePlus className="h-4 w-4" /> {photo ? t("hr.w_retake") : t("hr.w_add_photo")}

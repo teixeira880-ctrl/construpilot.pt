@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   DraftingCompass, PenTool, Camera, Sparkles, Loader2, FolderOpen, Trash2, ArrowLeft, FileText, Archive, Box, Layers3, ScrollText,
   AlertTriangle, CheckCircle2, Plus, Image as ImageIcon,
@@ -366,9 +366,20 @@ export default function AtelierArchitecte() {
     try { await api.delete(`/atelier-archi/projets/${id}/definitif`); charger(); } catch { toast.error(c.erreur); }
   };
 
+  // Antes de passar a outra app, guarda as alterações pendentes: o BIM usa sempre a maqueta atualizada.
+  const estudioRef = useRef(null);
+  const registarGuardar = useCallback((x) => { estudioRef.current = x; }, []);
+  const navegar = useNavigate();
+  const irPara = async (e, to) => {
+    if (!estudioRef.current?.sujo) return;
+    e.preventDefault();
+    if (await estudioRef.current.guardar()) navegar(to);
+  };
+  // As ferramentas recebem o projeto aberto: a maqueta passa sozinha, sem exportar nem importar.
   const outils = useMemo(() => [
-    { to: "/bim", icon: Layers3, label: c.bimStudio }, { to: "/plans-pro", icon: Box, label: c.bimViewer }, { to: "/cctp", icon: ScrollText, label: c.cctp },
-  ], [c]);
+    { to: pid ? `/bim?atelier=${encodeURIComponent(pid)}` : "/bim", icon: Layers3, label: c.bimStudio },
+    { to: "/plans-pro", icon: Box, label: c.bimViewer }, { to: "/cctp", icon: ScrollText, label: c.cctp },
+  ], [c, pid]);
 
   if (pid) {
     return (
@@ -378,13 +389,13 @@ export default function AtelierArchitecte() {
           <h1 className="text-xl font-bold tracking-tight">{projet?.titre || "…"}</h1>
           <span className="ml-auto flex flex-wrap gap-1.5">
             {outils.map((o) => (
-              <Button key={o.to} size="sm" variant="outline" asChild><Link to={o.to}><o.icon className="h-4 w-4 mr-1" />{o.label}</Link></Button>
+              <Button key={o.to} size="sm" variant="outline" asChild><Link to={o.to} onClick={(e) => irPara(e, o.to)}><o.icon className="h-4 w-4 mr-1" />{o.label}</Link></Button>
             ))}
           </span>
         </div>
         <EdicaoFrase pid={pid} lang={lang} onAlterado={() => setVersao((v) => v + 1)} />
         <Suspense fallback={<div className="h-96 grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
-          <Studio key={`studio-${versao}`} pid={pid} base={`/atelier-archi/projets/${pid}`} apiEstudio="/atelier-archi" semProcesso
+          <Studio key={`studio-${versao}`} pid={pid} base={`/atelier-archi/projets/${pid}`} apiEstudio="/atelier-archi" semProcesso registarGuardar={registarGuardar}
             textoRepor={lang === "pt" ? "Voltar ao esboço inicial? As alterações feitas no Estúdio serão apagadas." : lang === "en"
               ? "Go back to the initial sketch? Changes made in the Studio will be lost." : "Revenir à l'esquisse de départ ? Les modifications faites dans le Studio seront effacées."} />
         </Suspense>

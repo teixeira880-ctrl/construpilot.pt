@@ -2464,7 +2464,7 @@ export default function QuoteEditor() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <Label className="text-xs">{t("crm.ed_site_photos")}</Label>
-              <input type="file" accept="image/*" capture="environment" multiple className="hidden" id="qe-transcript-photos"
+              <input type="file" accept="image/*" multiple className="hidden" id="qe-transcript-photos"
                      onChange={(e) => { addTranscriptPhotos(e.target.files); e.target.value = ""; }}
                      data-testid="video-transcript-photo-input" />
               <Button size="sm" variant="outline" onClick={() => document.getElementById("qe-transcript-photos").click()}

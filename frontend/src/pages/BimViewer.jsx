@@ -36,6 +36,7 @@ export default function BimViewer() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const planId = sp.get("plan");
+  const atelierId = sp.get("atelier");   // projeto do Ateliê Arquiteto: a maqueta passa sozinha
   const page = Number(sp.get("page") || 0);
   const query = PARAM_KEYS.filter((k) => sp.get(k)).map((k) => `${k}=${encodeURIComponent(sp.get(k))}`).join("&");
 
@@ -53,6 +54,7 @@ export default function BimViewer() {
   const [ortho, setOrtho] = useState(false);
   const [ifcBytes, setIfcBytes] = useState(null);
   const [modelName, setModelName] = useState(null);
+  const [atelier, setAtelier] = useState(null);
   const sectionRef = useRef(false);
 
   // Arranque do motor 3D (import dinâmico: That Open Engine + web-ifc só são descarregados nesta página).
@@ -111,6 +113,27 @@ export default function BimViewer() {
   }, [planId, page, query, showBytes]);
 
   useEffect(() => { if (ready && planId) loadFromPlan(); }, [ready, planId, loadFromPlan]);
+
+  // Projeto do Ateliê: IFC gerado a partir da maqueta guardada, aberto aqui com as medições do Ateliê.
+  const loadFromAtelier = useCallback(async () => {
+    if (!atelierId || !viewerRef.current) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const base = `/atelier-archi/projets/${encodeURIComponent(atelierId)}`;
+      const [{ data: proj }, { data: blob }] = await Promise.all([api.get(base), api.get(`${base}/modelo.ifc`, { responseType: "blob" })]);
+      const titre = proj?.projet?.titre || proj?.titulo || proj?.titre || "Projeto do Ateliê";
+      setAtelier({ id: atelierId, titre, totais: proj?.derivado?.medicoes?.totais || proj?.derivado?.metres?.totaux || {} });
+      await showBytes(await blob.arrayBuffer(), titre);
+    } catch (e) {
+      const data = e?.response?.data;
+      const detail = data instanceof Blob ? await blobToText(data) : data?.detail;
+      setError(detail || "Não foi possível abrir o projeto do Ateliê.");
+      setBusy(false);
+    }
+  }, [atelierId, showBytes]);
+
+  useEffect(() => { if (ready && atelierId && !planId) loadFromAtelier(); }, [ready, atelierId, planId, loadFromAtelier]);
 
   const openLocal = async (file) => {
     if (!file) return;
@@ -181,6 +204,11 @@ export default function BimViewer() {
             <ArrowLeft className="h-4 w-4" /> Planta
           </Button>
         )}
+        {atelierId && !planId && (
+          <Button size="sm" variant="ghost" className="h-8 gap-1" data-testid="bim-voltar-atelier" onClick={() => navigate(`/atelier-arquiteto?projet=${encodeURIComponent(atelierId)}`)}>
+            <ArrowLeft className="h-4 w-4" /> Projeto do Ateliê
+          </Button>
+        )}
         <h1 className="font-display text-base font-semibold flex items-center gap-2 mr-auto">
           <Box className="h-4 w-4 text-primary" /> Modelo BIM
           {modelName && <span className="text-muted-foreground font-normal text-sm truncate max-w-[40vw]">· {modelName}</span>}
@@ -237,6 +265,17 @@ export default function BimViewer() {
         </div>
 
         <aside className="md:w-80 border-t md:border-t-0 md:border-l overflow-y-auto p-3 space-y-4 text-sm max-h-[45vh] md:max-h-none" data-testid="bim-panel">
+          {atelier && (
+            <section data-testid="bim-atelier">
+              <h2 className="font-semibold mb-1">Projeto do Ateliê Arquiteto</h2>
+              <p className="text-xs text-muted-foreground mb-2">{atelier.titre}</p>
+              <table className="w-full text-xs"><tbody>
+                {Object.entries(atelier.totais).filter(([, v]) => typeof v === "number").slice(0, 6).map(([k, v]) => (
+                  <tr key={k} className="border-t"><td className="py-1">{k.replace(/_/g, " ").replace(/ m2$/, " (m²)")}</td><td className="py-1 text-right tabular-nums font-medium">{num(v, 2)}</td></tr>))}
+              </tbody></table>
+              <p className="mt-2 text-[11px] text-muted-foreground">A maqueta é gerada automaticamente a partir da última versão guardada no Ateliê.</p>
+            </section>
+          )}
           {summary && (
             <section>
               <h2 className="font-semibold mb-2">Elementos</h2>
