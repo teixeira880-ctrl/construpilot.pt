@@ -240,7 +240,7 @@ def construir(m: Dict[str, Any], d: Dict[str, Any], *, chave: str = "estudio", n
 
     # ---------- objetos (mobiliário, sanitários, equipamentos): volume de ocupação ----------
     for o in d.get("objetos") or []:
-        classe = o["ifc"] if o["ifc"] in ("IfcFurniture", "IfcSanitaryTerminal", "IfcElectricAppliance", "IfcBuildingElementProxy") else "IfcBuildingElementProxy"
+        classe = o["ifc"] if o["ifc"] in ("IfcFurniture", "IfcSanitaryTerminal", "IfcElectricAppliance", "IfcBuildingElementProxy", "IfcRailing", "IfcColumn") else "IfcBuildingElementProxy"
         el = ent(classe, o["nome"], f"objeto-{o['id']}")
         el.ObjectType = o["tipo"]
         v, fc = _caixa(o["pts"], o["z0"], o["z1"])

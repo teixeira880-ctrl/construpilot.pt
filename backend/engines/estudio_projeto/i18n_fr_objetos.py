@@ -178,6 +178,8 @@ OBJETOS = {
     "Sebe": "Haie",
     "Lago / espelho de água": "Bassin / miroir d'eau",
     "Horta": "Potager",
+    "Guarda-corpo em vidro": "Garde-corps vitré",
+    "Pilar de betão 25 × 25": "Poteau béton 25 × 25",
     "Parque infantil (zona de jogos)": "Aire de jeux pour enfants",
     "Baloiço": "Balançoire",
     "Escorrega": "Toboggan",

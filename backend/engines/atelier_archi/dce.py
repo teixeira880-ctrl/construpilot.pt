@@ -133,7 +133,7 @@ def selection(modelo: Dict[str, Any], lots: Optional[List[str]] = None) -> Dict[
             L("vrd", _ligne(f"{nom} — préparation du sol et engazonnement / plantation", "m2", e["area_m2"], "Extérieurs"))
         elif t in ("arvore", "arbusto"):
             L("vrd", _ligne(f"{nom} — fourniture et plantation", "u", e["quantidade"], "Extérieurs"))
-        elif t in ("pergola", "muro_vedacao", "cozinha_exterior", "casa_maquinas", "portao_entrada", "baloico", "escorrega",
+        elif t in ("pergola", "muro_vedacao", "cozinha_exterior", "casa_maquinas", "portao_entrada", "guarda_corpo", "pilar", "baloico", "escorrega",
                    "trampolim", "caixa_areia", "casinha_criancas"):
             L("vrd", _ligne(f"{nom}", "u", e["quantidade"], "Extérieurs", f"Dimensions de la maquette : {', '.join(e['medidas'])}.".replace(".", ",")[:-1] + "."))
 

@@ -98,6 +98,8 @@ _OBJ: List[Tuple[str, str, List[Tuple[str, str, float, float, float, float, str,
         ("sebe", "Sebe", 10.00, 0.80, 1.50, 0, "ret", "IfcBuildingElementProxy"),
         ("lago", "Lago / espelho de água", 4.00, 3.00, 0.10, 0, "cuba", "IfcBuildingElementProxy"),
         ("horta", "Horta", 4.00, 3.00, 0.30, 0, "ret", "IfcBuildingElementProxy"),
+        ("guarda_corpo", "Guarda-corpo em vidro", 6.00, 0.05, 1.05, 0, "alto", "IfcRailing"),
+        ("pilar", "Pilar de betão 25 × 25", 0.25, 0.25, 2.60, 0, "alto", "IfcColumn"),
     ]),
     ("Jogos e lazer", "#e0a23c", [
         ("parque_infantil", "Parque infantil (zona de jogos)", 8.00, 6.00, 0.05, 0, "ret", "IfcBuildingElementProxy"),

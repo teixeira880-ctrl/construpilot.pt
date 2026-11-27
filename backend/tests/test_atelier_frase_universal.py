@@ -298,3 +298,87 @@ def test_plusieurs_demandes_reliees_par_et():
     m2, feitos, falhas = ED.executar(m, acoes)
     assert len(feitos) == 2 and not falhas, falhas
     assert EP.derivar(m2)["ok"]
+
+
+# ----------------------------------------------------------------- LOT3 : meubler, déplacer / tourner, terrain réel, garde-corps et poteaux
+@pytest.mark.parametrize("casa", CASAS)
+def test_meubler_toute_la_maison(casa):
+    from shapely.geometry import Point, Polygon, box
+    from engines.estudio_projeto.objetos import OBJETOS
+    m = _casa(casa)
+    acoes, sobras = ED.interpretar_partes("meuble toute la maison", m)
+    assert acoes == [{"acao": "mobilar", "divisao": None}] and not sobras
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas, falhas
+    d = EP.derivar(m2)
+    assert d["ok"], d["erros"]
+    novos = m2["objetos"][len(m["objetos"]):]
+    assert len(novos) >= 15 and {"cama_casal", "sofa_3", "sanita", "frigorifico"} <= {o["tipo"] for o in novos}
+    caixas = []
+    for o in novos:                                   # chaque meuble est dans une pièce et ne chevauche aucun autre
+        b = OBJETOS[o["tipo"]]
+        a_, b_ = (b["largura_m"], b["prof_m"]) if round(o["rot"]) % 180 == 0 else (b["prof_m"], b["largura_m"])
+        cx = box(o["x"] - a_ / 2, o["y"] - b_ / 2, o["x"] + a_ / 2, o["y"] + b_ / 2)
+        assert any(dv["piso"] == o["piso"] and Polygon(dv["pts"]).buffer(0.03).contains(cx) for dv in d["divisoes"]), o
+        assert all(c.intersection(cx).area < 0.01 for p_, c in caixas if p_ == o["piso"]), o
+        caixas.append((o["piso"], cx))
+    m3, f3, x3 = ED.executar(m2, acoes)               # redemander ne double pas le mobilier
+    assert len(m3["objetos"]) == len(m2["objetos"])
+
+
+def test_meubler_une_piece_en_portugais():
+    m = _casa(CASAS[2])
+    acoes, _ = ED.interpretar_partes("mobila a sala", m)
+    assert acoes[0]["acao"] == "mobilar" and acoes[0]["divisao"]
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas and any(o["tipo"] == "sofa_3" for o in m2["objetos"])
+
+
+def test_deplacer_et_tourner():
+    m = _casa("maison de plain-pied 3 chambres avec suite parentale, garage, piscine")
+    p0 = _ext(m, "piscina")[0]
+    m2, f, x = ED.executar(m, ED.interpretar("déplace la piscine de 4 m à gauche ; puis tourne la piscine de 90 degrés", m))
+    p1 = _ext(m2, "piscina")[0]
+    assert len(f) == 2 and not x and abs(p1["x"] - (p0["x"] - 4)) < 0.01 and p1["rot"] == (p0["rot"] + 90) % 360
+    m3, f3, x3 = ED.executar(m, ED.interpretar("desloca a piscina para a frente da casa", m))
+    _, x0, y0, x1, y1 = ED._casa_limites(m3)
+    assert f3 and not x3 and _ext(m3, "piscina")[0]["y"] < y0
+
+
+@pytest.mark.parametrize("frase,n,area", [("terrain en trapèze : 30 m devant, 20 m derrière, 40 m de profondeur", 4, 1000.0),
+                                          ("terreno triangular com 30 m de frente e 40 m de profundidade", 3, 600.0),
+                                          ("terrain points (0,0) (32,0) (28,45) (10,50) (0,30)", 5, None),
+                                          ("lote de lados 30, 42, 26, 40", 4, None)])
+def test_terrain_forme_reelle(frase, n, area):
+    import math as _m
+    m = _casa()
+    acoes, sobras = ED.interpretar_partes(frase, m)
+    assert [a["acao"] for a in acoes] == ["terreno_real"] and not sobras, acoes
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas, falhas
+    assert EP.derivar(m2)["ok"]
+    muros = _ext(m2, "muro_vedacao")
+    assert len({o["rot"] for o in muros}) >= min(n, 3) and all(o["largura_m"] <= 40 for o in muros)
+    pts = ED.terreno_pontos(acoes[0]["forma"], acoes[0]["frente"], acoes[0]["tardoz"], acoes[0]["prof"], acoes[0]["lados"], acoes[0]["pontos"])
+    assert len(pts) == n
+    per = sum(_m.hypot(pts[(i + 1) % n][0] - pts[i][0], pts[(i + 1) % n][1] - pts[i][1]) for i in range(n))
+    assert abs(sum(o["largura_m"] for o in muros) - per) < 0.1                      # la clôture suit tout le périmètre réel
+    if area:
+        assert f"{area:,.1f}".replace(",", " ").replace(".", ",") in feitos[0]
+    if acoes[0]["lados"]:
+        ls = [_m.hypot(pts[(i + 1) % 4][0] - pts[i][0], pts[(i + 1) % 4][1] - pts[i][1]) for i in range(4)]
+        assert all(abs(a - b) < 0.05 for a, b in zip(ls, acoes[0]["lados"]))           # les 4 côtés demandés sont respectés
+
+
+def test_terrasse_porte_a_faux_garde_corps_et_poteaux():
+    m2, msg = ED.terraco_sobre_piscina(_casa(CASAS[1]), 3.0)
+    g, p = _ext(m2, "guarda_corpo"), _ext(m2, "pilar")
+    t = _ext(m2, "terraco_suspenso")[0]
+    assert len(g) == 3 and abs(sum(x["largura_m"] for x in g) - (t["largura_m"] + 2 * t["prof_m"])) < 0.01
+    assert len(p) >= 2 and all(x["piso"] == m2["pisos"][0]["id"] for x in p) and all(x["piso"] == t["piso"] for x in g)
+    pis = _ext(m2, "piscina")[0]
+    assert all(x["y"] + 0.13 < pis["y"] - pis["prof_m"] / 2 for x in p)                # aucun poteau dans la piscine
+    d = EP.derivar(m2)
+    assert d["ok"] and {"guarda_corpo", "pilar"} <= {e["tipo"] for e in d["medicoes"]["exteriores"]}
+    from engines.estudio_projeto import ifc
+    assert ifc is not None
