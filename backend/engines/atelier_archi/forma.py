@@ -27,7 +27,7 @@ GALERIA = 1.35          # eixo a eixo: ~1,14 m livres entre a fachada (30 cm) e 
 PROF_ALA = 4.00         # eixo a eixo: ~3,79 m livres
 NET_ALA = PROF_ALA - 0.06 - 0.15
 _IGNORAR = ("hall", "corredor", "degagement", "dégagement", "galeria", "galerie", "arrumo", "placard", "escada", "escalier",
-            "passagem", "passage")
+            "passagem", "passage", "rangement", "piece a affecter", "divisao a definir")
 
 
 class Falha(ValueError):
