@@ -299,7 +299,8 @@ def faixa_exterior(m: Dict[str, Any], alvo: str = "terraco", divisao: Optional[s
 
 
 def contorno_exterior(m: Dict[str, Any], alvo: str = "muro", area_m2: Optional[float] = None,
-                      margem: Optional[float] = None, altura: Optional[float] = None) -> Tuple[Dict[str, Any], str]:
+                      margem: Optional[float] = None, altura: Optional[float] = None,
+                      largura: Optional[float] = None, comprimento: Optional[float] = None) -> Tuple[Dict[str, Any], str]:
     """Muro de vedação (ou sebe, caminho…) à volta da casa, num terreno quadrado de `area_m2` centrado na casa,
     ou a `margem` metros das fachadas."""
     m = EP.normalizar(copy.deepcopy(m))
@@ -307,7 +308,9 @@ def contorno_exterior(m: Dict[str, Any], alvo: str = "muro", area_m2: Optional[f
     piso, x0, y0, x1, y1 = _casa_limites(m)
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     w0, h0 = x1 - x0, y1 - y0
-    if area_m2:
+    if largura and comprimento:                  # terreno de medidas dadas («terrain de 30 x 50») — casa ao centro
+        W, H = max(float(largura), w0 + 2), max(float(comprimento), h0 + 2)
+    elif area_m2:
         lado = math.sqrt(float(area_m2))
         W, H = max(lado, w0 + 2), max(lado, h0 + 2)
         if lado * lado < (w0 + 2) * (h0 + 2):
@@ -480,6 +483,293 @@ def fachada_material(frase: str) -> Optional[str]:
     return achados[0]
 
 
+
+# ------------------------------------------------------------------------------------------------ ampliar a casa, fachadas, objetos livres
+_DIV_NOVA = {  # chave → (nome FR, nome PT, área por omissão m²)
+    "chambre": ("Chambre", "Quarto", 12.0), "suite": ("Suite", "Suíte", 18.0), "bureau": ("Bureau", "Escritório", 10.0),
+    "sdb": ("Salle de bains", "Casa de banho", 6.0), "sde": ("Salle d'eau", "Casa de banho", 5.0), "wc": ("WC", "WC", 2.0),
+    "cuisine": ("Cuisine", "Cozinha", 12.0), "sejour": ("Séjour", "Sala", 25.0), "sejour_cuisine": ("Séjour / cuisine", "Sala / cozinha", 35.0),
+    "buanderie": ("Buanderie", "Lavandaria", 6.0), "dressing": ("Dressing", "Closet", 6.0), "entree": ("Entrée", "Hall de entrada", 6.0),
+    "_garage": ("Garage", "Garagem", 18.0), "veranda": ("Véranda", "Marquise", 15.0), "annexe": ("Extension", "Anexo", 20.0),
+    "atelier": ("Atelier", "Oficina", 15.0), "salle_jeux": ("Salle de jeux", "Sala de jogos", 16.0), "sport": ("Salle de sport", "Ginásio", 14.0),
+    "cinema": ("Salle de cinéma", "Sala de cinema", 20.0), "cave": ("Cave à vin", "Garrafeira", 8.0),
+}
+_DIV_EXTRA = [(r"verand|marquise|jardin d.hiver|jardim de inverno|conservatory|sunroom", "veranda"),
+              (r"salle de jeux|sala de jogos|playroom|game room", "salle_jeux"), (r"salle de sport|ginasio|\bgym", "sport"),
+              (r"cinema|home cinema", "cinema"), (r"cave a vin|garrafeira|wine", "cave"),
+              (r"atelier|oficina|workshop", "atelier"), (r"extension|anexo|annexe|ampliac|agrandissement|dependance", "annexe")]
+
+
+def tipo_divisao_nova(txt: str) -> Optional[str]:
+    f = _fold(txt)
+    for rx, cle in _DIV_EXTRA:
+        if re.search(rx, f):
+            return cle
+    from engines.atelier_archi.programme import _tipo
+    cle = _tipo(f)
+    return cle if cle in _DIV_NOVA else None
+
+
+def _ext_tipo(m: Dict[str, Any]) -> str:
+    return next((k for k, v in m["tipos_parede"].items() if v.get("exterior")), next(iter(m["tipos_parede"])))
+
+
+def _fachada_eixo(m: Dict[str, Any], piso: str, lado: str) -> Tuple[float, float, float]:
+    """Eixo da fachada desse lado (coordenada) e a sua extensão [a0, a1] no outro eixo."""
+    ws = [w for w in m["paredes"] if w["piso"] == piso]
+    k = 1 if lado in ("frente", "tardoz") else 0
+    par = [w for w in ws if abs(w["a"][k] - w["b"][k]) < 0.05]
+    if not par:
+        raise Falha(_t("Façade introuvable.", "Fachada não encontrada."))
+    c = (min if lado in ("frente", "esquerda") else max)(w["a"][k] for w in par)
+    on = [w for w in par if abs(w["a"][k] - c) < 0.3]
+    o = 1 - k
+    return c, min(min(w["a"][o], w["b"][o]) for w in on), max(max(w["a"][o], w["b"][o]) for w in on)
+
+
+def acrescentar_divisao(m: Dict[str, Any], cle: str = "annexe", area: Optional[float] = None, lado: Optional[str] = None,
+                        junto: Optional[str] = None, nome: Optional[str] = None, canto: Optional[str] = None) -> Tuple[Dict[str, Any], str]:
+    """Amplia a casa: nova divisão encostada a uma fachada (paredes exteriores, porta de ligação, janela ou portão)."""
+    m = EP.normalizar(copy.deepcopy(m))
+    if cle not in _DIV_NOVA:
+        cle = "annexe"
+    piso = m["pisos"][0]["id"]
+    fr, pt, a_def = _DIV_NOVA[cle]
+    A = float(area) if area else a_def
+    if not 1.5 <= A <= 400:
+        raise Falha(_t("Surface entre 1,5 et 400 m².", "Área entre 1,5 e 400 m²."))
+    dv = _divisao(m, junto) if junto else None
+    _, x0, y0, x1, y1 = _casa_limites(m)
+    if lado not in ("frente", "tardoz", "esquerda", "direita"):
+        lado = _lado_da_divisao(m, dv, (x0, y0, x1, y1)) if dv else ("esquerda" if cle == "_garage" else "tardoz" if cle == "veranda" else "direita")
+    c, a0, a1 = _fachada_eixo(m, piso, lado)
+    comp_f = a1 - a0
+    P = max(2.4 if A >= 6 else 1.2, min(math.sqrt(A / 1.3), 8.0))
+    if cle == "_garage":
+        P = 6.0 if A >= 17 else P
+    L = A / P
+    if L > comp_f:
+        L, P = comp_f, A / comp_f
+    L, P = round(L, 2), round(P, 2)
+    hor = lado in ("frente", "tardoz")
+    k = 0 if hor else 1
+    vs = {w["id"]: w for w in m["paredes"]}
+    on = [w for w in m["paredes"] if w["piso"] == piso and abs(w["a"][1 - k] - w["b"][1 - k]) < 0.05 and abs(w["a"][1 - k] - c) < 0.3]
+
+    def ocupacao(s0: float) -> float:            # largura de vãos existentes tapados por este troço da fachada
+        t = 0.0
+        for v in m["vaos"]:
+            w = vs.get(v["parede"])
+            if w in on:
+                pos = min(w["a"][k], w["b"][k]) + (v["pos_m"] if w["a"][k] <= w["b"][k] else abs(w["b"][k] - w["a"][k]) - v["pos_m"])
+                if s0 - 0.1 < pos < s0 + L + 0.1:
+                    t += v["largura_m"]
+        return t
+    if dv:
+        d0, d1 = min(q[k] for q in dv["pts"]), max(q[k] for q in dv["pts"])
+        s0 = min(max((d0 + d1) / 2 - L / 2, a0), a1 - L)
+    elif canto in ("inicio", "fim"):
+        s0 = a0 if canto == "inicio" else a1 - L
+    else:
+        cands = [a0 + i * (comp_f - L) / 8 for i in range(9)] if comp_f - L > 0.2 else [a0]
+        pref = (lambda s: -s) if not hor else (lambda s: abs(s + L / 2 - (a0 + a1) / 2))   # laterais: para o tardoz; frente/tardoz: ao centro
+        s0 = min(cands, key=lambda s: (round(ocupacao(s), 2), pref(s)))
+    s0, s1 = round(s0, 3), round(s0 + L, 3)
+    sinal = -1 if lado in ("frente", "esquerda") else 1
+    f = round(c + sinal * P, 3)
+    P_ = (lambda u, v: [u, v]) if hor else (lambda u, v: [v, u])
+    ext = _ext_tipo(m)
+    ids = []
+    for a, b in ((P_(s0, c), P_(s0, f)), (P_(s0, f), P_(s1, f)), (P_(s1, f), P_(s1, c))):
+        wid = OP._novo_id("w", m["paredes"])
+        m["paredes"].append({"id": wid, "piso": piso, "a": a, "b": b, "tipo": ext})
+        ids.append(wid)
+    base = [r["nome"] for r in m["rotulos"]]
+    nm = nome or _t(fr, pt)
+    if nm in base or any(_fold(b).startswith(_fold(nm)) for b in base):
+        n = 2
+        while f"{nm} {n}" in base:
+            n += 1
+        nm = f"{nm} {n}"
+    m["rotulos"].append({"piso": piso, "x": P_((s0 + s1) / 2, c + sinal * P / 2)[0], "y": P_((s0 + s1) / 2, c + sinal * P / 2)[1], "nome": nm[:40]})
+    # ligação à casa: um vão existente nesse troço passa a porta; senão abre-se uma porta nova
+    ligado = False
+    for v in m["vaos"]:
+        w = vs.get(v["parede"])
+        if w in on:
+            pos = min(w["a"][k], w["b"][k]) + (v["pos_m"] if w["a"][k] <= w["b"][k] else abs(w["b"][k] - w["a"][k]) - v["pos_m"])
+            if s0 + 0.3 < pos < s1 - 0.3:
+                if not ligado and v["tipo"] in ("janela", "portada", "porta"):
+                    if v["tipo"] == "janela":
+                        v["tipo"], v["largura_m"] = "porta", min(v["largura_m"], 0.9)
+                        v.pop("peitoril_m", None); v.pop("altura_m", None); v.pop("modelo", None)
+                    ligado = True
+    m = EP.normalizar(m)
+    if not ligado:
+        mid = (s0 + s1) / 2
+        w = next((w for w in on if min(w["a"][k], w["b"][k]) + 0.6 <= mid <= max(w["a"][k], w["b"][k]) - 0.6), None)
+        if w is not None:
+            m, f_, x_ = OP.aplicar(m, [{"op": "vao", "parede": w["id"], "tipo": "porta", "largura_m": 0.9,
+                                        "pos_m": abs(mid - w["a"][k])}])
+    larg_j = round(min(max(1.2, L * 0.4), 3.0, L - 0.8), 2)
+    if cle == "_garage":
+        frente_id = ids[1] if lado == "frente" else (ids[0] if (hor or lado in ("esquerda", "direita")) else ids[1])
+        if not hor:                                # garagem lateral: portão virado para a rua (parede do lado da frente)
+            frente_id = ids[0]
+        wl = next(w for w in m["paredes"] if w["id"] == frente_id)
+        Lw = math.hypot(wl["b"][0] - wl["a"][0], wl["b"][1] - wl["a"][1])
+        m, f_, x_ = OP.aplicar(m, [{"op": "vao", "parede": frente_id, "tipo": "portao", "largura_m": round(min(2.4 if A < 30 else 4.8, Lw - 0.6), 2), "pos_m": Lw / 2}])
+    elif cle not in ("dressing", "cave") and larg_j >= 0.6:
+        tipo_v = "portada" if cle in ("veranda", "sejour", "sejour_cuisine") else "janela"
+        m, f_, x_ = OP.aplicar(m, [{"op": "vao", "parede": ids[1], "tipo": tipo_v, "largura_m": larg_j, "pos_m": L / 2}])
+        if cle == "veranda":
+            for wid in (ids[0], ids[2]):
+                if P > 2.0:
+                    m, f_, x_ = OP.aplicar(m, [{"op": "vao", "parede": wid, "tipo": "portada", "largura_m": round(min(2.4, P - 0.8), 2), "pos_m": P / 2}])
+    m2 = _validar(m)
+    nomes_lado = {"direita": _t("droite", "direita"), "esquerda": _t("gauche", "esquerda"), "frente": _t("avant", "frente"), "tardoz": _t("arrière", "tardoz")}
+    f2 = lambda v: f"{v:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+    return m2, _t(f"« {nm} » ajouté(e) contre la façade {nomes_lado[lado]} : {f2(L)} × {f2(P)} m ({f2(L * P)} m² aux axes), reliée à la maison.",
+                  f"«{nm}» acrescentado(a) na fachada {nomes_lado[lado]}: {f2(L)} × {f2(P)} m ({f2(L * P)} m² aos eixos), ligado(a) à casa.")
+
+
+def forma_u(m: Dict[str, Any]) -> Tuple[Dict[str, Any], str, List[str]]:
+    """Casa em U: forma em L (ala de noite à direita) + segunda ala nas traseiras, do lado esquerdo, fechando o pátio em U."""
+    from engines.atelier_archi import forma as FO
+    m1, msg, av = FO.em_l(m)
+    piso = m1["pisos"][0]["id"]
+    ala = [w for w in m1["paredes"] if str(w["id"]).startswith("ala_")]
+    y_fim = max(max(w["a"][1], w["b"][1]) for w in ala)
+    c, a0, a1 = _fachada_eixo(m1, piso, "esquerda")
+    corpo = [w for w in m1["paredes"] if w["piso"] == piso and not str(w["id"]).startswith("ala_")]
+    D = max(max(w["a"][1], w["b"][1]) for w in corpo)
+    comp = max(4.0, y_fim - D)
+    tras = [w for w in corpo if abs(w["a"][1] - D) < 0.3 and abs(w["b"][1] - D) < 0.3]
+    c = min(min(w["a"][0], w["b"][0]) for w in tras) if tras else c      # a ala nasce na fachada de tardoz (não na garagem)
+    m2, msg2 = _ala_esquerda(m1, piso, c, D, comp)
+    return m2, _t("Maison en U : ", "Casa em U: ") + msg + " " + msg2, av
+
+
+def _ala_esquerda(m: Dict[str, Any], piso: str, x_esq: float, D: float, comp: float) -> Tuple[Dict[str, Any], str]:
+    m = EP.normalizar(copy.deepcopy(m))
+    larg = 4.5
+    ext = _ext_tipo(m)
+    x0, x1, yf = round(x_esq, 3), round(x_esq + larg, 3), round(D + comp, 3)
+    ids = []
+    for a, b in (([x0, D], [x0, yf]), ([x0, yf], [x1, yf]), ([x1, yf], [x1, D])):
+        wid = OP._novo_id("w", m["paredes"])
+        m["paredes"].append({"id": wid, "piso": piso, "a": a, "b": b, "tipo": ext})
+        ids.append(wid)
+    nm = _t("Suite d'amis", "Suíte de hóspedes")
+    m["rotulos"].append({"piso": piso, "x": (x0 + x1) / 2, "y": (D + yf) / 2, "nome": nm})
+    m = EP.normalizar(m)
+    tard = next((w for w in m["paredes"] if w["piso"] == piso and abs(w["a"][1] - D) < 0.3 and abs(w["b"][1] - D) < 0.3
+                 and min(w["a"][0], w["b"][0]) <= x0 + 0.5 and max(w["a"][0], w["b"][0]) >= x1 - 0.5), None)
+    ops = [{"op": "vao", "parede": ids[2], "tipo": "portada", "largura_m": round(min(2.0, comp - 0.8), 2), "pos_m": comp / 2},
+           {"op": "vao", "parede": ids[0], "tipo": "janela", "largura_m": round(min(1.4, comp - 0.8), 2), "pos_m": comp / 2}]
+    if tard is not None:
+        ops.insert(0, {"op": "vao", "parede": tard["id"], "tipo": "porta", "largura_m": 0.9, "pos_m": abs((x0 + x1) / 2 - tard["a"][0])})
+    m, f_, x_ = OP.aplicar(m, ops)
+    return _validar(m), _t(f"Deuxième aile à gauche ({nm}, {larg:g} × {comp:.1f} m) ouverte sur le patio.",
+                           f"Segunda ala à esquerda ({nm}, {larg:g} × {comp:.1f} m) aberta para o pátio.")
+
+
+def fachada_lado(m: Dict[str, Any], lado: str, material: str) -> Tuple[Dict[str, Any], str]:
+    """Material próprio de uma fachada: «façade avant en granit», «fachada tardoz em madeira»."""
+    m = EP.normalizar(copy.deepcopy(m))
+    mat = OP.resolver_acabamento("fachada", material)
+    _, x0, y0, x1, y1 = _casa_limites(m)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    n = 0
+    for w in m["paredes"]:
+        if not (m["tipos_parede"].get(w["tipo"]) or {}).get("exterior"):
+            continue
+        hor = abs(w["a"][1] - w["b"][1]) < abs(w["a"][0] - w["b"][0])
+        my, mx = (w["a"][1] + w["b"][1]) / 2, (w["a"][0] + w["b"][0]) / 2
+        l = ("frente" if my < cy else "tardoz") if hor else ("esquerda" if mx < cx else "direita")
+        if l == lado:
+            w["fachada"] = mat
+            n += 1
+    if not n:
+        raise Falha(_t("Aucun mur extérieur de ce côté.", "Nenhuma parede exterior desse lado."))
+    nomes_lado = {"direita": _t("droite", "direita"), "esquerda": _t("gauche", "esquerda"), "frente": _t("avant", "frente"), "tardoz": _t("arrière", "tardoz")}
+    return _validar(m), _t(f"Façade {nomes_lado[lado]} : {MAT.acabamento('fachada', mat)['nome']} ({n} mur(s)).",
+                           f"Fachada {nomes_lado[lado]}: {MAT.acabamento('fachada', mat)['nome']} ({n} parede(s)).")
+
+
+_OBJ_PAL = [(r"portail|portao de entrada|gate\b", "portao_entrada"), (r"parking|stationnement|estacionamento|place de voiture", "estacionamento"),
+            (r"potager|horta|vegetable", "horta"), (r"bassin|lago\b|etang|pond|miroir d.eau|espelho de agua", "lago"),
+            (r"tennis|tenis", "campo_tenis"), (r"terrain de (?:foot|basket|sport|jeux)|campo de (?:jogos|futebol)|multisport|city.?stade", "campo_jogos"),
+            (r"\bhaie|\bsebe|hedge", "sebe"), (r"trampolin|trampolim", "trampolim"), (r"barbecue|churrasqu|bbq", "churrasqueira"),
+            (r"pergol", "pergola"), (r"jacuzzi|\bspa\b", "jacuzzi"), (r"cabane|casinha", "casinha_criancas"), (r"bac a sable|caixa de areia|sandbox", "caixa_areia"),
+            (r"balancoire|baloico|swing", "baloico"), (r"toboggan|escorrega|slide", "escorrega"), (r"cuisine d.ete|cuisine exterieure|cozinha exterior|outdoor kitchen", "cozinha_exterior"),
+            (r"local technique|casa das maquinas", "casa_maquinas"), (r"massif|canteiro|flower ?bed", "canteiro"), (r"arbustes?|arbustos?|shrubs?", "arbusto"),
+            (r"transat|espreguicadeira|chaise longue|sunbed", "espreguicadeira"), (r"table (?:de jardin|exterieure)|mesa (?:de jardim|exterior)", "mesa_exterior"),
+            (r"piscine a debordement|piscina (?:infinita|de transbordo)|infinity pool", "piscina_infinita"), (r"piscin|\bpool", "piscina"),
+            (r"pelouse|gazon|relvad|relva\b|lawn", "relvado"), (r"\bdeck\b", "deck_madeira")]
+
+
+def tipo_objeto_livre(txt: str) -> Optional[str]:
+    f = _fold(txt)
+    return next((t for rx, t in _OBJ_PAL if re.search(rx, f)), None)
+
+
+def _lugar_livre(m: Dict[str, Any], larg: float, prof: float, pref: str = "tardoz") -> Tuple[float, float]:
+    """Primeiro sítio do jardim onde um retângulo larg × prof não toca na casa nem nos outros exteriores."""
+    from engines.estudio_projeto.objetos import OBJETOS, CATEGORIAS_EXTERIORES
+    _, x0, y0, x1, y1 = _casa_limites(m)
+    caixas = [(x0 - 1, y0 - 1, x1 + 1, y1 + 1)]
+    for o in m.get("objetos") or []:
+        fora = not (x0 < o["x"] < x1 and y0 < o["y"] < y1)
+        if fora and o["tipo"] not in ("relvado", "muro_vedacao", "sebe", "estrada"):
+            a, b = (o["largura_m"], o["prof_m"]) if round(o["rot"]) % 180 == 0 else (o["prof_m"], o["largura_m"])
+            caixas.append((o["x"] - a / 2 - 0.5, o["y"] - b / 2 - 0.5, o["x"] + a / 2 + 0.5, o["y"] + b / 2 + 0.5))
+    livre = lambda x, y: all(x + larg / 2 <= c[0] or x - larg / 2 >= c[2] or y + prof / 2 <= c[1] or y - prof / 2 >= c[3] for c in caixas)  # noqa: E731
+    xs = [(x0 + x1) / 2 + d for d in (0, -6, 6, -12, 12, -18, 18, -24, 24, -30, 30)]
+    for dy in range(2, 80, 3):
+        y = (y1 + dy + prof / 2) if pref != "frente" else (y0 - dy - prof / 2)
+        for x in xs:
+            if livre(x, y):
+                return round(x, 2), round(y, 2)
+    return round((x0 + x1) / 2, 2), round(y1 + 90, 2)
+
+
+def objeto_exterior(m: Dict[str, Any], tipo: str, n: int = 1, largura: Optional[float] = None, prof: Optional[float] = None,
+                    lado: Optional[str] = None) -> Tuple[Dict[str, Any], str]:
+    from engines.estudio_projeto.objetos import OBJETOS
+    m = EP.normalizar(copy.deepcopy(m))
+    if tipo not in OBJETOS:
+        tipo = _tipo_exterior(tipo)
+    piso = m["pisos"][0]["id"]
+    b = OBJETOS[tipo]
+    n = max(1, min(int(n or 1), 40))
+    L, P = float(largura or b["largura_m"]), float(prof or b["prof_m"])
+    for _ in range(n):
+        x, y = _lugar_livre(m, L, P, "frente" if (lado == "frente" or tipo in ("portao_entrada", "estacionamento")) else "tardoz")
+        _obj(m, piso, tipo, x, y, L, P)
+        m = EP.normalizar(m)
+    return _validar(m), _t(f"{n} × {b['nome']} ({L:g} × {P:g} m) placé(s) dans le jardin, sans chevauchement.",
+                           f"{n} × {b['nome']} ({L:g} × {P:g} m) colocado(s) no jardim, sem sobreposição.")
+
+
+def remover_objetos(m: Dict[str, Any], tipo: str) -> Tuple[Dict[str, Any], str]:
+    from engines.estudio_projeto.objetos import OBJETOS
+    m = EP.normalizar(copy.deepcopy(m))
+    fica = [o for o in m["objetos"] if o["tipo"] != tipo]
+    n = len(m["objetos"]) - len(fica)
+    if not n:
+        raise Falha(_t(f"Pas de « {OBJETOS[tipo]['nome']} » dans le projet.", f"Não há «{OBJETOS[tipo]['nome']}» no projeto."))
+    m["objetos"] = fica
+    return _validar(m), _t(f"{n} × {OBJETOS[tipo]['nome']} supprimé(s).", f"{n} × {OBJETOS[tipo]['nome']} removido(s).")
+
+
+def pe_direito_todos(m: Dict[str, Any], valor: float) -> Tuple[Dict[str, Any], str]:
+    m, feitos, falhas = OP.aplicar(m, [{"op": "pe_direito", "piso": p["id"], "valor": float(valor)} for p in EP.normalizar(m)["pisos"]])
+    if falhas:
+        raise Falha(falhas[0])
+    return m, _t(f"Hauteur sous plafond : {valor:g} m à tous les niveaux.", f"Pé-direito: {valor:g} m em todos os pisos.")
+
+
 # ------------------------------------------------------------------------------------------------ leitura da frase
 _N = r"(\d+(?:[.,]\d+)?)"
 _UN = r"\s*(m|metros?|metres?|meters?|cm|centimetros?|centimetres?)?"
@@ -599,9 +889,29 @@ def interpretar_partes(frase: str, m: Dict[str, Any]) -> Tuple[List[Dict[str, An
             continue
         n_antes = len(acoes)
         _uma_parte(parte, f, nomes, acoes)
+        pecas = [x for x in re.split(r"\s*(?:,|\bet\b|\be\b|\band\b|\bmais\b|\bainsi que\b|\bbem como\b)\s*", parte) if len(_fold(x)) >= 4]
+        if len(pecas) > 1:                           # «ajoute un bureau à droite et un garage à gauche» → uma ação por pedido
+            sub: List[Dict[str, Any]] = []
+            completo = True
+            verbo = re.match(r"\s*(\S+)", pecas[0]).group(1)
+            for i, x in enumerate(pecas):
+                k0 = len(sub)
+                _uma_parte(x, _fold(x), nomes, sub)
+                if len(sub) == k0 and i and re.match(r"(?:r?ajout|cree|construi|acrescent|adicion|cri[ae]|faz|fais|met|poe|coloc|plac|install|add|build|put|"
+                                                     r"quero|veux|supprim|enlev|retir|remov|apag|tir[ae]|elimin|plant)", _fold(verbo)):   # «… et un garage à gauche»: o verbo do primeiro pedido vale para os seguintes
+                    _uma_parte(f"{verbo} {x}", _fold(f"{verbo} {x}"), nomes, sub)
+                completo = completo and len(sub) > k0
+            if completo and len(sub) > len(acoes) - n_antes:
+                del acoes[n_antes:]
+                acoes.extend(sub)
         if len(acoes) == n_antes and not (globais and (_global(f) or len(f.split()) <= 3)):
             sobras.append(parte.strip())
-    return globais + acoes, sobras
+    unicas: List[Dict[str, Any]] = []            # o mesmo arranjo pedido duas vezes na frase só se faz uma vez
+    for a in acoes:
+        if a.get("acao") in ("acesso_estrada", "jardim", "zona_jogos", "terraco_sobre_piscina") and any(u.get("acao") == a["acao"] for u in unicas):
+            continue
+        unicas.append(a)
+    return globais + unicas, sobras
 
 
 def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]) -> None:
@@ -609,6 +919,23 @@ def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]
         div = _nome_divisao(f, nomes)
         dims = re.search(_N + r"\s*(?:m\s*)?[x×]\s*" + _N, parte.replace("×", "x"))
         sem_nome = re.sub(r"\b(?!de\b|em\b|by\b|of\b|par\b)[a-z]+\s+\d+\b(?![.,]\d)(?!\s*(?:m\b|cm|metro|metre|meter|x))", " ", f)   # «quarto 2» não é uma medida
+        lado_f = next((k for k, rx in _LADOS if re.search(r"\b(" + rx + r")", f)), None)
+        area_f = re.search(_N + r"\s*(?:m2|m²|m\s*2\b|metres? carres?|metros? quadrados?|sqm)", f.replace("²", "2"))
+        _ADD = r"\b(?:r?ajout\w*|cree\w*|creer|construi\w*|acrescent\w*|adicion\w*|cri[ae]\w*|faz\w*|fais|faire|met[s]?\b|mettre|poe\w*|coloc\w*|plac\w*|install\w*|add|build|put|quero|je veux|veux)\b"
+        _DEL = r"\b(?:supprim\w*|enlev\w*|retir\w*|remov\w*|apag\w*|tir[ae]\w*|elimin\w*|delete|sem\b|sans\b)"
+        # remover: «supprime la piscine», «tira as árvores»
+        if re.search(_DEL, f):
+            tp = "arvore" if re.search(r"arbres?|arvores?|trees?", f) else tipo_objeto_livre(f)
+            if tp:
+                acoes.append({"acao": "remover_objetos", "tipo": tp})
+                continue
+        # pisos e pé-direito
+        if re.search(_ADD, f) and re.search(r"\b(?:un|um|1|a|an)\s+(?:etage|andar|piso|niveau|floor|storey)\b", f) and not re.search(r"terras|terrac|balcon|varanda", f):
+            acoes.append({"acao": "op", "op": {"op": "piso_adicionar"}})
+            continue
+        if re.search(r"hauteur sous plafond|pe.direito|ceiling height", f) and _medida(sem_nome):
+            acoes.append({"acao": "pe_direito_todos", "valor": _medida(sem_nome)})
+            continue
         # andar com terraço em balanço sobre a piscina
         if re.search(r"terras|terrac|varanda|balcon|balcao", f) and re.search(
                 r"debord|balanc|suspens|porte.a.faux|sur la piscine|au.dessus|sobre a piscina|por cima|over the pool|cantilever", f):
@@ -618,6 +945,9 @@ def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]
         # fachadas: «façades en granit et bois», «fachada em xisto»
         if re.search(r"fachad|facade|bardage|revetement exterieur|revestimento exterior|parement", f):
             mat = fachada_material(f)
+            if mat and lado_f and not re.search(r"\bfacades\b|\bfachadas\b|toutes|todas", f):
+                acoes.append({"acao": "fachada_lado", "lado": lado_f, "material": mat})
+                continue
             if mat:
                 acoes.append({"acao": "op", "op": {"op": "materiais", "fachada": mat}})
                 continue
@@ -645,7 +975,9 @@ def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]
             mg = re.search(r"\ba\s+" + _N + r"\s*m\b", f)
             alvo = "relvado" if re.search(r"haie|sebe|hedge", f) else "muro"
             acoes.append({"acao": "contorno_exterior", "alvo": alvo, "area_m2": _num(ar.group(1)) if ar else None,
-                          "margem": _num(mg.group(1)) if (mg and not ar) else None})
+                          "margem": _num(mg.group(1)) if (mg and not ar and not dims) else None,
+                          "largura": _num(dims.group(1)) if (dims and not ar) else None,
+                          "comprimento": _num(dims.group(2)) if (dims and not ar) else None})
             continue
         # terraço / deck / caminho encostado a uma fachada: «terrasse devant le séjour sur toute la longueur de la maison»
         if re.search(r"terras|terrac|deck|esplanad|patio|allee|caminho|passeio|calcada|trottoir|walkway|path\b", f) and not dims:
@@ -660,6 +992,19 @@ def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]
             acoes.append({"acao": "faixa_exterior", "alvo": alvo, "divisao": div, "lado": lado,
                           "comprimento": "casa" if (toda or not div) else "divisao", "prof": _num(pr.group(1)) if pr else None})
             continue
+        # ampliar a casa: «ajoute une chambre de 15 m² à droite», «garagem dupla à esquerda», «véranda derrière le séjour»
+        mv = re.search(_ADD, f)
+        if mv:
+            jan = " ".join(f[mv.end():].split()[:5])
+            cle = tipo_divisao_nova(jan)
+            if cle and not re.search(r"terras|terrac|piscin|jardi|arbre|arvore|fenetre|janela|porte\b|porta\b|mur\b|parede", jan):
+                dupla = cle == "_garage" and re.search(r"doubl|dupl|2 voitures|2 carros|dois carros|deux voitures", f)
+                resto_f = f[mv.end():]
+                junto = _nome_divisao(re.sub(r"^.*?\b(?:devant|derriere|a cote|pres|contre|junto|ao lado|atras|a frente|next to|behind)\b", " ", resto_f), nomes) \
+                    if re.search(r"\b(?:devant|derriere|a cote|pres|contre|junto|ao lado|atras|a frente|next to|behind)\b", resto_f) else None
+                acoes.append({"acao": "acrescentar_divisao", "cle": cle, "area": _num(area_f.group(1)) if area_f else (36.0 if dupla else None),
+                              "lado": lado_f if not (junto and lado_f == "frente") else None, "junto": junto})
+                continue
         # piscina / objeto com medidas «10 x 5»
         dims = re.search(_N + r"\s*(?:m\s*)?[x×]\s*" + _N, parte.replace("×", "x"))
         if dims and re.search(r"piscin|pool|jacuzzi|terra[cç]|deck|relvad|pelouse|pergol", f):
@@ -690,6 +1035,13 @@ def _uma_parte(parte: str, f: str, nomes: List[str], acoes: List[Dict[str, Any]]
             if tipo:
                 acoes.append({"acao": "op", "op": {"op": "cobertura", "tipo": tipo}})
                 continue
+        tp = tipo_objeto_livre(f)
+        if tp:                                       # qualquer peça do catálogo exterior citada: colocada num sítio livre
+            nq = re.search(r"\b(\d{1,2})\s+(?!m\b|x\b|cm\b)[a-z]", f)
+            acoes.append({"acao": "objeto_exterior", "tipo": tp, "n": int(nq.group(1)) if nq else 1,
+                          "largura": max(_num(dims.group(1)), _num(dims.group(2))) if dims else None,
+                          "prof": min(_num(dims.group(1)), _num(dims.group(2))) if dims else None, "lado": lado_f})
+            continue
 
 
 _CHAVES_OP = {"op", "operacao", "operation", "tipo_op", "acao_op"}
@@ -723,7 +1075,7 @@ def normalizar_acao(a: Any) -> Optional[Dict[str, Any]]:
                 return None
             return {"acao": "op", "op": op}
         return None
-    if nome in ("esticar", "vaos_maiores", "objeto_medidas", "forma", "estilo", "faixa_exterior", "contorno_exterior", "nota_pedido", "acesso_estrada", "jardim", "plantar_arvores", "zona_jogos", "terraco_sobre_piscina"):
+    if nome in ("esticar", "vaos_maiores", "objeto_medidas", "forma", "estilo", "faixa_exterior", "contorno_exterior", "nota_pedido", "acesso_estrada", "jardim", "plantar_arvores", "zona_jogos", "terraco_sobre_piscina", "acrescentar_divisao", "fachada_lado", "objeto_exterior", "remover_objetos", "pe_direito_todos"):
         a["acao"] = nome
         return a
     return None
@@ -741,8 +1093,8 @@ def executar(m: Dict[str, Any], acoes: List[Dict[str, Any]]) -> Tuple[Dict[str, 
                 elif a.get("forma") == "retangular":
                     m, msg = FO.retangular(m)
                 else:
-                    raise Falha(_t("Forme en U : faites d'abord la forme en L, puis ajoutez la deuxième aile au Studio (outil Pièce).",
-                                   "Forma em U: peça primeiro a forma em L e acrescente a segunda ala no Estúdio (ferramenta Sala)."))
+                    m, msg, av = forma_u(m)
+                    feitos.extend(av)
             elif a["acao"] == "estilo":
                 m, msg = FO.estilo(m, a.get("estilo"), a.get("ambito") or "tudo")
             elif a["acao"] == "esticar":
@@ -755,7 +1107,18 @@ def executar(m: Dict[str, Any], acoes: List[Dict[str, Any]]) -> Tuple[Dict[str, 
                 m, msg = faixa_exterior(m, a.get("alvo") or "terraco", a.get("divisao"), a.get("lado"),
                                         a.get("comprimento") or "casa", a.get("prof"))
             elif a["acao"] == "contorno_exterior":
-                m, msg = contorno_exterior(m, a.get("alvo") or "muro", a.get("area_m2"), a.get("margem"))
+                m, msg = contorno_exterior(m, a.get("alvo") or "muro", a.get("area_m2"), a.get("margem"), None,
+                                           a.get("largura"), a.get("comprimento"))
+            elif a["acao"] == "acrescentar_divisao":
+                m, msg = acrescentar_divisao(m, a.get("cle") or "annexe", a.get("area"), a.get("lado"), a.get("junto"), a.get("nome"))
+            elif a["acao"] == "fachada_lado":
+                m, msg = fachada_lado(m, a["lado"], a["material"])
+            elif a["acao"] == "objeto_exterior":
+                m, msg = objeto_exterior(m, a["tipo"], a.get("n") or 1, a.get("largura"), a.get("prof"), a.get("lado"))
+            elif a["acao"] == "remover_objetos":
+                m, msg = remover_objetos(m, _tipo_exterior(a["tipo"]) if a["tipo"] not in __import__("engines.estudio_projeto.objetos", fromlist=["OBJETOS"]).OBJETOS else a["tipo"])
+            elif a["acao"] == "pe_direito_todos":
+                m, msg = pe_direito_todos(m, float(a["valor"]))
             elif a["acao"] == "acesso_estrada":
                 m, msg = acesso_estrada(m, float(a.get("recuo") or 10.0), float(a.get("largura") or 6.0))
             elif a["acao"] == "jardim":
@@ -798,6 +1161,11 @@ AJUDA_IA = (
     "{\"acao\":\"acesso_estrada\",\"recuo\":N,\"largura\":N} (estrada à frente + acesso privado + caminho); "
     "{\"acao\":\"jardim\",\"prof\":N,\"arvores\":N}; {\"acao\":\"plantar_arvores\",\"n\":N}; {\"acao\":\"zona_jogos\"} "
     "(parque infantil completo); {\"acao\":\"terraco_sobre_piscina\",\"prof\":N} (andar com terraço em balanço sobre a piscina);\n"
+    "{\"acao\":\"acrescentar_divisao\",\"cle\":\"chambre|suite|bureau|sdb|wc|cuisine|sejour|buanderie|dressing|_garage|veranda|annexe|"
+    "atelier|salle_jeux|sport|cinema|cave\",\"area\":N|null,\"lado\":\"frente|tardoz|esquerda|direita\"|null,\"junto\":NOME|null,"
+    "\"nome\":TEXTO|null} (amplia a casa com uma nova divisão ligada); {\"acao\":\"fachada_lado\",\"lado\":...,\"material\":CODIGO}; "
+    "{\"acao\":\"objeto_exterior\",\"tipo\":TIPO_DE_OBJETO,\"n\":N,\"largura\":N|null,\"prof\":N|null} (coloca num sítio livre do jardim); "
+    "{\"acao\":\"remover_objetos\",\"tipo\":TIPO}; {\"acao\":\"pe_direito_todos\",\"valor\":N}; {\"acao\":\"forma\",\"forma\":\"u\"};\n"
     "{\"acao\":\"nota_pedido\",\"texto\":TEXTO} (só se nada mais for possível: o pedido fica escrito no plano);\n"
     "{\"acao\":\"op\",\"op\":{\"op\":NOME_OP, ...}} com NOME_OP e campos:\n"
     "  divisao {nome, novo_nome?, pavimento?, parede_interior?, teto?, piso?}; materiais {fachada?, cobertura?, caixilharia?, "

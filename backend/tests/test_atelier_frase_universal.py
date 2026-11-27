@@ -143,7 +143,7 @@ def test_route_demande_absurde_sans_ia_est_notee(monkeypatch):
 
 
 def test_route_ia_traduit_demande_libre(monkeypatch):
-    r, _ = _route(monkeypatch, "je veux un barbecue dans le jardin",
+    r, _ = _route(monkeypatch, "une statue de lion à côté de l'entrée",
                   ia_reponse='{"acoes": [{"acao": "op", "op": {"op": "objeto", "tipo": "churrasqueira", "x": 0, "y": -6}}]}')
     assert r["ok"] and r["origem"] == "ia" and r["feitos"]
 
@@ -218,3 +218,83 @@ def test_tout_en_une_phrase_et_dce():
     vrd = next(l for l in DCE.selection(m2)["lots"] if l["code"] == "vrd")
     txt = " ".join(x["designation"] for x in vrd["lignes"])
     assert "Route" in txt and "Aire de jeux" in txt and "Mur de clôture" in txt
+
+
+# ----------------------------------------------------------------- LOT2 : agrandir, U, façade par côté, objets libres
+@pytest.mark.parametrize("casa", CASAS)
+@pytest.mark.parametrize("frase,cle", [("ajoute une chambre de 15 m2 à droite", "chambre"), ("acrescenta um escritório atrás", "bureau"),
+                                       ("rajoute un garage double à gauche", "_garage"), ("crée une véranda derrière le séjour", "veranda"),
+                                       ("cria uma suíte de 20 m2", "suite")])
+def test_agrandir_la_maison(casa, frase, cle):
+    m = _casa(casa)
+    d0 = EP.derivar(m)
+    acoes, sobras = ED.interpretar_partes(frase, m)
+    assert [a["acao"] for a in acoes] == ["acrescentar_divisao"] and acoes[0]["cle"] == cle and not sobras
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas, falhas
+    d = EP.derivar(m2)
+    assert d["ok"], d["erros"]
+    assert len(d["divisoes"]) == len(d0["divisoes"]) + 1                       # une vraie pièce fermée en plus
+    assert d["medicoes"]["totais"]["area_util_m2"] > d0["medicoes"]["totais"]["area_util_m2"] + 1.4
+    assert len(m2["vaos"]) > len(m["vaos"]) or any(v["tipo"] == "porta" for v in m2["vaos"])
+
+
+def test_surface_demandee_respectee():
+    m = _casa()
+    m2, msg = ED.acrescentar_divisao(m, "chambre", 15.0, "direita")
+    nova = [d for d in EP.derivar(m2)["divisoes"] if d["nome"] not in {x["nome"] for x in EP.derivar(m)["divisoes"]}][0]
+    assert 12.0 <= nova["area_m2"] <= 15.0                                     # 15 m² aux axes → surface utile un peu inférieure
+
+
+@pytest.mark.parametrize("casa", CASAS[:2])
+def test_maison_en_u(casa):
+    m = _casa(casa)
+    acoes, _ = ED.interpretar_partes("fais la maison en U", m)
+    assert acoes == [{"acao": "forma", "forma": "u"}]
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas, falhas
+    d = EP.derivar(m2)
+    assert d["ok"] and any("Suite d'amis" in x["nome"] or "hóspedes" in x["nome"] for x in d["divisoes"])
+
+
+def test_facade_par_cote():
+    m = _casa()
+    acoes, sobras = ED.interpretar_partes("façade avant en granit ; fachada tardoz em madeira", m)
+    assert [a["acao"] for a in acoes] == ["fachada_lado", "fachada_lado"] and not sobras
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert len(feitos) == 2 and not falhas
+    assert {w.get("fachada") for w in m2["paredes"]} >= {"granito", "madeira"} and EP.derivar(m2)["ok"]
+
+
+@pytest.mark.parametrize("frase,tipo,n", [("ajoute un portail", "portao_entrada", 1), ("mets 3 transats", "espreguicadeira", 3),
+                                          ("quero uma horta e um lago", "horta", 1), ("court de tennis", "campo_tenis", 1),
+                                          ("un barbecue et une pergola", "churrasqueira", 1)])
+def test_objets_libres_sans_chevauchement(frase, tipo, n):
+    m = _casa()
+    acoes, sobras = ED.interpretar_partes(frase, m)
+    assert acoes and not sobras
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert feitos and not falhas, falhas
+    novos = m2["objetos"][len(m["objetos"]):]
+    assert len([o for o in novos if o["tipo"] == tipo]) == n and EP.derivar(m2)["ok"]
+    cx = [(o["x"], o["y"]) for o in novos]
+    assert len(set(cx)) == len(cx)
+
+
+def test_supprimer_etage_hauteur_terrain():
+    m = _casa()
+    m1, f1, x1 = ED.executar(m, ED.interpretar("piscine de 10 x 5 ; puis supprime la piscine", m))
+    assert len(f1) == 2 and not x1 and not _ext(m1, "piscina")
+    m2, f2, x2 = ED.executar(m, ED.interpretar("ajoute un étage ; hauteur sous plafond 2,70 m", m))
+    assert len(f2) == 2 and not x2 and len(m2["pisos"]) == len(m["pisos"]) + 1
+    m3, f3, x3 = ED.executar(m, ED.interpretar("clôture autour du terrain de 30 x 50", m))
+    assert f3 and not x3 and abs(sum(o["largura_m"] for o in _ext(m3, "muro_vedacao")) - 160) < 0.1
+
+
+def test_plusieurs_demandes_reliees_par_et():
+    m = _casa()
+    acoes, sobras = ED.interpretar_partes("ajoute un bureau à droite et un garage à gauche", m)
+    assert [a.get("cle") for a in acoes] == ["bureau", "_garage"] and not sobras
+    m2, feitos, falhas = ED.executar(m, acoes)
+    assert len(feitos) == 2 and not falhas, falhas
+    assert EP.derivar(m2)["ok"]
