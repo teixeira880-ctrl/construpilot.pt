@@ -1,0 +1,65 @@
+{
+ "patches": [
+  {
+   "file": "backend/engines/lsf/__init__.py",
+   "old": "def estudo(projeto: dict, biblioteca: list | None = None, lang: str = \"pt\") -> dict:\n    \"\"\"Cálculo completo + mapa de quantidades com preços (biblioteca da empresa / projeto).\"\"\"\n    res = calcular(projeto)\n    res[\"barraComercial\"] = projeto.get(\"barraComercial\", 6000)\n    res[\"verificacao\"] = verificacao_segura(projeto, res)\n    lin = linhas(res, lang)\n    tot = precificar(lin, biblioteca, projeto.get(\"precos\"))\n    return {\"versao\": VERSAO, \"resultado\": res, \"linhas\": lin, \"totais\": tot}\n\n\n",
+   "new": "def estudo(projeto: dict, biblioteca: list | None = None, lang: str = \"pt\") -> dict:\n    \"\"\"Cálculo completo + mapa de quantidades com preços (biblioteca da empresa / projeto).\"\"\"\n    from .dimensionar import dimensionar\n    projeto, reforcos = dimensionar(projeto)          # reforça só o que a verificação dá « a rever »\n    res = calcular(projeto)\n    if reforcos:\n        res[\"dimensionamento\"] = reforcos\n        res[\"hipoteses\"] = list(res.get(\"hipoteses\") or []) + [\n            (\"Dimensionnement automatique : \" if str(projeto.get(\"country\") or \"\").upper() == \"FR\" else \"Dimensionamento automático: \") + r\n            for r in reforcos]\n    res[\"barraComercial\"] = projeto.get(\"barraComercial\", 6000)\n    res[\"verificacao\"] = verificacao_segura(projeto, res)\n    lin = linhas(res, lang)\n    tot = precificar(lin, biblioteca, projeto.get(\"precos\"))\n    return {\"versao\": VERSAO, \"resultado\": res, \"linhas\": lin, \"totais\": tot, \"projeto\": projeto}\n\n\n"
+  },
+  {
+   "file": "backend/engines/lsf/engine.py",
+   "old": "            _aviso(ctx, f\"{per['id']}-{i + 1}: canto não ortogonal — pormenor de canto a desenhar (o motor trata-o como 90°).\")\n        L = ln - tp[\"Dt\"] if eC else ln + tp[\"Dt\"]\n        ctx.paredes.append({\n            \"id\": f\"{per['id']}-{i + 1}\", \"tipo\": per[\"tipo\"], \"tp\": tp, \"A\": list(pts[i]), \"d\": [dx, dy, 0], \"n\": [-dy, dx, 0],\n            \"y0\": 0.0, \"L\": L, \"z0\": z0, \"H\": per[\"altura\"], \"vaos\": [dict(v) for v in _vaos_do_lado(per.get(\"vaos\"), i)],\n            \"perimetro\": {\"id\": per[\"id\"], \"lado\": ln, \"sC\": sC, \"eC\": eC}, \"juncoes\": [], \"faces\": None, \"nivel\": per.get(\"nivel\", per[\"id\"]),\n",
+   "new": "            _aviso(ctx, f\"{per['id']}-{i + 1}: canto não ortogonal — pormenor de canto a desenhar (o motor trata-o como 90°).\")\n        L = ln - tp[\"Dt\"] if eC else ln + tp[\"Dt\"]\n        # tipo próprio de um lado (reforço do dimensionamento automático) — a geometria dos cantos fica a do perímetro\n        tl = (per.get(\"tiposLado\") or {}).get(str(i))\n        ctx.paredes.append({\n            \"id\": f\"{per['id']}-{i + 1}\", \"tipo\": tl or per[\"tipo\"], \"tp\": _tipo_parede(ctx, tl) if tl else tp, \"A\": list(pts[i]), \"d\": [dx, dy, 0], \"n\": [-dy, dx, 0],\n            \"y0\": 0.0, \"L\": L, \"z0\": z0, \"H\": per[\"altura\"], \"vaos\": [dict(v) for v in _vaos_do_lado(per.get(\"vaos\"), i)],\n            \"perimetro\": {\"id\": per[\"id\"], \"lado\": ln, \"sC\": sC, \"eC\": eC}, \"juncoes\": [], \"faces\": None, \"nivel\": per.get(\"nivel\", per[\"id\"]),\n"
+  },
+  {
+   "file": "backend/engines/lsf/note.py",
+   "old": "    lang = (a.get(\"lingua\") or _site()[1]).lower()\n    p = projeto(a)\n    res = calcular(p)\n    res[\"barraComercial\"] = p.get(\"barraComercial\", 6000)\n    res[\"verificacao\"] = verificacao_segura(p, res)\n",
+   "new": "    lang = (a.get(\"lingua\") or _site()[1]).lower()\n    p = projeto(a)\n    from .dimensionar import dimensionar\n    p, reforcos = dimensionar(p)                      # mêmes profils que l'étude (renforts automatiques)\n    res = calcular(p)\n    if reforcos:\n        res[\"dimensionamento\"] = reforcos\n    res[\"barraComercial\"] = p.get(\"barraComercial\", 6000)\n    res[\"verificacao\"] = verificacao_segura(p, res)\n"
+  },
+  {
+   "file": "backend/engines/lsf/verificacao.py",
+   "old": "    for w in ordem:\n        tp = tipos.get(w[\"tipo\"]) or {}\n        g_pp = (par[\"g_parede_ext_kn_m2\"] if w[\"tipo\"] == \"EXT\" else par[\"g_parede_int_kn_m2\"]) * w[\"H\"] / 1000\n        kgm = sum(m[\"kg\"] for m in por_ref.get(w[\"id\"], [])) / max(w[\"L\"] / 1000, 0.1) * 9.81e-3\n        base = dict(linha[w[\"id\"]])\n",
+   "new": "    for w in ordem:\n        tp = tipos.get(w[\"tipo\"]) or {}\n        g_pp = (par[\"g_parede_ext_kn_m2\"] if str(w[\"tipo\"]).split(\"@\")[0] == \"EXT\" else par[\"g_parede_int_kn_m2\"]) * w[\"H\"] / 1000\n        kgm = sum(m[\"kg\"] for m in por_ref.get(w[\"id\"], [])) / max(w[\"L\"] / 1000, 0.1) * 9.81e-3\n        base = dict(linha[w[\"id\"]])\n"
+  },
+  {
+   "file": "backend/engines/lsf/verificacao.py",
+   "old": "    for w in paredes:\n        tp = tipos.get(w[\"tipo\"]) or {}\n        if w[\"tipo\"] != \"EXT\" and linha[w[\"id\"]].get(\"G\", 0.0) > 0.5:\n            avisos.append(f\"{w['id']}: parede «{tp.get('nome') or w['tipo']}» é PORTANTE (recebe {linha[w['id']].get('G', 0.0):.1f} kN/m \"\n                          f\"permanentes de pisos/paredes) — confirmar o tipo de parede e o perfil dos montantes ({tp.get('montante')}).\")\n",
+   "new": "    for w in paredes:\n        tp = tipos.get(w[\"tipo\"]) or {}\n        if str(w[\"tipo\"]).split(\"@\")[0] != \"EXT\" and linha[w[\"id\"]].get(\"G\", 0.0) > 0.5:\n            avisos.append(f\"{w['id']}: parede «{tp.get('nome') or w['tipo']}» é PORTANTE (recebe {linha[w['id']].get('G', 0.0):.1f} kN/m \"\n                          f\"permanentes de pisos/paredes) — confirmar o tipo de parede e o perfil dos montantes ({tp.get('montante')}).\")\n"
+  },
+  {
+   "file": "backend/engines/lsf/verificacao.py",
+   "old": "        nbl = int(tp.get(\"bloqueadores\") or 0)\n        lz = Hm / (nbl + 1)\n        ext = w[\"tipo\"] == \"EXT\"\n        ids_m = [m[\"id\"] for m in por_ref.get(w[\"id\"], []) if m[\"tipoPeca\"] in (\"Montante\", \"Montante de extremo\", \"Montante de canto\",\n                                                                                   \"Montante de ligação\")]\n",
+   "new": "        nbl = int(tp.get(\"bloqueadores\") or 0)\n        lz = Hm / (nbl + 1)\n        ext = str(w[\"tipo\"]).split(\"@\")[0] == \"EXT\"\n        ids_m = [m[\"id\"] for m in por_ref.get(w[\"id\"], []) if m[\"tipoPeca\"] in (\"Montante\", \"Montante de extremo\", \"Montante de canto\",\n                                                                                   \"Montante de ligação\")]\n"
+  },
+  {
+   "file": "backend/engines/lsf/verificacao.py",
+   "old": "            Lc = 0.0\n            for w in paredes:\n                if round(w[\"z0\"]) != z or w[\"tipo\"] != \"EXT\":\n                    continue\n                if (tipos.get(w[\"tipo\"]) or {}).get(\"contraventamento\", \"OSB\") in (\"nenhum\", None):\n",
+   "new": "            Lc = 0.0\n            for w in paredes:\n                if round(w[\"z0\"]) != z or str(w[\"tipo\"]).split(\"@\")[0] != \"EXT\":\n                    continue\n                if (tipos.get(w[\"tipo\"]) or {}).get(\"contraventamento\", \"OSB\") in (\"nenhum\", None):\n"
+  },
+  {
+   "file": "backend/tests/test_lsf_engine.py",
+   "old": "@pytest.fixture(scope=\"module\")\ndef rx():\n    return estudo(exemplo())\n\n\n",
+   "new": "@pytest.fixture(scope=\"module\")\ndef rx():\n    return estudo({**exemplo(), \"dimensionamentoAuto\": False})   # géométrie de référence (sans renforts automatiques)\n\n\n"
+  },
+  {
+   "file": "backend/tests/test_lsf_engine.py",
+   "old": "\ndef test_determinismo(rx):\n    r2 = estudo(exemplo())\n    assert json.dumps(r2[\"linhas\"], sort_keys=True) == json.dumps(rx[\"linhas\"], sort_keys=True)\n\n",
+   "new": "\ndef test_determinismo(rx):\n    r2 = estudo({**exemplo(), \"dimensionamentoAuto\": False})\n    assert json.dumps(r2[\"linhas\"], sort_keys=True) == json.dumps(rx[\"linhas\"], sort_keys=True)\n\n"
+  },
+  {
+   "file": "backend/tests/test_lsf_engine.py",
+   "old": "    \"\"\"País FR: ações NF EN 1991 + AN, nomes franceses dos materiais, dossier e Excel sem português; a geometria não muda.\"\"\"\n    import re\n    pt_, fr_ = exemplo(), exemplo(\"FR\")\n    a, b = estudo(pt_), estudo(fr_, None, \"fr\")\n    assert [m[\"L\"] for m in a[\"resultado\"][\"membros\"]] == [m[\"L\"] for m in b[\"resultado\"][\"membros\"]]      # mesma estrutura\n",
+   "new": "    \"\"\"País FR: ações NF EN 1991 + AN, nomes franceses dos materiais, dossier e Excel sem português; a geometria não muda.\"\"\"\n    import re\n    pt_, fr_ = {**exemplo(), \"dimensionamentoAuto\": False}, {**exemplo(\"FR\"), \"dimensionamentoAuto\": False}\n    a, b = estudo(pt_), estudo(fr_, None, \"fr\")\n    assert [m[\"L\"] for m in a[\"resultado\"][\"membros\"]] == [m[\"L\"] for m in b[\"resultado\"][\"membros\"]]      # mesma estrutura\n"
+  },
+  {
+   "file": "backend/tests/test_lsf_engine.py",
+   "old": "    assert o[\"pdf\"][:4] == b\"%PDF\" and \"vis comptées une à une\" in o[\"resume\"] and \"NF EN 1993-1-3\" in o[\"resume\"]\n    assert o[\"titre\"] == \"Étude LSF — Essai LSF\" and {f[3] for f in o[\"files_extra\"]} == {\"xlsx\", \"html\"}\n",
+   "new": "    assert o[\"pdf\"][:4] == b\"%PDF\" and \"vis comptées une à une\" in o[\"resume\"] and \"NF EN 1993-1-3\" in o[\"resume\"]\n    assert o[\"titre\"] == \"Étude LSF — Essai LSF\" and {f[3] for f in o[\"files_extra\"]} == {\"xlsx\", \"html\"}\n\n\ndef test_dimensionamento_automatico_sem_elementos_a_rever():\n    \"\"\"Renforts automatiques : plus aucun élément « à revoir », seuls les éléments en échec sont renforcés.\"\"\"\n    for pais in (\"PT\", \"FR\"):\n        st = estudo(exemplo(pais) if pais == \"FR\" else exemplo())\n        v = st[\"resultado\"][\"verificacao\"]\n        assert v[\"resumo\"][\"a_rever\"] == 0 and v[\"resumo\"][\"ratio_max\"] <= 1.0\n        assert st[\"resultado\"][\"dimensionamento\"]\n        assert st[\"projeto\"][\"tiposParede\"][\"EXT\"][\"montante\"] == \"C90_12\"      # le type commun n'est pas touché\n        st2 = estudo(exemplo(pais) if pais == \"FR\" else exemplo())\n        assert json.dumps(st2[\"linhas\"], sort_keys=True) == json.dumps(st[\"linhas\"], sort_keys=True)   # déterministe\n"
+  }
+ ],
+ "new_files": [
+  {
+   "file": "backend/engines/lsf/dimensionar.py",
+   "src": "backend__engines__lsf__dimensionar.py"
+  }
+ ]
+}
