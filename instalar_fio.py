@@ -87,13 +87,35 @@ else:
         m_lista = re.search(rf"^(\s*)\*{X}_TOOLS,\s*$", s, re.M)
         s = s[:m_lista.end()] + f"\n{m_lista.group(1)}*FIO_TOOLS," + s[m_lista.end():]
         m_h = re.search(rf"^(\s*)if name in {X}_TOOL_NAMES:\n(?:.*\n)*?\s*return await run_{run}_tool\((\w+), (\w+), (\w+), (\w+)", s, re.M)
-        if not m_h:
-            erros.append(f"{P}: handler de {X}_TOOL_NAMES sem «return await run_{run}_tool(a, b, c, d»")
-        else:
+        if m_h:
             ind, a, b, c, d = m_h.groups()
             novo = f"{ind}if name in FIO_TOOL_NAMES:\n{ind}    return await run_fio_tool({a}, {b}, {c}, {d})\n"
             pos = m_h.start()
             s = s[:pos] + novo + s[pos:]
+        else:
+            # despacho diferente (ex.: .pt, run_metre_tool síncrono): lê os nomes em uso na função que despacha
+            m_if = re.search(rf"^(\s*)if name in {X}_TOOL_NAMES:\n", s, re.M)
+            defs = list(re.finditer(r"^async def (\w+)\(([^)]*)\)", s[:m_if.start()], re.M)) if m_if else []
+            if not m_if or not defs:
+                erros.append(f"{P}: despacho de {X}_TOOL_NAMES não está dentro de uma função async")
+            else:
+                params = defs[-1].group(2)
+                corpo = s[defs[-1].start():m_if.start()]
+                nomes = set(re.findall(r"\b(\w+)\b", params))
+                args_v = "args" if "args" in nomes else ("tool_input" if "tool_input" in nomes else None)
+                if "user" in nomes:
+                    user_v = "user"
+                elif re.search(r"^\s*uid\s*=", corpo, re.M) or "uid" in nomes:
+                    user_v = '{"user_id": uid}'
+                else:
+                    user_v = None
+                if not args_v or not user_v or "name" not in nomes:
+                    erros.append(f"{P}: não consegui identificar name/args/user na função {defs[-1].group(1)}({params.strip()[:120]})")
+                else:
+                    ind = m_if.group(1)
+                    novo = f"{ind}if name in FIO_TOOL_NAMES:\n{ind}    return await run_fio_tool(name, {args_v}, {user_v}, db)\n"
+                    s = s[:m_if.start()] + novo + s[m_if.start():]
+                    avisos.append(f"{P}: despacho adaptado à função {defs[-1].group(1)} (user = {user_v})")
         occ = [m.start() for m in re.finditer(rf"\b{X}_INSTRUCTIONS\b", s)]
         expr = [o for o in occ if not s[s.rfind("\n", 0, o) + 1:o].lstrip().startswith("from ")]
         if not expr:
