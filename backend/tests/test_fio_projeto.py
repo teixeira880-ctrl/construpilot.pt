@@ -12,6 +12,7 @@ import pytest
 
 from engines.fio_projeto import servico as S
 from engines.fio_projeto import tools as FT
+from routes import atelier_archi as AA   # importado na recolha: em execução agrupada (xdist) o numpy/shapely já está carregado
 
 USER = {"user_id": "u_fio"}
 
@@ -98,7 +99,6 @@ class _DB(dict):
 
 # ------------------------------------------------------------------ projeto real do Ateliê (motor verdadeiro)
 def _modelo(largura=10.0):
-    from routes import atelier_archi as AA
     base = AA.EP.modelo_vazio()
     tipos = base["tipos_parede"]
     ext = next(k for k, v in tipos.items() if v.get("exterior"))
@@ -110,7 +110,6 @@ def _modelo(largura=10.0):
 
 @pytest.fixture
 def projeto(monkeypatch):
-    from routes import atelier_archi as AA
     p = {"projet_id": "arch_teste", "user_id": USER["user_id"], "titre": "Casa Teste", "adresse": "Rua do Monte 7",
          "maitre_ouvrage": "Dono", "programme": "T3", "modelo": _modelo(), "updated_at": "2026-11-28T00:00:00Z"}
 
@@ -135,7 +134,6 @@ def _png():
 
 
 def test_quantidades_vem_do_motor_do_atelier(projeto):
-    from routes import atelier_archi as AA
     est = run(S.estado(_DB(), USER, "arch_teste"))
     der = AA.EP.derivar(AA._modele(projeto))
     assert est["projeto"]["totais"]["area_bruta_construcao_m2"] == der["medicoes"]["totais"]["area_bruta_construcao_m2"] > 0
