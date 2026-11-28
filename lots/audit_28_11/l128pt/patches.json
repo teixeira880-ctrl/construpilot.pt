@@ -1,0 +1,10 @@
+{
+ "patches": [
+  {
+   "file": "frontend/src/pages/BimViewer.jsx",
+   "old": "function BimPlanViewer({ planId, atelierId, page, query, onPageChange }) {\n  const navigate = useNavigate();\n  const hostRef = useRef(null);\n  const viewerRef = useRef(null);\n",
+   "new": "function BimPlanViewer({ planId, atelierId, page, query, onPageChange }) {\n  const navigate = useNavigate();\n  const L = useMemo(() => ATL[(document.documentElement.lang || \"\").slice(0, 2)] || ATL.pt, []);   // textos do Ateliê (antes: «L is not defined»)\n  const hostRef = useRef(null);\n  const viewerRef = useRef(null);\n"
+  }
+ ],
+ "new_files": []
+}
