@@ -5,6 +5,7 @@ POST   /api/fio-projeto/{pid}/ligar              liga um resultado (BIM, térmic
 POST   /api/fio-projeto/{pid}/imagens            junta uma imagem 3D / render / foto (PNG, JPEG, WebP ≤ 6 MB)
 GET    /api/fio-projeto/{pid}/imagens/{iid}      a imagem
 DELETE /api/fio-projeto/{pid}/imagens/{iid}
+POST   /api/fio-projeto/{pid}/termica              pré-estudo térmico (REH / RE2020) sobre as camadas reais das paredes
 GET    /api/fio-projeto/{pid}/dossier.pdf        dossier final (seguimento, áreas, envolvente, vãos, imagens, peças desenhadas)
 """
 from __future__ import annotations
@@ -31,6 +32,15 @@ class ImagemB64In(BaseModel):
     image_b64: str = Field(min_length=20, max_length=9_000_000)
     tipo: str = Field(default="outra", max_length=20)
     legenda: str = Field(default="", max_length=200)
+
+
+class TermicaIn(BaseModel):
+    zona_inverno: str = Field(default="", pattern="^(I1|I2|I3|)$")
+    zona_verao: str = Field(default="", pattern="^(V1|V2|V3|)$")
+    regiao: str = Field(default="continente", pattern="^(continente|madeira|acores)$")
+    inercia: str = Field(default="media", pattern="^(fraca|media)$")
+    declarados: dict = Field(default_factory=dict)        # {material: {"lambda": x} | {"r": y}}
+    uw: dict = Field(default_factory=dict)                # {código do vão ou caixilharia: Uw}
 
 
 def _erro(e: S.ErroFio) -> HTTPException:
@@ -90,6 +100,17 @@ async def imagem(pid: str, iid: str, user=Depends(current_user)):
 async def apagar_imagem(pid: str, iid: str, user=Depends(current_user)) -> dict:
     try:
         return {"ok": await S.apagar_imagem(db, user, pid, iid)}
+    except S.ErroFio as e:
+        raise _erro(e)
+
+
+@router.post("/{pid}/termica")
+async def termica(pid: str, body: TermicaIn, user=Depends(current_user)) -> dict:
+    dec = {str(k)[:120]: {kk: float(vv) for kk, vv in (v or {}).items() if kk in ("lambda", "r") and vv is not None}
+           for k, v in list(body.declarados.items())[:40] if isinstance(v, dict)}
+    uw = {str(k)[:120]: float(v) for k, v in list(body.uw.items())[:60] if isinstance(v, (int, float))}
+    try:
+        return await S.estudo_termico(db, user, pid, body.zona_inverno, body.zona_verao, body.regiao, body.inercia, dec, uw)
     except S.ErroFio as e:
         raise _erro(e)
 

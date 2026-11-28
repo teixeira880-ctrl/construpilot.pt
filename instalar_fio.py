@@ -31,7 +31,7 @@ def um(s, old, new, rotulo, p, obrigatorio=True):
     return s
 
 
-for f in ("backend/engines/fio_projeto/servico.py", "backend/engines/fio_projeto/tools.py", "backend/routes/fio_projeto.py",
+for f in ("backend/engines/fio_projeto/servico.py", "backend/engines/fio_projeto/tools.py", "backend/engines/fio_projeto/termica.py", "backend/routes/fio_projeto.py",
           "frontend/src/components/fio/FioProjeto.jsx", "frontend/src/components/fio/fioAssistente.js"):
     if not os.path.isfile(f):
         erros.append(f"ficheiro novo em falta: {f}")

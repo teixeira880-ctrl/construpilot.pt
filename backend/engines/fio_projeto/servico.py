@@ -47,7 +47,9 @@ TXT = {
         "cobertura": "Cobertura: {t}, {a} m² ({i}°)", "paredes": "Paredes por tipo (camadas do interior para o exterior)",
         "ext": "exterior", "int": "interior", "vaos": "Mapa de vãos", "etapas": "Seguimento do projeto",
         "feito": "feito", "por_fazer": "por fazer", "ligado": "ligado", "imagem": "Imagem", "avisos": "Avisos do modelo",
-        "pranchas": "Peças desenhadas", "sem_pranchas": "As peças desenhadas não puderam ser juntadas a este dossier.",
+        "pranchas": "Peças desenhadas", "termica_tit": "Estudo térmico (pré-estudo)", "resultado": "resultado",
+        "limite_sup": "sem a alvenaria — limite superior", "verificacoes": "Verificações", "indicacoes": "Indicações para cumprir",
+        "em_falta": "Dados a fornecer", "sem_pranchas": "As peças desenhadas não puderam ser juntadas a este dossier.",
         "nota": ("Medições geométricas do modelo único do projeto (sem ratios, sem estimativas). Os estudos de especialidade "
                  "e o orçamento indicados acima foram feitos sobre a geometria cuja impressão digital está registada."),
     },
@@ -64,7 +66,9 @@ TXT = {
         "cobertura": "Toiture : {t}, {a} m² ({i}°)", "paredes": "Murs par type (couches de l'intérieur vers l'extérieur)",
         "ext": "extérieur", "int": "intérieur", "vaos": "Tableau des menuiseries", "etapas": "Suivi du projet",
         "feito": "fait", "por_fazer": "à faire", "ligado": "lié", "imagem": "Image", "avisos": "Avertissements du modèle",
-        "pranchas": "Pièces graphiques", "sem_pranchas": "Les pièces graphiques n'ont pas pu être jointes à ce dossier.",
+        "pranchas": "Pièces graphiques", "termica_tit": "Étude thermique (pré-étude)", "resultado": "résultat",
+        "limite_sup": "sans la maçonnerie — borne haute", "verificacoes": "Vérifications", "indicacoes": "Indications pour être conforme",
+        "em_falta": "Données à fournir", "sem_pranchas": "Les pièces graphiques n'ont pas pu être jointes à ce dossier.",
         "nota": ("Métrés géométriques de la maquette unique du projet (sans ratios, sans estimation). Les études et le devis "
                  "indiqués ci-dessus ont été réalisés sur la géométrie dont l'empreinte est enregistrée."),
     },
@@ -284,7 +288,8 @@ async def dossier(db, user: Dict[str, Any], pid: str) -> Tuple[bytes, Dict[str, 
         except ErroFio:
             continue
     pr = await _pranchas(user, pid)
-    pdf = montar_pdf(est, imgs, pr)
+    th = await ultimo_termico(db, user, pid)
+    pdf = montar_pdf(est, imgs, pr, th)
     geo = est["projeto"]["geometria"]
     await db[COL].update_one({"projet_id": pid, "user_id": user["user_id"]},
                              {"$set": {"dossier_em": _agora(), "dossier_geometria": geo},
@@ -299,7 +304,8 @@ def _fmt(v: Any, nd: int = 2) -> str:
     return "" if v is None else str(v)
 
 
-def montar_pdf(est: Dict[str, Any], imagens: List[Dict[str, Any]], pranchas: Optional[bytes]) -> bytes:
+def montar_pdf(est: Dict[str, Any], imagens: List[Dict[str, Any]], pranchas: Optional[bytes],
+               termico: Optional[Dict[str, Any]] = None) -> bytes:
     import fitz  # PyMuPDF
 
     W, H, M = 595, 842, 48
@@ -392,6 +398,43 @@ def montar_pdf(est: Dict[str, Any], imagens: List[Dict[str, Any]], pranchas: Opt
         linha(t("avisos"), 12, True)
         for a in pr["avisos"][:40]:
             linha(f"– {a.get('msg') if isinstance(a, dict) else a}", 9)
+    if termico:
+        r = termico.get("resultado") or {}
+        nova()
+        linha(t("termica_tit"), 15, True)
+        linha(f"{r.get('regulamento') or ''} — {t('resultado')} : {r.get('resultado') or ''}", 10, True,
+              cor=(0, 0.45, 0.2) if r.get("estado") == "cumpre" else (0.75, 0.3, 0))
+        if termico.get("geometria") and termico.get("geometria") != pr.get("geometria"):
+            linha(t("desatualizado"), 9, cor=(0.75, 0.3, 0))
+        par = termico.get("parametros") or {}
+        if par.get("zona_inverno") or par.get("zona_verao"):
+            linha(f"{par.get('regiao') or ''} · {par.get('zona_inverno') or ''} {par.get('zona_verao') or ''}", 9)
+        espaco(4)
+        for p in r.get("paredes") or []:
+            linha(f"{p.get('nome')} : U = {_fmt(p.get('u'), 3)} W/(m²·K)" + (f" ({t('limite_sup')})" if p.get("limite_superior") else ""), 10, True)
+            for c in p.get("camadas") or []:
+                rr = "—" if c.get("r") is None else _fmt(c.get("r"), 3)
+                linha(f"– {c.get('material')} {_fmt((c.get('esp_m') or 0) * 100, 1)} cm · R {rr} · {c.get('fonte')}", 8, recuo=12)
+        espaco(4)
+        linha(t("verificacoes"), 12, True)
+        for v in r.get("verificacoes") or []:
+            val = "—" if v.get("valor") is None else _fmt(v.get("valor"), 3)
+            lim = "" if v.get("limite") is None else f" / {_fmt(v.get('limite'), 2)}"
+            linha(f"• {v.get('elemento')} — {v.get('grandeza')} : {val}{lim} → {v.get('estado')}" + (f" ({v.get('nota')})" if v.get("nota") else ""), 9)
+        if r.get("indicacoes"):
+            espaco(4)
+            linha(t("indicacoes"), 12, True)
+            for i in r["indicacoes"]:
+                linha(f"→ {i}", 9)
+        if r.get("dados_em_falta"):
+            espaco(4)
+            linha(t("em_falta"), 12, True)
+            for f_ in r["dados_em_falta"]:
+                mats = ", ".join(f_.get("materiais") or [])
+                linha(f"– {f_.get('o_que')}{(' : ' + mats) if mats else ''} — {f_.get('onde') or ''}", 9)
+        espaco(6)
+        linha(r.get("aprovacao") or "", 8, cor=(0.35, 0.35, 0.35))
+
     espaco(10)
     linha(t("nota"), 8, cor=(0.35, 0.35, 0.35))
 
@@ -426,3 +469,36 @@ def montar_pdf(est: Dict[str, Any], imagens: List[Dict[str, Any]], pranchas: Opt
     out = doc.tobytes(garbage=3, deflate=True)
     doc.close()
     return out
+
+
+# ------------------------------------------------------------------------------- estudo térmico (pré-estudo)
+COL_TERM = "fio_termica"
+
+
+async def estudo_termico(db, user: Dict[str, Any], pid: str, zona_inverno: str = "", zona_verao: str = "", regiao: str = "continente",
+                         inercia: str = "media", declarados: Optional[Dict[str, Dict[str, float]]] = None,
+                         uw_declarados: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
+    from fastapi.concurrency import run_in_threadpool
+    from engines.fio_projeto import termica as TE
+    _, m, der = await carregar(user, pid)
+    res = await run_in_threadpool(lambda: TE.estudo(m, der, zona_inverno=zona_inverno, zona_verao=zona_verao, regiao=regiao,
+                                                    inercia=inercia, declarados=declarados, uw_declarados=uw_declarados))
+    res = _traduzir(res)
+    eid = "th_" + secrets.token_hex(6)
+    doc = {"estudo_id": eid, "projet_id": pid, "user_id": user["user_id"], "geometria": impressao_geometria(m), "em": _agora(),
+           "parametros": {"zona_inverno": zona_inverno, "zona_verao": zona_verao, "regiao": regiao, "inercia": inercia,
+                          "declarados": declarados or {}, "uw_declarados": uw_declarados or {}},
+           "resultado": res}
+    await db[COL_TERM].insert_one(dict(doc))
+    await ligar(db, user, pid, "thermal_study_id", eid, res.get("estado") or "")
+    return {"estudo_id": eid, **res}
+
+
+async def ultimo_termico(db, user: Dict[str, Any], pid: str) -> Optional[Dict[str, Any]]:
+    fio = await db[COL].find_one({"projet_id": pid, "user_id": user["user_id"]}, {"_id": 0}) or {}
+    ids = [l["valor"] for l in fio.get("ligacoes") or [] if l.get("campo") == "thermal_study_id"]
+    for eid in reversed(ids):
+        d = await db[COL_TERM].find_one({"estudo_id": eid, "user_id": user["user_id"]}, {"_id": 0})
+        if d:
+            return d
+    return None

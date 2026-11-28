@@ -203,7 +203,7 @@ def test_dossier_final_junta_tudo(projeto, monkeypatch):
 
 def test_ferramentas_do_assistente(projeto):
     nomes = {t["name"] for t in FT.FIO_TOOLS}
-    assert nomes == {"fio_ler_projeto", "fio_ligar", "fio_dossier_final"}
+    assert nomes == {"fio_ler_projeto", "fio_ligar", "fio_dossier_final", "fio_estudo_termico"}
     db = _DB()
     r = run(FT.run_fio_tool("fio_ler_projeto", {"projet_id": "arch_teste"}, USER, db))
     assert r["ok"] and r["projeto"]["geometria"] and r["dossier_url"].endswith("/dossier.pdf")
@@ -218,3 +218,53 @@ def test_rotas_registadas():
     caminhos = {r.path for r in R.router.routes}
     assert {"/fio-projeto/{pid}", "/fio-projeto/{pid}/ligar", "/fio-projeto/{pid}/imagens",
             "/fio-projeto/{pid}/imagens/{iid}", "/fio-projeto/{pid}/dossier.pdf"} <= caminhos
+
+
+# ------------------------------------------------------------------ estudo térmico
+def test_u_parede_iso6946_com_valores_publicados():
+    from engines.fio_projeto import termica as TE
+    r = TE.u_parede([{"material": "Betão armado", "esp_m": 0.20}, {"material": "Poliestireno expandido (EPS)", "esp_m": 0.10}])
+    esperado = 1 / (0.13 + 0.20 / 2.30 + 0.10 / 0.038 + 0.04)
+    assert abs(r["u"] - round(esperado, 3)) < 1e-3 and not r["limite_superior"]
+    assert r["confirmar_dop"] == ["Poliestireno expandido (EPS)"]
+
+
+def test_alvenaria_sem_r_da_limite_superior_e_pede_o_dado():
+    from engines.fio_projeto import termica as TE
+    cam = [{"material": "Reboco interior", "esp_m": 0.015}, {"material": "Alvenaria de tijolo cerâmico 22", "esp_m": 0.22},
+           {"material": "Isolamento térmico pelo exterior (EPS)", "esp_m": 0.06}]
+    r = TE.u_parede(cam)
+    assert r["limite_superior"] and r["faltam"] == ["Alvenaria de tijolo cerâmico 22"]
+    r2 = TE.u_parede(cam, {"Alvenaria de tijolo cerâmico 22": {"r": 0.52}})     # R declarado pelo fabricante
+    assert not r2["limite_superior"] and r2["u"] < r["u"]
+
+
+def test_caixa_ventilada_ignora_o_pano_exterior():
+    from engines.fio_projeto import termica as TE
+    a = TE.u_parede([{"material": "Betão armado", "esp_m": 0.2}, {"material": "Lã de rocha em painel", "esp_m": 0.08},
+                     {"material": "Caixa de ar ventilada", "esp_m": 0.03}, {"material": "Alvenaria de granito", "esp_m": 0.3}])
+    esperado = 1 / (0.13 + 0.2 / 2.3 + 0.08 / 0.037 + 0.13)
+    assert abs(a["u"] - round(esperado, 3)) < 1e-3
+
+
+def test_estudo_reh_indica_o_que_fazer(projeto, monkeypatch):
+    from engines.fio_projeto import lingua
+    db = _DB()
+    r = run(S.estudo_termico(db, USER, "arch_teste", "I3", "V2", "continente", "media", {}, {}))
+    assert r["estudo_id"].startswith("th_")
+    if lingua.LANG == "pt":
+        assert any(v["grandeza"] == "U parede" and v["limite"] == 0.35 for v in r["verificacoes"])
+        assert r["indicacoes"] and r["estado"] in ("nao_cumpre", "a_confirmar", "cumpre")
+    est = run(S.estado(db, USER, "arch_teste"))
+    assert next(e for e in est["etapas"] if e["etapa"] == "termica")["feito"]
+    pdf, _ = run(S.dossier(db, USER, "arch_teste"))
+    import fitz
+    texto = "".join(p.get_text() for p in fitz.open(stream=pdf, filetype="pdf"))
+    assert "EN ISO 6946" in texto or "SEAI" in texto
+
+
+def test_estudo_sem_zona_pede_a_zona(projeto):
+    from engines.fio_projeto import lingua
+    r = run(S.estudo_termico(_DB(), USER, "arch_teste"))
+    if lingua.LANG == "pt":
+        assert any("zona climática" in f["o_que"] for f in r["dados_em_falta"]) and r["estado"] == "a_confirmar"
