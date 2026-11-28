@@ -1,0 +1,40 @@
+{
+ "patches": [
+  {
+   "file": "frontend/src/App.js",
+   "old": "import { Nav, Footer } from \"@/components/Nav\";\nimport HelpChatbot from \"@/components/HelpChatbot\";\nimport { StudyRunning } from \"@/components/StudyRunning\";\nimport { FluxoObra } from \"@/components/fluxo/FluxoObra\";\n",
+   "new": "import { Nav, Footer } from \"@/components/Nav\";\nimport HelpChatbot from \"@/components/HelpChatbot\";\nimport { isProfessional } from \"@/components/workspace/navigation\";\nimport { StudyRunning } from \"@/components/StudyRunning\";\nimport { FluxoObra } from \"@/components/fluxo/FluxoObra\";\n"
+  },
+  {
+   "file": "frontend/src/App.js",
+   "old": "      {!assistant && <WorkspaceFooter />}\n    </div>\n    {!assistant && <HelpChatbot />}\n    <AgentsRunning />\n    <StudyRunning />\n",
+   "new": "      {!assistant && <WorkspaceFooter />}\n    </div>\n    {/* Ergonomia: um profissional tem o Assistente como ponto de ajuda único (sem a bolha «Precisa de ajuda?» em duplicado) */}\n    {!assistant && !isProfessional(user) && <HelpChatbot />}\n    <AgentsRunning />\n    <StudyRunning />\n"
+  },
+  {
+   "file": "frontend/src/components/ErrorBoundary.jsx",
+   "old": "            </p>\n          </div>\n          <p className=\"text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-sm font-mono break-words\">\n            {msg.slice(0, 220)}\n          </p>\n          <div className=\"grid grid-cols-2 gap-2\">\n            <button\n",
+   "new": "            </p>\n          </div>\n          {/* Ergonomia: nunca a mensagem técnica em claro — detalhe recolhido, para o suporte */}\n          <details className=\"text-[11px] text-muted-foreground text-left\">\n            <summary className=\"cursor-pointer text-center\">Detalhes técnicos (para o suporte)</summary>\n            <p className=\"mt-1 bg-secondary/30 p-2 rounded-sm font-mono break-words\">{msg.slice(0, 220)}</p>\n          </details>\n          <div className=\"grid grid-cols-2 gap-2\">\n            <button\n"
+  },
+  {
+   "file": "frontend/src/pages/Estimator.jsx",
+   "old": "                      <SelectTrigger className=\"rounded-sm h-11\" data-testid=\"select-region\"><SelectValue /></SelectTrigger>\n                      <SelectContent>\n                        {regions.map((r) => <SelectItem key={r.region} value={r.region}>{r.region} (×{r.coef})</SelectItem>)}\n                      </SelectContent>\n                    </Select>\n",
+   "new": "                      <SelectTrigger className=\"rounded-sm h-11\" data-testid=\"select-region\"><SelectValue /></SelectTrigger>\n                      <SelectContent>\n                        {regions.map((r) => <SelectItem key={r.region} value={r.region}>{r.region}</SelectItem>)}\n                      </SelectContent>\n                    </Select>\n"
+  },
+  {
+   "file": "frontend/src/pages/StairCalculator.jsx",
+   "old": "const DEFAULT_FORM = {\n  floor_height_mm: \"2700\",\n  available_length_mm: \"4000\",\n  available_width_mm: \"1000\",\n  stair_width_mm: \"900\",\n",
+   "new": "const DEFAULT_FORM = {\n  floor_height_mm: \"2700\",\n  available_length_mm: \"4500\",\n  available_width_mm: \"1000\",\n  stair_width_mm: \"900\",\n"
+  },
+  {
+   "file": "frontend/src/pages/StairCalculator.jsx",
+   "old": "const n = (v) => { const x = parseFloat(String(v).replace(\",\", \".\")); return Number.isFinite(x) ? x : null; };\nconst mm = (v) => (v == null ? \"—\" : `${Math.round(v)} mm`);\nconst ALERT_META = {\n  red: { icon: XCircle, cls: \"text-red-600 bg-red-50 border-red-200\" },\n",
+   "new": "const n = (v) => { const x = parseFloat(String(v).replace(\",\", \".\")); return Number.isFinite(x) ? x : null; };\nconst mm = (v) => (v == null ? \"—\" : `${Math.round(v)} mm`);\n// Ergonomia: cada alerta diz o que fazer (o código interno já não é mostrado).\nconst STAIR_ACOES = {\n  STAIR_RUN_TOO_LONG: \"aumente o desenvolvimento disponível ou escolha uma escada em L ou em U para ganhar espaço.\",\n  HEADROOM_INSUFFICIENT: \"aumente a abertura na laje ou desloque a escada para garantir a altura livre mínima.\",\n  STAIR_WIDTH_TOO_SMALL: \"alargue a escada (recomendado 900 mm).\",\n  STAIR_WIDTH_INSUFFICIENT: \"alargue a escada ou aumente a largura disponível.\",\n  RISER_TOO_HIGH: \"aumente o número de degraus (mais espelhos, mais baixos).\",\n  RISER_TOO_LOW: \"reduza o número de degraus.\",\n  TREAD_TOO_SMALL: \"aumente o desenvolvimento disponível para ter cobertores mais largos.\",\n  SLOPE_TOO_STEEP: \"aumente o desenvolvimento disponível ou escolha uma escada em L ou em U.\",\n  BLONDEL_OUT_OF_RANGE: \"clique em «Otimizar» para obter a combinação espelho/cobertor confortável.\",\n  STAIRWELL_TOO_SMALL: \"aumente a abertura na laje.\",\n  BALANCING_IMPOSSIBLE: \"aumente o raio interior ou reduza o leque dos degraus.\",\n  AUTO_WINDERS_NO_SOLUTION: \"escolha manualmente o número de degraus em leque ou use um patamar.\",\n};\nconst ALERT_META = {\n  red: { icon: XCircle, cls: \"text-red-600 bg-red-50 border-red-200\" },\n"
+  },
+  {
+   "file": "frontend/src/pages/StairCalculator.jsx",
+   "old": "      <Icon className=\"h-4 w-4 mt-0.5 shrink-0\" />\n      <div>\n        <span className=\"font-medium\">{a.code}</span> — {a.message || a.message_fr}\n        {a.value != null && a.threshold != null && (\n          <span className=\"opacity-70\"> ({Math.round(a.value)} / limite {Math.round(a.threshold)})</span>\n        )}\n      </div>\n    </div>\n",
+   "new": "      <Icon className=\"h-4 w-4 mt-0.5 shrink-0\" />\n      <div>\n        <span className=\"font-medium\">{a.message || a.message_fr}</span>\n        {a.value != null && a.threshold != null && (\n          <span className=\"opacity-70\"> ({Math.round(a.value)} / limite {Math.round(a.threshold)})</span>\n        )}\n        {STAIR_ACOES[a.code] && <div className=\"mt-0.5 text-xs opacity-90\">O que fazer: {STAIR_ACOES[a.code]}</div>}\n      </div>\n    </div>\n"
+  }
+ ],
+ "new_files": []
+}
