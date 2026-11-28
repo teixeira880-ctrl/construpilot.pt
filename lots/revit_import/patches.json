@@ -1,0 +1,111 @@
+{
+ "patches": [
+  {
+   "file": "backend/engines/autodesk_md.py",
+   "old": "async def _properties(urn, guid):\n",
+   "new": "async def _object_tree(urn, guid):\n    for _ in range(10):\n        response = await request(\"GET\", f\"{MD_BASE}/designdata/{urn}/metadata/{guid}\", params={\"forceget\": \"true\"}, accepted=(202,))\n        if response.status_code == 200:\n            return response.json()\n        await asyncio.sleep(4)\n    return {}\n\n\nasync def _revit_takeoff(job, views, lang=\"pt\"):\n    \"\"\"Métré Revit complet (vue 3D) : arbre + toutes les propriétés, sans nouvelle traduction. Un échec ne casse jamais la lecture existante.\"\"\"\n    import logging\n    from engines.revit_takeoff import takeoff\n    view = next((v for v in views if v.get(\"role\") == \"3d\"), views[0] if views else None)\n    if not view or not view.get(\"guid\"):\n        return None\n    try:\n        collection = await _properties(job[\"urn\"], view[\"guid\"])\n        tree = await _object_tree(job[\"urn\"], view[\"guid\"])\n        if not collection or not tree:\n            return None\n        return {**takeoff(collection, tree, filename=job.get(\"filename\", \"\"), lang=lang), \"view\": view.get(\"name\")}\n    except Exception:  # noqa: BLE001\n        logging.getLogger(__name__).exception(\"Revit takeoff failed for %s\", job.get(\"job_id\"))\n        return None\n\n\nasync def _properties(urn, guid):\n"
+  },
+  {
+   "file": "backend/engines/autodesk_md.py",
+   "old": "async def extract(data: bytes, filename: str, *, user_id: str) -> dict:\n",
+   "new": "async def extract(data: bytes, filename: str, *, user_id: str, lang: str = \"pt\") -> dict:\n"
+  },
+  {
+   "file": "backend/engines/autodesk_md.py",
+   "old": "    job, fresh = await _job(data, filename, user_id)\n    if not fresh and job.get(\"status\") == \"success\":\n        return {**job, \"cached\": True}\n",
+   "new": "    job, fresh = await _job(data, filename, user_id)\n    if isinstance(job, dict):\n        job[\"_revit_lang\"] = lang\n    if not fresh and job.get(\"status\") == \"success\":\n        if job.get(\"ext\") == \"rvt\" and (job.get(\"revit_takeoff\") or {}).get(\"lang\") != lang and job.get(\"urn\"):\n            # Traduction déjà payée : métré complet calculé depuis la même URN (aucun crédit Autodesk)\n            views = [{\"guid\": v.get(\"guid\"), \"name\": v.get(\"name\"), \"role\": v.get(\"role\")} for v in job.get(\"views\") or []]\n            result = await _revit_takeoff(job, views, lang)\n            if result:\n                await _update(job, revit_takeoff=result)\n        return {**job, \"cached\": True}\n"
+  },
+  {
+   "file": "backend/engines/autodesk_md.py",
+   "old": "              \"completed_at\": _now(), \"format_note\": SUPPORTED.get(job[\"ext\"])}\n    await _update(job, **result)\n",
+   "new": "              \"completed_at\": _now(), \"format_note\": SUPPORTED.get(job[\"ext\"])}\n    if job[\"ext\"] == \"rvt\":\n        result[\"revit_takeoff\"] = await _revit_takeoff(job, views, job.get(\"_revit_lang\") or \"pt\")\n    await _update(job, **result)\n"
+  },
+  {
+   "file": "backend/plans_pro/autodesk_pipeline.py",
+   "old": "    quantities = _aggregate_quantities(raw)\n",
+   "new": "    takeoff = raw.get(\"revit_takeoff\")\n    # Revit : métré complet sur TOUS les éléments de la vue 3D (et non un échantillon)\n    quantities = takeoff[\"by_ouvrage\"] if takeoff and takeoff.get(\"by_ouvrage\") else _aggregate_quantities(raw)\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "                    autodesk_quantities=autodesk_result.get(\"quantities\"),\n",
+   "new": "                    autodesk_quantities=autodesk_result.get(\"quantities\"),\n                    autodesk_takeoff=autodesk_result.get(\"revit_takeoff\"),\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "async def job_status(job_id: str, user=Depends(current_user)):\n    doc = await db.plans_pro_jobs.find_one(\n        {\"job_id\": job_id, \"user_id\": user[\"user_id\"]},\n        {\"_id\": 0, \"user_id\": 0},\n",
+   "new": "async def job_status(job_id: str, user=Depends(current_user)):\n    doc = await db.plans_pro_jobs.find_one(\n        {\"job_id\": job_id, \"user_id\": user[\"user_id\"]},\n        {\"_id\": 0, \"user_id\": 0, \"autodesk_takeoff\": 0},\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "async def job_result(job_id: str, user=Depends(current_user)):\n    doc = await db.plans_pro_jobs.find_one(\n        {\"job_id\": job_id, \"user_id\": user[\"user_id\"]},\n        {\"_id\": 0, \"user_id\": 0},\n",
+   "new": "async def job_result(job_id: str, user=Depends(current_user)):\n    doc = await db.plans_pro_jobs.find_one(\n        {\"job_id\": job_id, \"user_id\": user[\"user_id\"]},\n        {\"_id\": 0, \"user_id\": 0, \"autodesk_takeoff.elements\": 0},\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "\"autodesk_views\": 1, \"created_at\": 1})\n",
+   "new": "\"autodesk_views\": 1, \"created_at\": 1,\n                                            \"autodesk_takeoff\": 1})\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "    data = await asyncio.to_thread(_quantities_workbook, doc, quantities)\n",
+   "new": "    if (doc.get(\"autodesk_takeoff\") or {}).get(\"rows\"):\n        from plans_pro.revit_workbook import revit_workbook\n        data = await asyncio.to_thread(revit_workbook, doc, doc[\"autodesk_takeoff\"])\n    else:\n        data = await asyncio.to_thread(_quantities_workbook, doc, quantities)\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "@router.get(\"/job/{job_id}/result\")\n",
+   "new": "def _takeoff_summary(t):\n    \"\"\"Résumé Revit pour l'écran (sans la liste complète des éléments, qui reste dans l'Excel).\"\"\"\n    if not t or not t.get(\"rows\"):\n        return None\n    rows = [{k: r.get(k) for k in (\"level\", \"ouvrage\", \"type\", \"unit\", \"quantity\", \"count\", \"area_m2\", \"volume_m3\", \"length_m\", \"quantity_note\")}\n            for r in t[\"rows\"][:400]]\n    return {\"levels\": t.get(\"levels\"), \"rows\": rows, \"elements_count\": t.get(\"elements_count\"), \"warnings\": t.get(\"warnings\"),\n            \"method\": t.get(\"method\"), \"demolished_count\": len(t.get(\"demolished\") or []), \"view\": t.get(\"view\")}\n\n\n@router.get(\"/job/{job_id}/result\")\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "            \"quantities\": doc.get(\"autodesk_quantities\"),\n",
+   "new": "            \"quantities\": doc.get(\"autodesk_quantities\"),\n            \"revit\": _takeoff_summary(doc.get(\"autodesk_takeoff\")),\n"
+  },
+  {
+   "file": "backend/plans_pro/routes.py",
+   "old": "\"vision.text_detected\": 0, \"autodesk_thumbnail\": 0}",
+   "new": "\"vision.text_detected\": 0, \"autodesk_thumbnail\": 0, \"autodesk_takeoff\": 0}"
+  },
+  {
+   "file": "backend/routes/assistant.py",
+   "old": "            return {\"ok\": True, **{k: res.get(k) for k in (\"job_id\", \"status\", \"cached\", \"views\", \"sample_objects\", \"derivatives\", \"format_note\", \"filename\")}}\n",
+   "new": "            out = {\"ok\": True, **{k: res.get(k) for k in (\"job_id\", \"status\", \"cached\", \"views\", \"sample_objects\", \"derivatives\", \"format_note\", \"filename\")}}\n            t = res.get(\"revit_takeoff\")\n            if t and t.get(\"rows\"):  # métré Revit complet, compact pour l'Assistant\n                out[\"revit_takeoff\"] = {\"levels\": t.get(\"levels\"), \"by_ouvrage\": t.get(\"by_ouvrage\"), \"warnings\": t.get(\"warnings\"), \"method\": t.get(\"method\"),\n                                        \"rows\": [{k: r.get(k) for k in (\"level\", \"ouvrage\", \"type\", \"unit\", \"quantity\", \"count\", \"volume_m3\", \"materials\")} for r in t[\"rows\"][:250]]}\n            return out\n"
+  },
+  {
+   "file": "frontend/src/pages/PlansPro.jsx",
+   "old": "import { toast } from \"sonner\";\n",
+   "new": "import { toast } from \"sonner\";\nimport RevitTakeoff from \"@/components/planTakeoff/RevitTakeoff\";\n"
+  },
+  {
+   "file": "frontend/src/pages/PlansPro.jsx",
+   "old": "          {result.vision?.elements?.length > 0 && (\n",
+   "new": "          {result.autodesk?.revit && <RevitTakeoff revit={result.autodesk.revit} />}\n\n          {result.vision?.elements?.length > 0 && (\n"
+  }
+ ],
+ "new_files": [
+  {
+   "file": "backend/engines/revit_takeoff.py",
+   "src": "backend__engines__revit_takeoff.py"
+  },
+  {
+   "file": "backend/plans_pro/revit_workbook.py",
+   "src": "backend__plans_pro__revit_workbook.py"
+  },
+  {
+   "file": "backend/tests/test_revit_takeoff.py",
+   "src": "backend__tests__test_revit_takeoff.py"
+  },
+  {
+   "file": "backend/scripts/revit_live_check.py",
+   "src": "backend__scripts__revit_live_check.py"
+  },
+  {
+   "file": "frontend/src/components/planTakeoff/RevitTakeoff.jsx",
+   "src": "frontend__src__components__planTakeoff__RevitTakeoff.jsx"
+  }
+ ],
+ "binary_files": [
+  {
+   "file": "lots/revit_test/casa_tnta.rvt"
+  }
+ ]
+}
