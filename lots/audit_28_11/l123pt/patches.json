@@ -1,0 +1,85 @@
+{
+ "patches": [
+  {
+   "file": "backend/btp_solver/routes.py",
+   "old": "    if not doc:\n        raise HTTPException(404, \"Diagnóstico não encontrado\")\n    return doc\n",
+   "new": "    if not doc:\n        raise HTTPException(404, \"Diagnóstico não encontrado\")\n    if doc.get(\"status\") == \"running\":  # CP-AUDIT-PT : tarefa perdida (reinício do servidor) ou demasiado longa\n        try:\n            started = datetime.fromisoformat(str(doc.get(\"generated_at_iso\")))\n            if (datetime.now(timezone.utc) - started).total_seconds() > 600:\n                msg = \"Análise interrompida (tempo excedido ou servidor reiniciado): relance o diagnóstico.\"\n                await db.btp_problems.update_one({\"problem_id\": problem_id, \"status\": \"running\"},\n                                                 {\"$set\": {\"status\": \"error\", \"error\": msg}})\n                doc[\"status\"], doc[\"error\"] = \"error\", msg\n        except Exception:  # noqa: BLE001\n            pass\n    return doc\n"
+  },
+  {
+   "file": "backend/engines/bet_core/assistant_tool.py",
+   "old": "import math\nimport tempfile\nfrom datetime import datetime, timezone\nfrom pathlib import Path\n",
+   "new": "import math\nimport tempfile\nimport traceback  # CP-AUDIT-PT\nfrom datetime import datetime, timezone\nfrom pathlib import Path\n"
+  },
+  {
+   "file": "backend/engines/calc_lots/especialidades.py",
+   "old": "    rede_q.append({\"nome\": \"AQS\", \"montante\": None, \"comprimento_m\": round(_dist((cen[\"x\"], cen[\"y\"]), (col_a[\"x\"], col_a[\"y\"])) + 2, 1), \"desnivel_m\": 0, \"agua\": \"quente\"})\n    prev, prev_q = \"E\", \"AQS\"\n    for c in cotas:\n        nm, nq = f\"C{c:+.2f}\", f\"Q{c:+.2f}\"\n",
+   "new": "    rede_q.append({\"nome\": \"AQS\", \"montante\": None, \"comprimento_m\": round(_dist((cen[\"x\"], cen[\"y\"]), (col_a[\"x\"], col_a[\"y\"])) + 2, 1), \"desnivel_m\": 0, \"agua\": \"quente\"})\n    prev, prev_q = \"E\", \"AQS\"\n    prev_z = z0  # CP-AUDIT-PT\n    for c in cotas:\n        nm, nq = f\"C{c:+.2f}\", f\"Q{c:+.2f}\"\n"
+  },
+  {
+   "file": "backend/engines/mep/adapter.py",
+   "old": "            if int(r.get(\"page_index\", 0)) != page or len(r.get(\"points\") or []) < 3:\n                continue\n            rooms.append({\"id\": r.get(\"room_id\") or f\"p{page}-r{len(rooms) + 1}\", \"name\": r.get(\"name\") or (\"Divisão\" if country == \"pt\" else \"Pièce\"),\n                          \"polygon\": [[float(x) / ppm, float(y) / ppm] for x, y in r[\"points\"]]})\n        structure = (plan.get(\"structure\") or {}).get(str(page)) or {}\n        openings = []\n",
+   "new": "            if int(r.get(\"page_index\", 0)) != page or len(r.get(\"points\") or []) < 3:\n                continue\n            poly = [[float(x) / ppm, float(y) / ppm] for x, y in r[\"points\"]]\n            # CP-AUDIT-PT : contorno < 0,5 m² ou largura média < 30 cm não é uma divisão\n            area = abs(sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1]\n                           for i in range(len(poly)))) / 2\n            perim = sum(((poly[i][0] - poly[(i + 1) % len(poly)][0]) ** 2 + (poly[i][1] - poly[(i + 1) % len(poly)][1]) ** 2) ** 0.5\n                        for i in range(len(poly)))\n            if area < 0.5 or (perim and 2 * area / perim < 0.3):\n                continue\n            rooms.append({\"id\": r.get(\"room_id\") or f\"p{page}-r{len(rooms) + 1}\", \"name\": r.get(\"name\") or (\"Divisão\" if country == \"pt\" else \"Pièce\"),\n                          \"polygon\": poly})\n        structure = (plan.get(\"structure\") or {}).get(str(page)) or {}\n        openings = []\n"
+  },
+  {
+   "file": "backend/engines/savings.py",
+   "old": "        \"description\": \"Compras agrupadas multicapítulo, negociação, descontos profissionais em volume.\",\n        \"amount\": amount,\n        \"basis\": f'{pct * 100:.0f} % sobre {materials:.0f} € de materiais',\n        \"confidence\": \"élevée\" if materials > 5000 else \"moyenne\",\n    }\n",
+   "new": "        \"description\": \"Compras agrupadas multicapítulo, negociação, descontos profissionais em volume.\",\n        \"amount\": amount,\n        \"basis\": (f'{pct * 100:.0f} % sobre {materials:,.0f} € de materiais').replace(',', ' '),  # CP-AUDIT-PT\n        \"confidence\": \"élevée\" if materials > 5000 else \"moyenne\",\n    }\n"
+  },
+  {
+   "file": "backend/engines/savings.py",
+   "old": "        \"description\": \"Preços mais baixos identificados entre 10 lojas (vs média de mercado).\",\n        \"amount\": amount,\n        \"basis\": f'{pct * 100:.0f} % sobre {materials:.0f} € via comparador Tavily',\n        \"confidence\": \"élevée\",\n    }\n",
+   "new": "        \"description\": \"Preços mais baixos identificados entre 10 lojas (vs média de mercado).\",\n        \"amount\": amount,\n        \"basis\": (f'{pct * 100:.0f} % sobre {materials:,.0f} € via comparador').replace(',', ' '),  # CP-AUDIT-PT\n        \"confidence\": \"élevée\",\n    }\n"
+  },
+  {
+   "file": "backend/routes/documents.py",
+   "old": "                \"doc_type\": dtype,\n                \"number\": number,\n                \"title\": f'{label} importado — {name[:60]}',\n                \"client_id\": client_id,\n                \"client\": await _client_snapshot(client_id, user),\n",
+   "new": "                \"doc_type\": dtype,\n                \"number\": number,\n                \"title\": f'{label} ' + ('importada' if dtype == 'invoice' else 'importado') + f' — {name[:60]}',  # CP-AUDIT-PT\n                \"client_id\": client_id,\n                \"client\": await _client_snapshot(client_id, user),\n"
+  },
+  {
+   "file": "backend/routes/plans_analysis.py",
+   "old": "    # Planchers : priorité aux polygones de sol détectés par l'IA (sans tracer à la main),\n    # sinon repli sur les pièces mesurées manuellement.\n    floors = structure.get(\"floors\") or []\n    if floors and ppm:\n        planchers = round(sum(_polygon_area_px(f.get(\"points\") or []) for f in floors) / (ppm * ppm), 2)\n        planchers_source = \"auto\"\n    elif floors_only:\n        # Gros œuvre : la surface se réfère UNIQUEMENT aux planchers détectés (pas de repli pièces)\n",
+   "new": "    # Planchers : priorité aux polygones de sol détectés par l'IA (sans tracer à la main),\n    # sinon repli sur les pièces mesurées manuellement.\n    planchers_ia = None\n    floors = structure.get(\"floors\") or []\n    if floors and ppm:\n        planchers = round(sum(_polygon_area_px(f.get(\"points\") or []) for f in floors) / (ppm * ppm), 2)\n        planchers_source = \"auto\"\n        # CP-AUDIT-PT : controlo cruzado com as divisões medidas — a laje cobre pelo menos a soma das divisões\n        _pieces = round(sum((r.get(\"surface_m2\") or 0) for r in rooms if (r.get(\"surface_m2\") or 0) >= 0.5), 2)\n        if _pieces > planchers * 1.05:\n            planchers_ia, planchers = planchers, _pieces\n    elif floors_only:\n        # Gros œuvre : la surface se réfère UNIQUEMENT aux planchers détectés (pas de repli pièces)\n"
+  },
+  {
+   "file": "backend/routes/plans_analysis.py",
+   "old": "            beton_dalles += area * ep\n        beton_dalles = round(beton_dalles if floors else planchers * dalle_ep, 2)\n        # Voiles : vides des baies situées dans un mur porteur déduits (largeur × hauteur de baie).\n        voiles_vides_m2 = 0.0\n",
+   "new": "            beton_dalles += area * ep\n        beton_dalles = round(beton_dalles if floors else planchers * dalle_ep, 2)\n        if planchers_ia is not None:   # laje levada à área das divisões: volume proporcional (espessuras mantidas)\n            beton_dalles = round(beton_dalles * planchers / planchers_ia, 2) if planchers_ia > 0 else round(planchers * dalle_ep, 2)\n        # Voiles : vides des baies situées dans un mur porteur déduits (largeur × hauteur de baie).\n        voiles_vides_m2 = 0.0\n"
+  },
+  {
+   "file": "backend/routes/plans_analysis.py",
+   "old": "        \"planchers_m2\": planchers,\n        \"planchers_source\": planchers_source,\n        \"planchers_count\": len(floors),\n        \"planchers_ngf\": ngf_list,\n",
+   "new": "        \"planchers_m2\": planchers,\n        \"planchers_source\": planchers_source,\n        \"planchers_ia_m2\": planchers_ia,\n        \"planchers_count\": len(floors),\n        \"planchers_ngf\": ngf_list,\n"
+  },
+  {
+   "file": "backend/routes/plans_analysis.py",
+   "old": "                    result.setdefault(\"dropped\", []).append(\n                        {\"reason\": \"below_0_5_m2\", \"surface_m2\": r[\"surface_m2\"]})\n                    continue\n            kept.append(r)\n",
+   "new": "                    result.setdefault(\"dropped\", []).append(\n                        {\"reason\": \"below_0_5_m2\", \"surface_m2\": r[\"surface_m2\"]})\n                    continue\n                # CP-AUDIT-PT : contorno estreito (vazio entre os dois traços de uma parede) — largura média < 30 cm\n                if r[\"perimeter_m\"] and 2 * r[\"surface_m2\"] / r[\"perimeter_m\"] < 0.3:\n                    result.setdefault(\"dropped\", []).append(\n                        {\"reason\": \"narrow_wall_gap\", \"surface_m2\": r[\"surface_m2\"]})\n                    continue\n            kept.append(r)\n"
+  },
+  {
+   "file": "backend/stair_engine/pdf_dossier.py",
+   "old": "        [\"Desenvolvimento real\", f\"{stair_result.get('stair_run_mm', '—')} mm\"],\n        [\"Comprimento do lanço\", f\"{stair_result.get('stair_length_mm', '—')} mm\"],\n        [\"Altura livre\", f\"{stair_result.get('headroom_mm', '—')} mm\"],\n        [\"Conforme\", \"Sim\" if stair_result.get(\"is_buildable\") else \"NÃO — não utilizar em habitação\"],\n    ]\n",
+   "new": "        [\"Desenvolvimento real\", f\"{stair_result.get('stair_run_mm', '—')} mm\"],\n        [\"Comprimento do lanço\", f\"{stair_result.get('stair_length_mm', '—')} mm\"],\n        [\"Altura livre\", (f\"{stair_result.get('headroom_mm')} mm\" if (stair_result.get('headroom_mm') or -1) >= 0 else \"não verificada (abertura não indicada)\")],  # CP-AUDIT-PT\n        [\"Conforme\", \"Sim\" if stair_result.get(\"is_buildable\") else \"NÃO — não utilizar em habitação\"],\n    ]\n"
+  },
+  {
+   "file": "frontend/src/components/SavingsCard.jsx",
+   "old": "            </p>\n            <p className=\"text-xs text-muted-foreground mt-1\">\n              ou seja ~{data.pct_of_project} % do orçamento total do projeto\n            </p>\n          </div>\n",
+   "new": "            </p>\n            <p className=\"text-xs text-muted-foreground mt-1\">\n              ou seja ~{Number(data.pct_of_project || 0).toLocaleString(document.documentElement.lang || \"pt\")} % do orçamento total do projeto\n            </p>\n          </div>\n"
+  },
+  {
+   "file": "frontend/src/components/SavingsCard.jsx",
+   "old": "        {data.roi_multiplier > 5 && (\n          <Badge className=\"rounded-sm bg-primary text-primary-foreground uppercase tracking-wider text-[10px]\">\n            ROI {data.roi_multiplier}× o Project Pass\n          </Badge>\n        )}\n",
+   "new": "        {data.roi_multiplier > 5 && (\n          <Badge className=\"rounded-sm bg-primary text-primary-foreground uppercase tracking-wider text-[10px]\">\n            ROI {Number(data.roi_multiplier || 0).toLocaleString(document.documentElement.lang || \"pt\")}× o Project Pass\n          </Badge>\n        )}\n"
+  },
+  {
+   "file": "frontend/src/pages/BtpSolver.jsx",
+   "old": "      {loading && (\n        <div data-testid=\"solver-loading\" className=\"rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-sm text-slate-500\">\n          O solucionador consulta as fontes técnicas (Diário da República, LNEC, IPQ) e depois estrutura a resposta. Pode demorar 1 a 2 minutos; pode ficar nesta página.\n          {netIssue && (\n            <div className=\"mt-2 flex items-center gap-3 text-amber-700\" data-testid=\"solver-net-issue\">\n",
+   "new": "      {loading && (\n        <div data-testid=\"solver-loading\" className=\"rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-sm text-slate-500\">\n          O solucionador consulta as fontes técnicas (Diário da República, LNEC, IPQ) e depois estrutura a resposta. Demora em geral 2 a 5 minutos; pode sair da página, o diagnóstico fica no histórico.\n          {netIssue && (\n            <div className=\"mt-2 flex items-center gap-3 text-amber-700\" data-testid=\"solver-net-issue\">\n"
+  },
+  {
+   "file": "frontend/src/pages/PlanTakeoff.jsx",
+   "old": "                        <span className=\"text-[9px] px-1 rounded-sm bg-emerald-500/15 text-emerald-600 font-bold\" data-testid=\"planchers-auto-badge\">AUTO IA</span>\n                      )}\n                    </span><span className=\"num text-right\">{descriptif.planchers_m2} m²</span>\n                    <span className=\"text-muted-foreground\">Paredes portantes</span><span className=\"num text-right\">{descriptif.murs_porteurs_ml} ml</span>\n",
+   "new": "                        <span className=\"text-[9px] px-1 rounded-sm bg-emerald-500/15 text-emerald-600 font-bold\" data-testid=\"planchers-auto-badge\">AUTO IA</span>\n                      )}\n                    {descriptif.planchers_ia_m2 != null && (  /* CP-AUDIT-PT */\n                        <span className=\"text-[9px] px-1 rounded-sm bg-amber-500/15 text-amber-600 font-bold\" data-testid=\"planchers-pieces-badge\"\n                              title={`Leitura IA: ${descriptif.planchers_ia_m2} m² — inferior à soma das divisões medidas; a laje passa à área das divisões.`}>\n                          CONTROLADO</span>\n                      )}\n                    </span><span className=\"num text-right\">{descriptif.planchers_m2} m²</span>\n                    <span className=\"text-muted-foreground\">Paredes portantes</span><span className=\"num text-right\">{descriptif.murs_porteurs_ml} ml</span>\n"
+  }
+ ],
+ "new_files": []
+}
