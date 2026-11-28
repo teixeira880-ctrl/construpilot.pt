@@ -43,8 +43,12 @@ async def extract_full(file_bytes: bytes, filename: str, *, user_id: str) -> dic
     from engines import autodesk_md
     raw = await autodesk_md.extract(file_bytes, filename, user_id=user_id)
 
-    # Convertit les summaries en un dict de quantités agrégées
-    quantities = _aggregate_quantities(raw)
+    takeoff = raw.get("revit_takeoff")
+    if takeoff and takeoff.get("by_ouvrage"):
+        # Revit : métré complet sur TOUS les éléments de la vue 3D (et non un échantillon)
+        quantities = takeoff["by_ouvrage"]
+    else:
+        quantities = _aggregate_quantities(raw)
     return {
         **raw,
         "quantities": quantities,

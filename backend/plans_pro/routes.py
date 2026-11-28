@@ -113,6 +113,7 @@ async def _pipeline(job_id: str, file_bytes: bytes, filename: str,
                     autodesk_views=[{"name": v.get("name"), "role": v.get("role"), "objects": v.get("objects")}
                                     for v in (autodesk_result.get("views") or [])],
                     autodesk_quantities=autodesk_result.get("quantities"),
+                    autodesk_takeoff=autodesk_result.get("revit_takeoff"),
                     autodesk_cached=autodesk_result.get("cached", False),
                     autodesk_status=autodesk_result.get("status"),
                 )
@@ -226,7 +227,7 @@ async def retry_job(job_id: str, request: Request, response: Response, backgroun
 async def job_status(job_id: str, user=Depends(current_user)):
     doc = await db.plans_pro_jobs.find_one(
         {"job_id": job_id, "user_id": user["user_id"]},
-        {"_id": 0, "user_id": 0},
+        {"_id": 0, "user_id": 0, "autodesk_takeoff": 0},
     )
     if not doc:
         raise HTTPException(404, "Tarefa não encontrada")
@@ -237,13 +238,18 @@ async def job_status(job_id: str, user=Depends(current_user)):
 async def job_quantities_xlsx(job_id: str, user=Depends(current_user)):
     """Tableau des quantités Autodesk (catégories / calques) en Excel prêt pour le métré."""
     doc = await db.plans_pro_jobs.find_one({"job_id": job_id, "user_id": user["user_id"]},
-                                           {"_id": 0, "filename": 1, "status": 1, "autodesk_quantities": 1, "autodesk_elements_count": 1, "autodesk_views": 1, "created_at": 1})
+                                           {"_id": 0, "filename": 1, "status": 1, "autodesk_quantities": 1, "autodesk_elements_count": 1, "autodesk_views": 1, "created_at": 1,
+                                            "autodesk_takeoff": 1})
     if not doc:
         raise HTTPException(404, "Tarefa não encontrada")
     quantities = doc.get("autodesk_quantities") or {}
     if doc.get("status") not in FINAL_STATUSES or not quantities:
         raise HTTPException(409, "Nenhuma quantidade Autodesk disponível para esta tarefa")
-    data = await asyncio.to_thread(_quantities_workbook, doc, quantities)
+    if (doc.get("autodesk_takeoff") or {}).get("rows"):
+        from plans_pro.revit_workbook import revit_workbook
+        data = await asyncio.to_thread(revit_workbook, doc, doc["autodesk_takeoff"])
+    else:
+        data = await asyncio.to_thread(_quantities_workbook, doc, quantities)
     stem = os.path.splitext(doc.get("filename") or "plan")[0][:40].replace('"', "")
     return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="quantites-{stem}.xlsx"', "Cache-Control": "private, no-store"})
@@ -311,11 +317,21 @@ def _quantities_workbook(doc: dict, quantities: dict) -> bytes:
     return buf.getvalue()
 
 
+def _takeoff_summary(t: dict | None) -> dict | None:
+    """Résumé Revit pour l'écran (sans la liste complète des éléments, qui reste dans l'Excel)."""
+    if not t or not t.get("rows"):
+        return None
+    rows = [{k: r.get(k) for k in ("level", "ouvrage", "type", "unit", "quantity", "count", "area_m2", "volume_m3", "length_m", "quantity_note")}
+            for r in t["rows"][:400]]
+    return {"levels": t.get("levels"), "rows": rows, "elements_count": t.get("elements_count"), "warnings": t.get("warnings"),
+            "method": t.get("method"), "demolished_count": len(t.get("demolished") or []), "view": t.get("view")}
+
+
 @router.get("/job/{job_id}/result")
 async def job_result(job_id: str, user=Depends(current_user)):
     doc = await db.plans_pro_jobs.find_one(
         {"job_id": job_id, "user_id": user["user_id"]},
-        {"_id": 0, "user_id": 0},
+        {"_id": 0, "user_id": 0, "autodesk_takeoff.elements": 0},
     )
     if not doc:
         raise HTTPException(404, "Tarefa não encontrada")
@@ -330,6 +346,7 @@ async def job_result(job_id: str, user=Depends(current_user)):
             "thumbnail": doc.get("autodesk_thumbnail"),
             "views": doc.get("autodesk_views"),
             "quantities": doc.get("autodesk_quantities"),
+            "revit": _takeoff_summary(doc.get("autodesk_takeoff")),
             "cached": doc.get("autodesk_cached"),
             "elements_count": sum(
                 (v.get("objects") or 0) for v in (doc.get("autodesk_views") or [])
@@ -369,6 +386,6 @@ async def history(limit: int = 20, user=Depends(current_user)):
     limit = max(1, min(int(limit or 20), 100))
     items = await db.plans_pro_jobs.find(
         {"user_id": user["user_id"]},
-        {"_id": 0, "user_id": 0, "vision.text_detected": 0, "autodesk_thumbnail": 0},
+        {"_id": 0, "user_id": 0, "vision.text_detected": 0, "autodesk_thumbnail": 0, "autodesk_takeoff": 0},
     ).sort("created_at", -1).to_list(limit)
     return {"items": items}

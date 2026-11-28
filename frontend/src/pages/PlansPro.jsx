@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { ChantierContextBar, useChantierContext } from "@/components/chantiers/ChantierContextBar";
 import { toast } from "sonner";
+import RevitTakeoff from "@/components/planTakeoff/RevitTakeoff";
 
 const ACCEPT = ".dwg,.dxf,.rvt,.ifc,.nwc,.nwd,.pdf,.png,.jpg,.jpeg,.webp";
 const STATUS_LABELS = {
@@ -198,7 +199,7 @@ export default function PlansPro() {
           {result.autodesk?.quantities && Object.keys(result.autodesk.quantities).length > 0 && (
             <div data-testid="plans-pro-quantities">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="font-semibold">Quantidades agregadas (Autodesk)</h2>
+                <h2 className="font-semibold">{result.autodesk.revit ? "Quantidades do modelo Revit (todos os elementos)" : "Quantidades agregadas (Autodesk)"}</h2>
                 <a href={`${process.env.REACT_APP_BACKEND_URL}/api/plans-pro/job/${job?.job_id}/quantities.xlsx`} data-testid="plans-pro-xlsx-btn"
                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
                   Exportar em Excel (medição)
@@ -233,6 +234,7 @@ export default function PlansPro() {
                   </tbody>
                 </table>
               </div>
+              <RevitTakeoff revit={result.autodesk.revit} />
             </div>
           )}
 

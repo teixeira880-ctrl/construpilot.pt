@@ -786,7 +786,12 @@ async def _exec_tool_inner(name: str, args: dict, user: dict, conv: dict) -> dic
             except AutodeskError as exc:
                 return {"ok": False, "error": str(exc), "code": exc.code}
             await db.plans_takeoff.update_one({"plan_id": args["plan_id"], "user_id": uid}, {"$set": {"model_derivative": {"job_id": res["job_id"], "views": res.get("views"), "completed_at": res.get("completed_at")}}})
-            return {"ok": True, **{k: res.get(k) for k in ("job_id", "status", "cached", "views", "sample_objects", "derivatives", "format_note", "filename")}}
+            out = {"ok": True, **{k: res.get(k) for k in ("job_id", "status", "cached", "views", "sample_objects", "derivatives", "format_note", "filename")}}
+            t = res.get("revit_takeoff")
+            if t and t.get("rows"):  # métré Revit complet, compact pour l'Assistant (la liste élément par élément reste dans l'Excel Plans Pro)
+                out["revit_takeoff"] = {"levels": t.get("levels"), "by_ouvrage": t.get("by_ouvrage"), "warnings": t.get("warnings"), "method": t.get("method"),
+                                        "rows": [{k: r.get(k) for k in ("level", "ouvrage", "type", "unit", "quantity", "count", "volume_m3", "materials")} for r in t["rows"][:250]]}
+            return out
         a = await _allowed_plan(args["plan_id_a"], uid)
         b = await _allowed_plan(args["plan_id_b"], uid)
         return {"ok": True, **compare_revisions(a, b, a.get("model_derivative"), b.get("model_derivative"))}

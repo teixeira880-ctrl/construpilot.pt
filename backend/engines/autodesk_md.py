@@ -9,12 +9,15 @@ import secrets
 from collections import Counter
 from datetime import datetime, timezone
 
+import logging
+
 from pymongo.errors import DuplicateKeyError
 
 from core.db import db
 from engines import autodesk_storage as storage
 from engines.autodesk_client import AutodeskError, config, request
 
+logger = logging.getLogger(__name__)
 MD_BASE = "https://developer.api.autodesk.com/modelderivative/v2"
 SUPPORTED = {"dwg": "AutoCAD (2D: camadas, blocos, entidades)", "dxf": "DXF", "rvt": "Revit (objetos, famílias, propriedades)", "ifc": "IFC (classes, propriedades)",
              "nwd": "Navisworks", "dgn": "MicroStation"}
@@ -97,6 +100,32 @@ async def _views(urn):
     return (await request("GET", f"{MD_BASE}/designdata/{urn}/metadata")).json().get("data", {}).get("metadata", [])
 
 
+async def _object_tree(urn, guid):
+    for _ in range(10):
+        response = await request("GET", f"{MD_BASE}/designdata/{urn}/metadata/{guid}", params={"forceget": "true"}, accepted=(202,))
+        if response.status_code == 200:
+            return response.json()
+        await asyncio.sleep(4)
+    return {}
+
+
+async def _revit_takeoff(job, views, lang="pt"):
+    """Métré Revit complet (vue 3D) : lit l'arbre + toutes les propriétés, sans nouvelle traduction."""
+    from engines.revit_takeoff import takeoff
+    view = next((v for v in views if v.get("role") == "3d"), views[0] if views else None)
+    if not view or not view.get("guid"):
+        return None
+    try:
+        collection = await _properties(job["urn"], view["guid"])
+        tree = await _object_tree(job["urn"], view["guid"])
+        if not collection or not tree:
+            return None
+        return {**takeoff(collection, tree, filename=job.get("filename", ""), lang=lang), "view": view.get("name")}
+    except Exception:  # noqa: BLE001 — le métré complet est un plus : son échec ne casse pas la lecture existante
+        logger.exception("Revit takeoff failed for %s", job.get("job_id"))
+        return None
+
+
 async def _properties(urn, guid):
     for _ in range(10):
         response = await request("GET", f"{MD_BASE}/designdata/{urn}/metadata/{guid}/properties", params={"forceget": "true"}, accepted=(202,))
@@ -126,21 +155,27 @@ def summarize(collection: list[dict], ext: str) -> dict:
             "property_keys": [k for k, _ in keys.most_common(60)], "note": kind_note}
 
 
-async def extract(data: bytes, filename: str, *, user_id: str) -> dict:
+async def extract(data: bytes, filename: str, *, user_id: str, lang: str = "pt") -> dict:
     """Full path: upload → translation → manifest → views → properties, cached per (user, hash)."""
     config("APS_CLIENT_ID")
     job, fresh = await _job(data, filename, user_id)
     if not fresh and job.get("status") == "success":
+        if job.get("ext") == "rvt" and (job.get("revit_takeoff") or {}).get("lang") != lang and job.get("urn"):
+            # Tradução já paga: a medição completa é calculada a partir do mesmo URN, sem nova tradução.
+            views = [{"guid": v.get("guid"), "name": v.get("name"), "role": v.get("role")} for v in job.get("views") or []]
+            result = await _revit_takeoff(job, views, lang)
+            if result:
+                await _update(job, revit_takeoff=result)
         return {**job, "cached": True}
     if not fresh and job.get("status") in ("pending", "submitting", "unknown", "preparing"):
         if job.get("urn") and job["status"] == "pending":
-            return await _complete(job)
+            return await _complete(job, lang)
         raise AutodeskError("pending", "Uma tradução deste ficheiro já está em curso ou incerta: nenhuma nova tradução é lançada.")
     await _submit(job, data)
-    return await _complete(job)
+    return await _complete(job, lang)
 
 
-async def _complete(job):
+async def _complete(job, lang="pt"):
     manifest = await _wait_manifest(job)
     views = [{"guid": v.get("guid"), "name": v.get("name"), "role": v.get("role")} for v in await _views(job["urn"])]
     summaries, sample = [], []
@@ -152,5 +187,7 @@ async def _complete(job):
     result = {"status": "success", "views": summaries, "sample_objects": sample, "manifest_status": manifest.get("status"),
               "derivatives": [{"name": d.get("name"), "outputType": d.get("outputType"), "status": d.get("status")} for d in manifest.get("derivatives", [])],
               "completed_at": _now(), "format_note": SUPPORTED.get(job["ext"])}
+    if job["ext"] == "rvt":
+        result["revit_takeoff"] = await _revit_takeoff(job, views, lang)
     await _update(job, **result)
     return {**job, "cached": False}
